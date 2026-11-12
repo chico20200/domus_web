@@ -2,11 +2,11 @@
 
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
-- **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones, **terminada** (15 de 15) y fusionada en `main` (`9a22d71`). Siguiente: Etapa 2, Limpieza.
-- **Rama de trabajo:** `main`. La Etapa 1 se trabajó en `etapa-1` y se fusionó con `--no-ff`; la Etapa 2 abrirá su propia rama `etapa-2`.
+- **Última actualización:** 12 de noviembre de 2026
+- **Etapa actual:** Etapa 2, Limpieza: código terminado (10 de 10). **Falta ejecutar la migración `001` en Supabase al desplegar**, y después fusionar en `main`. La Etapa 1 está terminada y fusionada en `main` (`9a22d71`).
+- **Rama de trabajo:** `etapa-2`, abierta desde `main` (`c954fb2`). La Etapa 1 se trabajó en `etapa-1` y se fusionó con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `9a22d71`
+- **Último commit de referencia:** `1aebb13`
 
 ---
 
@@ -15,7 +15,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
-| 2 | Limpieza | Pendiente |
+| 2 | Limpieza | Código 10/10; migración de base pendiente de ejecutar |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
@@ -49,10 +49,49 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 
 ---
 
+## Etapa 2: tareas
+
+Rama `etapa-2`. Alcance de §12: quitar donaciones, PayPal y chatbot; borrar el código comentado y `config/supabase.js`; quitar los `console.log` de claves; migrar `admin` a `coordinador`; middleware único de permisos y `.eq('caja_id')` en toda escritura. Se suman los hallazgos de la Etapa 1 asignados a esta etapa.
+
+| # | Tarea | Depende de | Estado | Commit |
+| --- | --- | --- | --- | --- |
+| T1 | Quitar donaciones y PayPal: ruta, `config/paypal.js`, montaje, `DonacionModal`, botón "Donar", script de PayPal en `index.html`, variables del README | — | ✅ | `8c5d48a` |
+| T2 | Quitar el chatbot: ruta, montaje, `ChatbotFlotante`, `chatbot.service.ts`, render en `AppLayout`, variable del README | — | ✅ | `c65a8dc` |
+| T3 | Quitar los archivos de la plantilla de Vite (`favicon.svg`, `icons.svg`, `hero.png`, `react.svg`, `vite.svg`, `frontend/README.md`) | — | ✅ | `bc5cbc7` |
+| T4 | Quitar los `console.log` de claves y de depuración; reemplazar `config/supabase.js` y borrarlo | — | ✅ | `e6c9b65` |
+| T5 | Borrar el código comentado de las rutas del backend | T4 | ✅ | `bac67b4` |
+| T6 | Ruta `/resumen` duplicada y variables sin usar (lint del backend en cero); revisar `montoCapital` en pagos | T5 | ✅ | `6f51f35` |
+| T7 | Fecha local de Ecuador en el backend en lugar de `toISOString()` | T5 | ✅ | `55f114a` |
+| T8 | Middleware único `requierePermiso` con la tabla de permisos; se borran las copias de `verificarRol` | T5 | ✅ | `dd80830` |
+| T9 | `.eq('caja_id', cajaId)` en toda escritura | T8 | ✅ | `74c7323` |
+| T10 | Migración de `admin` a `coordinador`: base de datos, backend y frontend | T8 | ✅ Código. SQL escrito, **sin ejecutar** | `1aebb13` |
+
+---
+
 ## Decisiones tomadas
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 11 nov 2026 | Etapa 2 en 10 tareas, en la rama `etapa-2`. Primero lo que solo borra (T1–T5), después lo que cambia lógica (T6–T9) y al final la migración de rol (T10), que toca la base de datos | Este documento |
+| 11 nov 2026 | `config/supabase.js` no estaba sin usar, como dice §6.4: lo importaban `auth.routes.js` y `profile.routes.js`. Auth pasa a `config/supabaseAuth.js` (clave anon, sin sesión persistente) y perfiles a `supabaseAdmin`. Un cliente que hace `signInWithPassword` guarda esa sesión en memoria y sus consultas siguientes salen con el token de ese usuario, así que el cliente de auth nunca se usa para tablas | `backend/config/supabaseAuth.js` |
+| 11 nov 2026 | Se quita `POST /api/auth/test-email`: era de prueba, no pedía sesión y permitía mandar correos de recuperación a cualquier dirección. El frontend no lo usaba | `backend/routes/auth.routes.js` |
+| 11 nov 2026 | El resumen de caja devuelve 500 si alguna consulta falla, en vez de mostrar ceros. Antes el error solo se imprimía en consola | `backend/routes/cajas.routes.js` |
+| 11 nov 2026 | Las "316 líneas comentadas" de §6.4 eran casi todas comentarios que explican el código y se conservan. Código comentado de verdad solo había uno: el endpoint de pago de `creditos.routes.js` (58 líneas), más su método y tipo en el frontend y restos en `Sidebar` y `ReportesPage` | Este documento |
+| 11 nov 2026 | `montoCapital` en `/abono` no era un error de cálculo: el `0` inicial se sobrescribía en las dos ramas del `if`. Se reescribió sin cambiar el resultado (comprobado con 5 casos). Se cierra el hallazgo | `backend/routes/pagos.routes.js` |
+| 11 nov 2026 | Zona horaria: `server.js` fija `process.env.TZ = "America/Guayaquil"` antes de todo, y `utils/fechas.js` da `fechaLocal()` y `leerFecha()`. Se eligió fijar la zona del proceso porque `amortizacion.js` y `ciclos.js` ya calculan con los métodos locales de `Date`, que en Render daban la hora UTC | `backend/utils/fechas.js` |
+| 11 nov 2026 | La distribución de intereses asigna cada depósito o retiro al mes de Ecuador, no al mes UTC: un depósito del 31 a las 21:00 contaba en el mes siguiente | `backend/utils/reportes.js` |
+| 11 nov 2026 | `calcularCiclos` compara fechas `YYYY-MM-DD` en lugar de instantes. Antes comparaba la medianoche del último día con la hora actual y daba el ciclo por cerrado durante todo su último día | `backend/utils/ciclos.js` |
+| 11 nov 2026 | Tabla de permisos (T8). La Tabla 1.1 completa no está en el repositorio, así que la tabla se armó con el rol mínimo que ya exigía cada ruta, como pide §6.2 (la escalera se conserva). Permisos: `caja.ver` (socio); `socios.gestionar`, `movimientos.registrar`, `creditos.aprobar`, `reportes.generar` (tesorero); `caja.configurar`, `miembros.gestionar`, `socios.eliminar`, `cuentas.cambiar_estado`, `creditos.cambiar_estado` (admin). Comprobado: las 35 rutas dejan pasar exactamente los mismos roles que antes (175 casos con un Supabase simulado) | `backend/middlewares/permisos.middleware.js` |
+| 11 nov 2026 | Había siete copias de `verificarRol`, no seis (§6.1 no cuenta la de `cajas.routes.js`), más dos chequeos escritos a mano en el resumen y la edición de la caja. Todo pasa al middleware | `backend/middlewares/permisos.middleware.js` |
+| 11 nov 2026 | **Un rol desconocido ahora se rechaza.** La comparación vieja `jerarquia[rol] < jerarquia[minimo]` da `undefined < 3`, que es `false`, así que un rol fuera de la tabla pasaba todas las verificaciones. Importa para T10: si la base pasa a `coordinador` antes que el código, con la versión vieja cualquier rol raro tenía acceso total; con la nueva queda sin acceso. `RolRoute` del frontend tiene el mismo patrón (se corrige en T10) | `backend/middlewares/permisos.middleware.js` |
+| 11 nov 2026 | Mensajes de 403 unificados: "Sin acceso a esta caja" (no es miembro) y "Tu rol no permite esta acción". El frontend no dependía de los textos viejos | `backend/API.md` |
+| 11 nov 2026 | T9: ocho `update` sin `caja_id` (depósito, retiro, aprobar crédito, pago, prepago, abono, y socio e invitación en `/unirse`). Los `insert` ya lo llevaban. Los `update` sobre la tabla `cajas` filtran por su `id`, que es la caja misma | `backend/routes/` |
+| 12 nov 2026 | Esquema de Supabase revisado con acceso de solo lectura. `rol` es el enum `rol_caja` (`admin`, `tesorero`, `socio`), usado por `miembros_caja` (6 coordinadores, 2 socios) e `invitaciones_caja` (3 invitaciones de socio, todas usadas). Ninguna política, función, trigger ni vista menciona el valor | Este documento |
+| 12 nov 2026 | La migración es `alter type public.rol_caja rename value 'admin' to 'coordinador'`: cambia las filas existentes sin copiarlas y se deshace con la sentencia inversa. Queda en `backend/migraciones/001_admin_a_coordinador.sql`. La ejecuta el usuario en el editor SQL, en el mismo momento en que despliega este backend: el backend viejo inserta `'admin'` al crear una caja, y el nuevo no reconoce `'admin'` | `backend/migraciones/001_admin_a_coordinador.sql` |
+| 12 nov 2026 | Frontend: `src/lib/roles.ts` es el único lugar con el tipo `RolCaja`, la escalera, las etiquetas ("Coordinador") y `normalizarRol()`. `RolRoute` usa `tieneRol()`, que rechaza roles desconocidos (antes tenía el mismo fallo que el backend). La barra lateral muestra la etiqueta y no el valor en crudo. `CajaContext` traduce el `admin` que haya quedado en el localStorage y descarta la caja guardada si el rol no es válido | `frontend/src/lib/roles.ts` |
+| 12 nov 2026 | `POST /miembros/invitaciones` valida `rolInvitado`; antes un valor fuera del enum daba un 500 de la base | `backend/routes/miembros.routes.js` |
+| 12 nov 2026 | `fecha_pago` se manda desde el backend con `fechaLocal()`. Confirmado en la base: el valor por defecto es `CURRENT_DATE` y la base está en UTC | `backend/routes/pagos.routes.js` |
+| 11 nov 2026 | Los toasts bajan a 24 px del borde: estaban a 90 px para no tapar el botón del chatbot | `frontend/src/context/NotifContext.tsx` |
 | 11 nov 2026 | El coordinador sí registra movimientos; se conserva la escalera `socio < tesorero < admin` | Especificaciones §6.2 y §13 |
 | 11 nov 2026 | Naranja de marca más oscuro con texto blanco, para cumplir AA (hoy blanco sobre `#DD9A4C` da 2,4:1) | Este documento, tarea T3 |
 | 11 nov 2026 | `DataTable`, `StatCard`/`Panel` y `ConfirmDialog` pasan a la Etapa 3 | Especificaciones §12, Etapa 3 |
@@ -127,30 +166,29 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 | Hallazgo | Etapa que lo resuelve |
 | --- | --- |
-| `GET /api/cajas/:cajaId/resumen` está definido dos veces en `cajas.routes.js` (líneas 102 y 249); Express solo usa el primero | Etapa 2 |
-| `frontend/index.html` tiene el client-id de PayPal escrito a mano en vez de leer `VITE_PAYPAL_CLIENT_ID` | Etapa 2 (se quita PayPal) |
 | `frontend/index.html` declara `lang="en"`; la interfaz es solo en español | Etapa 3 |
-| `favicon.svg`, `hero.png`, `react.svg`, `vite.svg` e `icons.svg` son archivos de la plantilla de Vite, no de DOMUS | Etapa 2 |
 | `graphify-out/` no está en `.gitignore` | Sin asignar |
 | Los alias `--color-primary_y` y compañía se resuelven en `:root`, así que solo siguen el modo oscuro porque `ThemeContext` pone `.dark` en `<html>`. Si algún día `.dark` se aplica a un subárbol, los alias no cambiarían. Desaparece al borrar los alias | Etapa 3 |
 | 5 sitios fuera de `Button` ponen `text-white` sobre un relleno de color. En modo oscuro dan 2,4:1. Se corrige usando `text-sobre-accion` | Etapa 3 |
 | Valores fuera de escala en las páginas: 57 usos de 20 px (`p-5`, `px-5`…), 12 de 40 px, 13 `borderRadius` y 12 `fontSize` en `style={{}}`, 6 `text-lg`. Inventario y reemplazos en `docs/SISTEMA_DE_DISENO.md` §5 | Etapa 3, página por página |
 | Los PDF de `ReportesPage` pintan la cabecera con el naranja viejo `[221, 154, 76]` y texto blanco (2,4:1) | Etapa 3 (Reportes) |
 | **Fechas un día atrasadas.** Las columnas `date` llegan como `"2026-11-11"` y las páginas hacen `new Date(f)`, que las toma como UTC: en Ecuador se ven como el día anterior (`fecha_apertura`, `fecha_ingreso`, `fecha_desembolso`, vencimientos). `fecha()` ya lo corrige; falta reemplazar las 6 funciones locales | Etapa 3, al migrar cada página |
-| **Fechas un día adelantadas en el backend.** `new Date().toISOString().split("T")[0]` (en `ahorros.routes.js:140`, `socios.routes.js:104` y `creditos.routes.js:177`) toma la fecha UTC: lo que se registra después de las 19:00 de Ecuador queda con fecha del día siguiente | Etapa 2 |
 | `DashboardPage` muestra fechas relativas ("Hoy", "Ayer") que `format.ts` no cubre. Al migrar, decidir si se agrega `fechaRelativa()` o se usa `fecha()` | Etapa 3 (Dashboard) |
 | `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
 | §3 dice que hay `<textarea>` sueltos en `SociosPage` y `CreditosPage`, pero en el código actual no hay ninguno. `TextareaField` se hizo igual; corregir la tabla de §3 o confirmar dónde hacen falta | Sin asignar (documento) |
 | 8 `<select>` sueltos con estilo propio y `style={{}}` (Créditos, Ahorros, Reportes, Configuración ×4, AbonoModal) se reemplazan por `SelectField` | Etapa 3, al migrar cada página |
 | `PageShell` cubre solo las páginas con barra lateral. `CajasPage` y las cuatro de autenticación no usan `AppLayout` y centran con su propio `max-w-*` (`max-w-2xl`, `max-w-sm`). Decidir al migrarlas si tienen su propio contenedor o un tercer ancho | Etapa 3 |
 | Las líneas que cita §4.1 (`ConfiguracionPage.tsx:235`, etc.) se corrieron con el formato de T1; hoy son `ConfiguracionPage.tsx:241`, `AhorrosPage.tsx:185`, `CreditosPage.tsx:260`, `ProfilePage.tsx:152` y `:202` | Etapa 3 (referencia) |
-| 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 2 (`DonacionModal` se borra); Etapa 3 (el resto, y `ConfirmDialog`) |
+| 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 3 (`DonacionModal` ya se borró en la Etapa 2; quedan 6, y `ConfirmDialog`) |
 | 10 textos "Cargando…" sueltos (`App.tsx`, 7 páginas, `AbonoModal`, `TablaAmortizacion`) y 7 "Aún no hay…" (Ahorros ×2, Dashboard, Socios, Cajas, Créditos ×2) se reemplazan por `LoadingState` y `EmptyState` | Etapa 3, al migrar cada página |
 | Etiquetas de estado escritas a mano con `rgba` fijo (`ESTADO_CONFIG` en `CreditosPage`, roles en `SociosPage`, más `CajasPage`, `ConfiguracionPage` y `PagosPage`) se pasan a `Badge`. Los bloques con fondo teñido de Créditos (líneas 389, 416, 430) no cumplen AA y se rediseñan | Etapa 3 |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan; hay más de un `primary` por pantalla en Pagos ("Pago completo" en cada fila) y en Créditos ("Nueva solicitud" y "Crear solicitud" a la vez con el formulario abierto) | Etapa 3, al migrar cada página |
-| Lint del frontend: 11 errores que ya existían. 2 en `ChatbotFlotante` y `DonacionModal`; 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 2 (chatbot y donaciones); Etapa 3 (el resto) |
-| Lint del backend: 6 errores, todos variables sin usar, en `cajas.routes.js`, `pagos.routes.js` y `reportes.routes.js` | Etapa 2 |
-| **Revisar:** en `pagos.routes.js`, a `montoCapital` se le asigna un valor que nunca se usa. Puede ser un error de cálculo en los pagos, no solo código sobrante | Etapa 2, con prioridad |
+| Lint del frontend: 9 errores que ya existían (eran 11; los de `ChatbotFlotante` y `DonacionModal` se fueron con T1 y T2). 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 3 |
+| `SociosPage.tsx:30` propone como fecha de ingreso `new Date().toISOString().split("T")[0]`, que después de las 19:00 da mañana | Etapa 3 (Socios) |
+| El vencimiento del crédito (`creditos.fecha_vencimiento`, desembolso + plazo, mismo día del mes) no coincide con el de su última cuota (último día del mes). Con un desembolso el 31, `setMonth` además salta al mes siguiente. Es la lógica de antes; no se cambió | Sin asignar (decisión de negocio) |
+| Para la decisión pendiente de aislamiento (§6.3, §13.2): RLS ya está activado en las 9 tablas de `public` y hay 11 políticas, pero el backend usa la clave de servicio, que las ignora. Antes de decidir, revisar qué dicen esas 11 políticas | Decisión pendiente |
+| Pagos registrados antes del 12 nov después de las 19:00 de Ecuador pueden tener `fecha_pago` del día siguiente. El código nuevo ya no lo hace; los datos viejos no se corrigieron | Sin asignar |
+| El documento de TIC debe declarar donaciones y chatbot como trabajo futuro en su sección 1.3 (§7). Ese documento no está en el repositorio | Fuera del código |
 
 ---
 
@@ -171,6 +209,18 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T10 hecha en el código; SQL de la migración escrito y sin ejecutar. Esquema revisado en Supabase (solo lectura). Prueba de permisos con los nombres nuevos: 175 de 175, y `admin` ya no pasa en ninguna ruta. 11 casos de `lib/roles.ts`; uno destapó que `"toString" in NIVEL` era verdadero, y se pasó a `Object.hasOwn`. Build OK; lint del frontend con los 9 errores previos, backend en cero.
+- **11 nov 2026:** T10 en espera: la migración de rol necesita ver el esquema de Supabase (tipo de la columna `rol`, restricciones, políticas y funciones que mencionen `'admin'`). Inventario del código hecho: 6 archivos del frontend y 6 del backend.
+- **11 nov 2026:** T9 hecha. `caja_id` en las ocho escrituras que no lo tenían. Prueba de permisos repetida: 175 de 175. Lint del backend en cero.
+- **11 nov 2026:** T8 hecha. Middleware `requierePermiso` con tabla única; borradas siete copias de `verificarRol`. Probado con las rutas reales y un Supabase simulado: 35 rutas × 5 roles, sin diferencias con antes. Los roles desconocidos ya no pasan. `API.md` actualizado.
+- **11 nov 2026:** T7 hecha. Fechas del backend en la zona de Ecuador. 12 casos probados con el proceso en UTC (registro a las 20:00, ciclos en su último día, depósito del 31 a las 21:00). La prueba destapó que los ciclos se cerraban un día antes; corregido. Lint del backend en cero.
+- **11 nov 2026:** T6 hecha. Borrada la segunda ruta `/resumen` y el código muerto de reportes; `montoCapital` revisado y no era un error. **Lint del backend en cero.**
+- **11 nov 2026:** T5 hecha. Borrado el endpoint de pago comentado y otros restos; los comentarios explicativos se quedan. Build OK.
+- **11 nov 2026:** T4 hecha. Sin logs de claves ni de depuración; `config/supabase.js` reemplazado y borrado (sí se usaba, ver Decisiones); fuera `test-email`. El servidor arranca. Build OK; lint del backend con los mismos 6 errores previos.
+- **11 nov 2026:** T3 hecha. Borrados los recursos y el README de la plantilla de Vite; el favicon declara `image/png`. Build OK.
+- **11 nov 2026:** T2 hecha. Chatbot quitado del backend y del frontend. Lint del frontend baja de 11 a 9 errores. Build OK.
+- **11 nov 2026:** T1 hecha. Donaciones y PayPal quitados, incluido el script con el client-id en `index.html`. Build OK; lint sin errores nuevos.
+- **11 nov 2026:** Plan de la Etapa 2 en 10 tareas; rama `etapa-2` abierta.
 - **11 nov 2026:** `etapa-1` fusionada en `main` con `--no-ff` (`9a22d71`). Build OK en `main`. Sin subir a GitHub todavía.
 - **11 nov 2026:** Naranja de modo claro aclarado a `#b26000` y nuevo token `--color-accion-texto` para su uso como texto. Contraste medido de nuevo: todo AA, mínimo 4,60:1. Revisado en `/dev/componentes` y en login. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** **Etapa 1 terminada.** T15 hecha: página de muestra en `/dev/componentes` (solo desarrollo) con todos los primitivos. Revisada en claro y oscuro, y su formulario probado con teclado real. Al revisarla apareció un error de T6: el `Button` `secondary` no mostraba el contorno y se veía como `ghost`, también en las páginas reales. Corregido en `69d389d`. Build OK; lint con los mismos 11 errores previos.

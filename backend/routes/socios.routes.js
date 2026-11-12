@@ -3,34 +3,17 @@ const express = require("express")
 const router = express.Router({ mergeParams: true }) // ← mergeParams para leer :cajaId
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const { requierePermiso } = require("../middlewares/permisos.middleware")
+const { fechaLocal } = require("../utils/fechas")
 
 router.use(verifyToken)
-
-// ── Helper: verifica que el usuario pertenece a la caja y tiene el rol mínimo
-async function verificarRol(userId, cajaId, rolMinimo = "socio") {
-  const jerarquia = { socio: 1, tesorero: 2, admin: 3 }
-
-  const { data } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-
-  if (!data) return null
-  if (jerarquia[data.rol] < jerarquia[rolMinimo]) return null
-  return data.rol
-}
 
 // ─────────────────────────────────────────────
 // GET /api/cajas/:cajaId/socios
 // Lista todos los socios de la caja
 // ─────────────────────────────────────────────
-router.get("/", async (req, res) => {
+router.get("/", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data, error } = await supabaseAdmin
     .from("socios")
@@ -47,10 +30,8 @@ router.get("/", async (req, res) => {
 // GET /api/cajas/:cajaId/socios/:socioId
 // Detalle de un socio
 // ─────────────────────────────────────────────
-router.get("/:socioId", async (req, res) => {
+router.get("/:socioId", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId, socioId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data, error } = await supabaseAdmin
     .from("socios")
@@ -66,12 +47,10 @@ router.get("/:socioId", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // POST /api/cajas/:cajaId/socios
-// Registra un nuevo socio — tesorero o admin
+// Registra un nuevo socio — tesorero o coordinador
 // ─────────────────────────────────────────────
-router.post("/", async (req, res) => {
+router.post("/", requierePermiso("socios.gestionar"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { nombre, apellido, cedula, telefono, email, direccion, fecha_ingreso } = req.body
 
@@ -101,7 +80,7 @@ router.post("/", async (req, res) => {
       telefono: telefono?.trim() ?? "",
       email: email?.trim() ?? "",
       direccion: direccion?.trim() ?? "",
-      fecha_ingreso: fecha_ingreso ?? new Date().toISOString().split("T")[0],
+      fecha_ingreso: fecha_ingreso ?? fechaLocal(),
     })
     .select()
     .single()
@@ -113,12 +92,10 @@ router.post("/", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId/socios/:socioId
-// Actualiza datos del socio — tesorero o admin
+// Actualiza datos del socio — tesorero o coordinador
 // ─────────────────────────────────────────────
-router.put("/:socioId", async (req, res) => {
+router.put("/:socioId", requierePermiso("socios.gestionar"), async (req, res) => {
   const { cajaId, socioId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { nombre, apellido, cedula, telefono, email, direccion } = req.body
   const updates = {}
@@ -151,12 +128,10 @@ router.put("/:socioId", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // DELETE /api/cajas/:cajaId/socios/:socioId
-// Desactiva un socio — solo admin
+// Desactiva un socio — solo coordinador
 // ─────────────────────────────────────────────
-router.delete("/:socioId", async (req, res) => {
+router.delete("/:socioId", requierePermiso("socios.eliminar"), async (req, res) => {
   const { cajaId, socioId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "admin")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol admin" })
 
   const { error } = await supabaseAdmin
     .from("socios")

@@ -19,6 +19,7 @@ import { useNotif } from "../context/NotifContext"
 import { apiClient } from "../api/api.client"
 import { ciclosService } from "../api/ciclos.service"
 import type { GetCiclosResponse } from "../api/ciclos.types"
+import { ETIQUETA_ROL, type RolCaja } from "../lib/roles"
 
 // ── Constantes ────────────────────────────────────────────────
 const MESES = [
@@ -37,15 +38,15 @@ const MESES = [
 ]
 
 const rolConfig = {
-  admin: { label: "Admin", icon: Shield, color: "var(--color-primary_y)" },
-  tesorero: { label: "Tesorero", icon: Briefcase, color: "var(--color-secondary_g)" },
-  socio: { label: "Socio", icon: Users, color: "var(--text-secondary)" },
+  coordinador: { label: ETIQUETA_ROL.coordinador, icon: Shield, color: "var(--color-primary_y)" },
+  tesorero: { label: ETIQUETA_ROL.tesorero, icon: Briefcase, color: "var(--color-secondary_g)" },
+  socio: { label: ETIQUETA_ROL.socio, icon: Users, color: "var(--text-secondary)" },
 }
 
 // ── Tipos ─────────────────────────────────────────────────────
 interface Miembro {
   id: string
-  rol: "admin" | "tesorero" | "socio"
+  rol: RolCaja
   activo: boolean
   email: string
   profiles: { nombre: string } | null
@@ -63,7 +64,7 @@ export default function ConfiguracionPage() {
   const { cajaActiva } = useCaja()
   const { toast, confirm } = useNotif()
 
-  const esAdmin = cajaActiva?.rol === "admin"
+  const esCoordinador = cajaActiva?.rol === "coordinador"
 
   // Estado general
   const [miembros, setMiembros] = useState<Miembro[]>([])
@@ -119,7 +120,7 @@ export default function ConfiguracionPage() {
       toast("error", "Error al cargar miembros")
     }
 
-    if (esAdmin) {
+    if (esCoordinador) {
       try {
         const resInv = await apiClient.get<{ invitacion: Invitacion | null }>(
           `/cajas/${cajaActiva!.id}/miembros/invitaciones`,
@@ -255,8 +256,8 @@ export default function ConfiguracionPage() {
           </p>
         </div>
 
-        {/* ── Periodo de la caja — solo admin ────────────── */}
-        {esAdmin && (
+        {/* ── Periodo de la caja — solo coordinador ────────────── */}
+        {esCoordinador && (
           <div
             className="rounded-xl p-5 flex flex-col gap-4"
             style={{
@@ -444,8 +445,8 @@ export default function ConfiguracionPage() {
           </div>
         )}
 
-        {/* ── Código de invitación — solo admin ──────────── */}
-        {esAdmin && (
+        {/* ── Código de invitación — solo coordinador ──────────── */}
+        {esCoordinador && (
           <div
             className="rounded-xl p-5 flex flex-col gap-4"
             style={{
@@ -523,8 +524,8 @@ export default function ConfiguracionPage() {
                       color: "var(--text-primary)",
                     }}
                   >
-                    <option value="socio">Socio</option>
-                    <option value="tesorero">Tesorero</option>
+                    <option value="socio">{ETIQUETA_ROL.socio}</option>
+                    <option value="tesorero">{ETIQUETA_ROL.tesorero}</option>
                   </select>
                 </div>
                 <Button
@@ -599,7 +600,7 @@ export default function ConfiguracionPage() {
                   </div>
 
                   {/* Rol */}
-                  {esAdmin ? (
+                  {esCoordinador ? (
                     <select
                       value={m.rol}
                       onChange={(e) => handleCambiarRol(m.id, e.target.value)}
@@ -610,9 +611,9 @@ export default function ConfiguracionPage() {
                         color: config.color,
                       }}
                     >
-                      <option value="socio">Socio</option>
-                      <option value="tesorero">Tesorero</option>
-                      <option value="admin">Admin</option>
+                      <option value="socio">{ETIQUETA_ROL.socio}</option>
+                      <option value="tesorero">{ETIQUETA_ROL.tesorero}</option>
+                      <option value="coordinador">{ETIQUETA_ROL.coordinador}</option>
                     </select>
                   ) : (
                     <div className="flex items-center gap-1">
@@ -624,7 +625,7 @@ export default function ConfiguracionPage() {
                   )}
 
                   {/* Remover */}
-                  {esAdmin && (
+                  {esCoordinador && (
                     <button
                       onClick={() => handleRemover(m.id)}
                       className="w-7 h-7 rounded-lg flex items-center justify-center"

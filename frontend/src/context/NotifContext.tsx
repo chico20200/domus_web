@@ -115,7 +115,7 @@ function NotifRenderer({ onCerrarConfirm }: { onCerrarConfirm: () => void }) {
       <div
         style={{
           position: "fixed",
-          bottom: "90px", // arriba del botón del chatbot
+          bottom: "24px",
           right: "24px",
           zIndex: 60,
           display: "flex",

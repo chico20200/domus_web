@@ -94,7 +94,7 @@ export default function AhorrosPage() {
           setCuentas([])
         }
       } else {
-        // Tesorero y admin ven todas las cuentas
+        // Tesorero y coordinador ven todas las cuentas
         const [resCuentas, resSocios] = await Promise.all([
           ahorrosService.getCuentas(cajaActiva!.id),
           sociosService.getSocios(cajaActiva!.id),

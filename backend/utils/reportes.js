@@ -1,30 +1,11 @@
 // backend/utils/reportes.js
-
-/**
- * Genera la lista de meses del periodo: ['2024-05', '2024-06', ...]
- */
-function generarMesesPeriodo(inicioISO, cantidadMeses) {
-  const meses = []
-  const base = new Date(inicioISO + "T00:00:00")
-  for (let i = 0; i < cantidadMeses; i++) {
-    const d = new Date(base.getFullYear(), base.getMonth() + i, 1)
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, "0")
-    meses.push(`${y}-${m}`)
-  }
-  return meses
-}
+const { fechaLocal } = require("./fechas")
 
 /** Último día del mes en formato ISO */
 function finDeMes(mesISO) {
   const [y, m] = mesISO.split("-").map(Number)
   const d = new Date(y, m, 0) // día 0 del mes siguiente
   return `${y}-${String(m).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-}
-
-/** Primer día del mes */
-function inicioDeMes(mesISO) {
-  return `${mesISO}-01`
 }
 
 /**
@@ -48,7 +29,7 @@ function calcularDistribucionInteres({ meses, socios, transacciones, pagosIntere
   transacciones.forEach((t) => {
     if (!txPorSocio[t.socio_id]) txPorSocio[t.socio_id] = []
     txPorSocio[t.socio_id].push({
-      fecha: t.created_at.split("T")[0],
+      fecha: fechaLocal(new Date(t.created_at)),
       signo: t.tipo === "deposito" ? 1 : -1,
       monto: parseFloat(t.monto),
     })
@@ -153,4 +134,4 @@ function calcularDistribucionInteres({ meses, socios, transacciones, pagosIntere
   }
 }
 
-module.exports = { generarMesesPeriodo, calcularDistribucionInteres, finDeMes, inicioDeMes }
+module.exports = { calcularDistribucionInteres }

@@ -3,23 +3,11 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const { requierePermiso, NIVEL } = require("../middlewares/permisos.middleware")
+
+const ROLES_VALIDOS = Object.keys(NIVEL)
 
 router.use(verifyToken)
-
-// ── Helper de rol ─────────────────────────────────────────────
-async function verificarRol(userId, cajaId, rolMinimo = "socio") {
-  const jerarquia = { socio: 1, tesorero: 2, admin: 3 }
-  const { data } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-  if (!data) return null
-  if (jerarquia[data.rol] < jerarquia[rolMinimo]) return null
-  return data.rol
-}
 
 // ── Helper: genera código legible ────────────────────────────
 function generarCodigo() {
@@ -35,10 +23,8 @@ function generarCodigo() {
 // GET /api/cajas/:cajaId/miembros
 // Lista miembros de la caja
 // ─────────────────────────────────────────────
-router.get("/", async (req, res) => {
+router.get("/", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   // 1. Trae los miembros con su user_id
   const { data: miembros, error } = await supabaseAdmin
@@ -96,16 +82,13 @@ router.get("/", async (req, res) => {
 })
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId/miembros/:userId
-// Cambia el rol de un miembro — solo admin
+// Cambia el rol de un miembro — solo coordinador
 // ─────────────────────────────────────────────
-router.put("/:userId", async (req, res) => {
+router.put("/:userId", requierePermiso("miembros.gestionar"), async (req, res) => {
   const { cajaId, userId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "admin")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol admin" })
 
   const { nuevoRol } = req.body
-  const rolesValidos = ["admin", "tesorero", "socio"]
-  if (!rolesValidos.includes(nuevoRol)) {
+  if (!ROLES_VALIDOS.includes(nuevoRol)) {
     return res.status(400).json({ error: "Rol inválido" })
   }
 
@@ -129,12 +112,10 @@ router.put("/:userId", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // DELETE /api/cajas/:cajaId/miembros/:userId
-// Remueve un miembro — solo admin
+// Remueve un miembro — solo coordinador
 // ─────────────────────────────────────────────
-router.delete("/:userId", async (req, res) => {
+router.delete("/:userId", requierePermiso("miembros.gestionar"), async (req, res) => {
   const { cajaId, userId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "admin")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol admin" })
 
   if (userId === req.user.id) {
     return res.status(400).json({ error: "No puedes removerte a ti mismo" })
@@ -153,14 +134,15 @@ router.delete("/:userId", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // POST /api/cajas/:cajaId/invitaciones
-// Genera un código de invitación — solo admin
+// Genera un código de invitación — solo coordinador
 // ─────────────────────────────────────────────
-router.post("/invitaciones", async (req, res) => {
+router.post("/invitaciones", requierePermiso("miembros.gestionar"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "admin")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol admin" })
 
   const { rolInvitado = "socio" } = req.body
+  if (!ROLES_VALIDOS.includes(rolInvitado)) {
+    return res.status(400).json({ error: "Rol inválido" })
+  }
 
   // Desactiva códigos anteriores no usados de esta caja
   await supabaseAdmin
@@ -198,12 +180,10 @@ router.post("/invitaciones", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // GET /api/cajas/:cajaId/invitaciones
-// Ver código activo de la caja — solo admin
+// Ver código activo de la caja — solo coordinador
 // ─────────────────────────────────────────────
-router.get("/invitaciones", async (req, res) => {
+router.get("/invitaciones", requierePermiso("miembros.gestionar"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "admin")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol admin" })
 
   const { data } = await supabaseAdmin
     .from("invitaciones_caja")

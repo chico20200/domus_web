@@ -4,25 +4,10 @@ const router = express.Router()
 const supabase = require("../config/supabaseAdmin")
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { calcularCiclos } = require("../utils/ciclos")
 
 router.use(verifyToken)
-
-async function verificarRol(userId, cajaId, rolMinimo = "socio") {
-  const jerarquia = { socio: 1, tesorero: 2, admin: 3 }
-
-  const { data } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-
-  if (!data) return null
-  if (jerarquia[data.rol] < jerarquia[rolMinimo]) return null
-  return data.rol
-}
 
 // ─────────────────────────────────────────────
 // GET /api/cajas/mis-cajas
@@ -66,7 +51,7 @@ router.get("/mis-cajas", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // POST /api/cajas
-// Crea una nueva caja y registra al creador como admin
+// Crea una nueva caja y registra al creador como coordinador
 // ─────────────────────────────────────────────
 router.post("/", async (req, res) => {
   const userId = req.user.id
@@ -91,11 +76,11 @@ router.post("/", async (req, res) => {
     return res.status(500).json({ error: errorCaja.message })
   }
 
-  // 2. Registra al creador como admin
+  // 2. Registra al creador como coordinador
   const { error: errorMiembro } = await supabase.from("miembros_caja").insert({
     caja_id: caja.id,
     user_id: userId,
-    rol: "admin",
+    rol: "coordinador",
   })
 
   if (errorMiembro) {
@@ -111,37 +96,18 @@ router.post("/", async (req, res) => {
 })
 
 // ─────────────────────────────────────────────
-// GET /api/cajas/:cajaId
-// Detalle de una caja — solo miembros
+// GET /api/cajas/:cajaId/resumen
+// Datos de la caja, totales y movimientos recientes — solo miembros
 // ─────────────────────────────────────────────
-// backend/routes/cajas.routes.js — en GET /:cajaId/resumen
-router.get("/:cajaId/resumen", async (req, res) => {
-  const userId = req.user.id
+router.get("/:cajaId/resumen", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId } = req.params
 
   try {
-    // Verifica membresía
-    const { data: miembro, error: errorMiembro } = await supabaseAdmin
-      .from("miembros_caja")
-      .select("rol")
-      .eq("caja_id", cajaId)
-      .eq("user_id", userId)
-      .eq("activo", true)
-      .single()
-
-    console.log("miembro:", miembro, "error:", errorMiembro?.message)
-
-    if (!miembro) {
-      return res.status(403).json({ error: "No perteneces a esta caja" })
-    }
-
     const { data: caja, error: errorCaja } = await supabaseAdmin
       .from("cajas")
       .select("id, nombre, descripcion, created_at")
       .eq("id", cajaId)
       .single()
-
-    console.log("caja:", caja?.nombre, "error:", errorCaja?.message)
 
     const { count: totalMiembros, error: errorMiembros } = await supabaseAdmin
       .from("miembros_caja")
@@ -149,15 +115,11 @@ router.get("/:cajaId/resumen", async (req, res) => {
       .eq("caja_id", cajaId)
       .eq("activo", true)
 
-    console.log("totalMiembros:", totalMiembros, "error:", errorMiembros?.message)
-
     const { count: totalSocios, error: errorSocios } = await supabaseAdmin
       .from("socios")
       .select("*", { count: "exact", head: true })
       .eq("caja_id", cajaId)
       .eq("activo", true)
-
-    console.log("totalSocios:", totalSocios, "error:", errorSocios?.message)
 
     const { data: cuentas, error: errorCuentas } = await supabaseAdmin
       .from("cuentas_ahorro")
@@ -165,15 +127,11 @@ router.get("/:cajaId/resumen", async (req, res) => {
       .eq("caja_id", cajaId)
       .eq("estado", "activa")
 
-    console.log("cuentas:", cuentas?.length, "error:", errorCuentas?.message)
-
     const { data: creditos, error: errorCreditos } = await supabaseAdmin
       .from("creditos")
       .select("saldo_pendiente")
       .eq("caja_id", cajaId)
       .eq("estado", "activo")
-
-    console.log("creditos:", creditos?.length, "error:", errorCreditos?.message)
 
     const { data: transacciones, error: errorTx } = await supabaseAdmin
       .from("transacciones")
@@ -193,7 +151,9 @@ router.get("/:cajaId/resumen", async (req, res) => {
       .order("created_at", { ascending: false })
       .limit(5)
 
-    console.log("transacciones:", transacciones?.length, "error:", errorTx?.message)
+    const errorConsulta =
+      errorCaja || errorMiembros || errorSocios || errorCuentas || errorCreditos || errorTx
+    if (errorConsulta) throw errorConsulta
 
     const saldoTotal = (cuentas ?? []).reduce((sum, c) => sum + parseFloat(c.saldo ?? 0), 0)
     const saldoPendiente = (creditos ?? []).reduce(
@@ -203,7 +163,7 @@ router.get("/:cajaId/resumen", async (req, res) => {
 
     return res.json({
       caja,
-      rol: miembro.rol,
+      rol: req.rol,
       resumen: {
         totalMiembros: totalMiembros ?? 0,
         totalSocios: totalSocios ?? 0,
@@ -221,25 +181,11 @@ router.get("/:cajaId/resumen", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId
-// Edita nombre/descripción — solo admin
+// Edita nombre/descripción — solo coordinador
 // ─────────────────────────────────────────────
-router.put("/:cajaId", async (req, res) => {
-  const userId = req.user.id
+router.put("/:cajaId", requierePermiso("caja.configurar"), async (req, res) => {
   const { cajaId } = req.params
   const { nombre, descripcion } = req.body
-
-  // Verifica que sea admin
-  const { data: miembro } = await supabase
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-
-  if (!miembro || miembro.rol !== "admin") {
-    return res.status(403).json({ error: "Solo el admin puede editar la caja" })
-  }
 
   const updates = {}
   if (nombre) updates.nombre = nombre.trim()
@@ -261,101 +207,6 @@ router.put("/:cajaId", async (req, res) => {
   }
 
   return res.json({ message: "Caja actualizada correctamente", caja: data })
-})
-
-// backend/routes/cajas.routes.js — agrega al final antes de module.exports
-
-// GET /api/cajas/:cajaId/resumen
-router.get("/:cajaId/resumen", async (req, res) => {
-  const userId = req.user.id
-  const { cajaId } = req.params
-
-  // Verifica membresía
-  const { data: miembro } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-
-  if (!miembro) {
-    return res.status(403).json({ error: "No perteneces a esta caja" })
-  }
-
-  // Datos de la caja
-  const { data: caja } = await supabaseAdmin
-    .from("cajas")
-    .select("id, nombre, descripcion, created_at")
-    .eq("id", cajaId)
-    .single()
-
-  // Total de miembros activos
-  const { count: totalMiembros } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("*", { count: "exact", head: true })
-    .eq("caja_id", cajaId)
-    .eq("activo", true)
-
-  // Total de socios activos
-  const { count: totalSocios } = await supabaseAdmin
-    .from("socios")
-    .select("*", { count: "exact", head: true })
-    .eq("caja_id", cajaId)
-    .eq("activo", true)
-
-  // Saldo total en cuentas de ahorro
-  const { data: cuentas } = await supabaseAdmin
-    .from("cuentas_ahorro")
-    .select("saldo")
-    .eq("caja_id", cajaId)
-    .eq("estado", "activa")
-
-  const saldoTotal = (cuentas ?? []).reduce((sum, c) => sum + parseFloat(c.saldo ?? 0), 0)
-
-  // Créditos activos y saldo pendiente
-  const { data: creditos } = await supabaseAdmin
-    .from("creditos")
-    .select("saldo_pendiente")
-    .eq("caja_id", cajaId)
-    .eq("estado", "activo")
-
-  const saldoPendiente = (creditos ?? []).reduce(
-    (sum, c) => sum + parseFloat(c.saldo_pendiente ?? 0),
-    0,
-  )
-
-  // Transacciones recientes
-  const { data: transacciones } = await supabaseAdmin
-    .from("transacciones")
-    .select(
-      `
-      id,
-      tipo,
-      monto,
-      descripcion,
-      created_at,
-      cuentas_ahorro (
-        socios ( nombre, apellido )
-      )
-    `,
-    )
-    .eq("caja_id", cajaId)
-    .order("created_at", { ascending: false })
-    .limit(5)
-
-  return res.json({
-    caja,
-    rol: miembro.rol,
-    resumen: {
-      totalMiembros: totalMiembros ?? 0,
-      totalSocios: totalSocios ?? 0,
-      saldoTotal: saldoTotal,
-      creditosActivos: creditos?.length ?? 0,
-      saldoPendiente: saldoPendiente,
-    },
-    transaccionesRecientes: transacciones ?? [],
-  })
 })
 
 // POST /api/cajas/unirse
@@ -428,11 +279,9 @@ router.post("/unirse", async (req, res) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", socioExistente.id)
+          .eq("caja_id", invitacion.caja_id)
 
         socioVinculado = true
-        console.log(
-          `Socio ${socioExistente.nombre} ${socioExistente.apellido} vinculado a user ${userId}`,
-        )
       }
     }
   } catch (err) {
@@ -449,6 +298,7 @@ router.post("/unirse", async (req, res) => {
       activo: false,
     })
     .eq("id", invitacion.id)
+    .eq("caja_id", invitacion.caja_id)
 
   return res.json({
     message: `Te uniste a ${invitacion.cajas.nombre} correctamente`,
@@ -465,10 +315,8 @@ router.post("/unirse", async (req, res) => {
 // GET /api/cajas/:cajaId/ciclos
 // Lista todos los ciclos de la caja
 // ─────────────────────────────────────────────
-router.get("/:cajaId/ciclos", async (req, res) => {
+router.get("/:cajaId/ciclos", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data: caja } = await supabaseAdmin
     .from("cajas")
@@ -507,12 +355,10 @@ router.get("/:cajaId/ciclos", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId/configuracion-ciclo
-// Configura el periodo de la caja — solo admin
+// Configura el periodo de la caja — solo coordinador
 // ─────────────────────────────────────────────
-router.put("/:cajaId/configuracion-ciclo", async (req, res) => {
+router.put("/:cajaId/configuracion-ciclo", requierePermiso("caja.configurar"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "admin")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol admin" })
 
   const { fecha_fundacion, mes_inicio_ciclo, duracion_ciclo } = req.body
 
@@ -528,7 +374,7 @@ router.put("/:cajaId/configuracion-ciclo", async (req, res) => {
     return res.status(400).json({ error: "La duración debe estar entre 1 y 24 meses" })
   }
 
-  const { data, error } = await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("cajas")
     .update({
       fecha_fundacion: fecha_fundacion,
@@ -537,8 +383,6 @@ router.put("/:cajaId/configuracion-ciclo", async (req, res) => {
       updated_at: new Date().toISOString(),
     })
     .eq("id", cajaId)
-    .select()
-    .single()
 
   if (error) return res.status(500).json({ error: error.message })
 

@@ -3,35 +3,19 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
-const { generarMesesPeriodo, calcularDistribucionInteres } = require("../utils/reportes")
+const { requierePermiso } = require("../middlewares/permisos.middleware")
+const { calcularDistribucionInteres } = require("../utils/reportes")
 const { calcularCiclos } = require("../utils/ciclos")
 
 router.use(verifyToken)
-
-async function verificarRol(userId, cajaId, rolMinimo = "socio") {
-  const jerarquia = { socio: 1, tesorero: 2, admin: 3 }
-  const { data } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-  if (!data) return null
-  if (jerarquia[data.rol] < jerarquia[rolMinimo]) return null
-  return data.rol
-}
 
 // ─────────────────────────────────────────────
 // GET /api/cajas/:cajaId/reportes/distribucion-interes
 // El reporte completo del periodo
 // ─────────────────────────────────────────────
-router.get("/distribucion-interes", async (req, res) => {
+router.get("/distribucion-interes", requierePermiso("reportes.generar"), async (req, res) => {
   const { cajaId } = req.params
   const { ciclo } = req.query // ?ciclo=2 → ver un ciclo pasado
-
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   try {
     const { data: caja } = await supabaseAdmin
@@ -64,7 +48,6 @@ router.get("/distribucion-interes", async (req, res) => {
     }
 
     const meses = cicloSel.meses
-    const mesFin = meses[meses.length - 1]
 
     // Socios activos
     const { data: socios } = await supabaseAdmin
@@ -127,12 +110,9 @@ router.get("/distribucion-interes", async (req, res) => {
 // GET /api/cajas/:cajaId/reportes/estado-caja?ciclo=2
 // Resumen financiero del ciclo (o el actual por defecto)
 // ─────────────────────────────────────────────
-router.get("/estado-caja", async (req, res) => {
+router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res) => {
   const { cajaId } = req.params
   const { ciclo } = req.query
-
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   // 1. Configuración del ciclo
   const { data: caja } = await supabaseAdmin

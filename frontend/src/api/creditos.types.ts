@@ -47,12 +47,6 @@ export interface CreateCreditoResponse {
   credito: Credito
 }
 
-// export interface PagoCreditoResponse {
-//   message: string
-//   pago:    PagoCredito
-//   credito?: Credito
-// }
-
 export interface ChangeEstadoResponse {
   message: string
   credito: Credito

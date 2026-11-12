@@ -1,4 +1,5 @@
 // backend/utils/ciclos.js
+const { fechaLocal } = require("./fechas")
 
 /**
  * Calcula todos los ciclos de una caja desde su fundación hasta hoy.
@@ -18,6 +19,10 @@ function calcularCiclos(fechaFundacion, mesInicio, duracionMeses, hoy = new Date
     anioInicio -= 1 // ej: fundada en feb, ciclo empieza en abril → ciclo previo
   }
 
+  // Se comparan fechas YYYY-MM-DD, no instantes: el último día del ciclo
+  // sigue siendo del ciclo hasta la medianoche
+  const hoyISO = fechaLocal(hoy)
+
   const ciclos = []
   let numero = 1
   let cursor = new Date(anioInicio, mesInicio - 1, 1)
@@ -33,20 +38,22 @@ function calcularCiclos(fechaFundacion, mesInicio, duracionMeses, hoy = new Date
       mesesCiclo.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
     }
 
-    const cerrado = fin < hoy
-    const actual = inicio <= hoy && hoy <= fin
+    const inicioISO = fechaLocal(inicio)
+    const finISO = fechaLocal(fin)
+    const cerrado = finISO < hoyISO
+    const actual = inicioISO <= hoyISO && hoyISO <= finISO
 
     ciclos.push({
       numero,
-      inicio: isoDate(inicio),
-      fin: isoDate(fin),
+      inicio: inicioISO,
+      fin: finISO,
       meses: mesesCiclo,
       label: `${nombreMes(inicio.getMonth() + 1)} ${inicio.getFullYear()} – ${nombreMes(fin.getMonth() + 1)} ${fin.getFullYear()}`,
       cerrado,
       actual,
     })
 
-    if (actual || inicio > hoy) break
+    if (actual || inicioISO > hoyISO) break
 
     numero++
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() + duracionMeses, 1)
@@ -57,13 +64,6 @@ function calcularCiclos(fechaFundacion, mesInicio, duracionMeses, hoy = new Date
   const cicloActual = ciclos.find((c) => c.actual) ?? ciclos[ciclos.length - 1]
 
   return { ciclos, cicloActual }
-}
-
-function isoDate(d) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, "0")
-  const dd = String(d.getDate()).padStart(2, "0")
-  return `${y}-${m}-${dd}`
 }
 
 function nombreMes(n) {

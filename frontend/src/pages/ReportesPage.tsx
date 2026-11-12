@@ -19,7 +19,6 @@ import { useCaja } from "../context/CajaContext"
 import { useNotif } from "../context/NotifContext"
 import { reportesService } from "../api/reportes.service"
 import type { DistribucionResponse, EstadoCajaResponse } from "../api/reportes.types"
-// import { apiClient } from "../api/api.client";
 
 function fm(m: number) {
   return new Intl.NumberFormat("es-EC", {
