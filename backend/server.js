@@ -17,7 +17,6 @@ const miembrosRoutes = require("./routes/miembros.routes")
 const creditosRoutes = require("./routes/creditos.routes")
 const pagosRoutes = require("./routes/pagos.routes")
 const reportesRoutes = require("./routes/reportes.routes")
-const donacionesRoutes = require("./routes/donaciones.routes")
 const chatbotRoutes = require("./routes/chatbot.routes")
 
 const app = express()
@@ -40,7 +39,6 @@ app.use("/api/cajas/:cajaId/miembros", miembrosRoutes)
 app.use("/api/cajas/:cajaId/creditos", creditosRoutes)
 app.use("/api/cajas/:cajaId/creditos/:creditoId/pagos", pagosRoutes)
 app.use("/api/cajas/:cajaId/reportes", reportesRoutes)
-app.use("/api/donaciones", donacionesRoutes)
 app.use("/api/chatbot", chatbotRoutes)
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
