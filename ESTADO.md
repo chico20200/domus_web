@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones. 4 de 15 tareas hechas (T1–T4).
+- **Etapa actual:** Etapa 1, Fundaciones. 5 de 15 tareas hechas (T1–T5).
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `0d06d1e`
+- **Último commit de referencia:** `d6e79eb`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | En curso: 4/15 |
+| 1 | Fundaciones | En curso: 5/15 |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -33,7 +33,7 @@ Leyenda: ⬜ pendiente · 🔄 en curso · ✅ hecha (con commit)
 | T2 | Tokens semánticos únicos en `:root` y `.dark`, expuestos en `@theme`, con alias de los nombres viejos | T1 | ✅ | `aa9fc24` |
 | T3 | Verificar contraste AA y oscurecer el naranja de marca para usar texto blanco | T2 | ✅ | `7cd1f4d` |
 | T4 | Documentar la escala de espaciado, texto y radios (equivalencias con Tailwind) | T2 | ✅ | `0d06d1e` |
-| T5 | `src/lib/format.ts`: `moneda`, `fecha`, `fechaHora`, `porcentaje` | T1 | ⬜ | |
+| T5 | `src/lib/format.ts`: `moneda`, `fecha`, `fechaHora`, `porcentaje` | T1 | ✅ | `d6e79eb` |
 | T6 | `Button`: variantes `primary`, `secondary`, `ghost`, `destructive`; `type`, `fullWidth`; sin `onEnter` ni `m-1` | T2 | ⬜ | |
 | T7 | `FieldBase`: label asociado con `useId`, colores por token, sin la prop `variant` | T2 | ⬜ | |
 | T8 | `TextField` (incluye date y number); `Field` queda como alias | T7 | ⬜ | |
@@ -71,6 +71,10 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | Las escalas se usan con las clases normales de Tailwind (`p-4`, `text-sm`, `rounded-xl`), sin tokens nuevos. Los valores de la escala ya coinciden con los de Tailwind | `docs/SISTEMA_DE_DISENO.md` |
 | 11 nov 2026 | Excepciones a la escala: anchos y altos libres; el hueco del ícono dentro de un campo (`pl-9`) lo resuelve `FieldBase`; `rounded-full` solo para elementos circulares o en píldora (avatares, puntos, `Badge`); los PDF de jsPDF tienen sus propios tamaños | `docs/SISTEMA_DE_DISENO.md` |
 | 11 nov 2026 | Peso de letra provisional, porque las especificaciones no lo fijan: `font-normal` cuerpo, `font-medium` etiquetas y botones, `font-semibold` títulos | `docs/SISTEMA_DE_DISENO.md` |
+| 11 nov 2026 | Formato (T5): configuración regional `es-EC`, que es la que ya usaban todas las páginas. Moneda `$1.234,50`; fecha `11/11/2026`; fecha y hora `11/11/2026 17:05` (24 h, hora local de quien mira); porcentaje `12,50%` | `frontend/src/lib/format.ts` |
+| 11 nov 2026 | `porcentaje()` recibe puntos porcentuales (12.5, como `tasa_interes` en la base), no fracciones. Tiene un segundo parámetro de decimales porque Reportes muestra 4 | `frontend/src/lib/format.ts` |
+| 11 nov 2026 | Las cuatro funciones devuelven "—" si el valor falta o no es válido, como ya hacía Reportes. Una fecha imposible (`2026-02-30`) también da "—" | `frontend/src/lib/format.ts` |
+| 11 nov 2026 | No se agregó un framework de pruebas: las funciones se probaron con un guion temporal en tres zonas horarias. Si hace falta, se decide en la Etapa 6 | Este documento |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -97,6 +101,9 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | `Button` (y otros 7 sitios) ponen `text-white` sobre el relleno. En modo oscuro eso da 2,4:1 sobre el naranja, igual que antes de T3. Se corrige usando `text-sobre-accion` | T6 en `Button`; Etapa 3 en el resto |
 | Valores fuera de escala en las páginas: 57 usos de 20 px (`p-5`, `px-5`…), 12 de 40 px, 13 `borderRadius` y 12 `fontSize` en `style={{}}`, 6 `text-lg`. Inventario y reemplazos en `docs/SISTEMA_DE_DISENO.md` §5 | Etapa 3, página por página |
 | Los PDF de `ReportesPage` pintan la cabecera con el naranja viejo `[221, 154, 76]` y texto blanco (2,4:1) | Etapa 3 (Reportes) |
+| **Fechas un día atrasadas.** Las columnas `date` llegan como `"2026-11-11"` y las páginas hacen `new Date(f)`, que las toma como UTC: en Ecuador se ven como el día anterior (`fecha_apertura`, `fecha_ingreso`, `fecha_desembolso`, vencimientos). `fecha()` ya lo corrige; falta reemplazar las 6 funciones locales | Etapa 3, al migrar cada página |
+| **Fechas un día adelantadas en el backend.** `new Date().toISOString().split("T")[0]` (en `ahorros.routes.js:140`, `socios.routes.js:104` y `creditos.routes.js:177`) toma la fecha UTC: lo que se registra después de las 19:00 de Ecuador queda con fecha del día siguiente | Etapa 2 |
+| `DashboardPage` muestra fechas relativas ("Hoy", "Ayer") que `format.ts` no cubre. Al migrar, decidir si se agrega `fechaRelativa()` o se usa `fecha()` | Etapa 3 (Dashboard) |
 | `--border-base` mide 1,1–1,5:1 contra las superficies. Sirve para separar tarjetas, pero no como único borde de un campo de formulario (WCAG 1.4.11 pide 3:1) | T7 |
 | Lint del frontend: 11 errores que ya existían. 2 en `ChatbotFlotante` y `DonacionModal`; 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 2 (chatbot y donaciones); Etapa 3 (el resto) |
 | Lint del backend: 6 errores, todos variables sin usar, en `cajas.routes.js`, `pagos.routes.js` y `reportes.routes.js` | Etapa 2 |
@@ -121,6 +128,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T5 hecha. `src/lib/format.ts` con `moneda`, `fecha`, `fechaHora` y `porcentaje`. Al escribirlo apareció que las fechas sin hora se ven un día atrasadas en el frontend, y que el backend registra con fecha del día siguiente a partir de las 19:00; los dos quedan en Hallazgos. 18 casos probados. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T4 hecha. Nuevo `docs/SISTEMA_DE_DISENO.md` con las clases de color, las escalas de espaciado, texto y radios con su equivalente en Tailwind, y un inventario de lo que hoy está fuera de escala con su reemplazo. No se tocó ninguna página. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T3 hecha. Se midieron todas las combinaciones de texto y relleno en los dos modos. Además del naranja fallaban el rojo, el verde, `text-muted` y alerta. Todas quedan en AA, con mínimo 4,61:1. En oscuro el texto sobre los rellenos pasa a ser oscuro. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T2 hecha. Un solo juego de tokens semánticos en `index.css` para claro y oscuro, expuestos como clases de Tailwind. Se comprobó en el CSS compilado que las 18 clases nuevas y viejas se generan y apuntan a la variable correcta. Los colores de marca no cambian todavía (eso es T3). Build OK; lint con los mismos 11 errores previos.
