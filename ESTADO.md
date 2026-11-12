@@ -3,8 +3,8 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 2, Limpieza: terminada (10 de 10) y fusionada en `main` (`e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones). Siguiente: Etapa 3. La Etapa 1 está terminada y fusionada en `main` (`9a22d71`).
-- **Rama de trabajo:** `main`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`; la Etapa 3 abrirá `etapa-3`.
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (0 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
+- **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
 
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración de base pendiente de ejecutar |
-| 3 | Migración de pantallas | Pendiente |
+| 3 | Migración de pantallas | En curso: 0/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -68,10 +68,35 @@ Rama `etapa-2`. Alcance de §12: quitar donaciones, PayPal y chatbot; borrar el 
 
 ---
 
+## Etapa 3: tareas
+
+Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos nuevos, en el orden Configuración, Créditos, Reportes, Ahorros, Socios, Dashboard, Pagos, Perfil y las cuatro de autenticación. Antes, los componentes de §3 que no entraron en la Etapa 1. Cada página migrada resuelve sus hallazgos asignados a la Etapa 3 (fechas, `<select>`, overlays, cargando y vacío, `Badge`, variantes de botón, valores fuera de escala). Los flujos nuevos (asistente de caja, contraseña, rutas) siguen en la Etapa 4, y `InfoTip` en la 5.
+
+| # | Tarea | Depende de | Estado | Commit |
+| --- | --- | --- | --- | --- |
+| T1 | `DataTable`: columnas declaradas, alineación, primera columna fija, pie de totales, cargando y vacío | — | ⬜ | |
+| T2 | `Card` se divide en `StatCard` y `Panel` | — | ⬜ | |
+| T3 | `ConfirmDialog` sobre `Modal`; `confirm()` de `NotifContext` lo usa, y el `window.confirm` de Socios pasa a él | — | ⬜ | |
+| T4 | Marco de la aplicación: `Sidebar`, `TopBar` y `AppLayout` a clases sobre tokens | — | ⬜ | |
+| T5 | Configuración, en tres componentes de sección | T1–T4 | ⬜ | |
+| T6 | Créditos, con `TablaAmortizacion` y `AbonoModal` sobre `Modal` | T1–T4 | ⬜ | |
+| T7 | Reportes, incluidos los colores de los PDF | T1–T4 | ⬜ | |
+| T8 | Ahorros | T1–T4 | ⬜ | |
+| T9 | Socios | T1–T4 | ⬜ | |
+| T10 | Dashboard | T1–T4 | ⬜ | |
+| T11 | Pagos, con `ConfirmarPagoModal` sobre `Modal` | T1–T4 | ⬜ | |
+| T12 | Perfil | T1–T4 | ⬜ | |
+| T13 | Cajas (solo la migración visual; el asistente de creación es Etapa 4) | T1–T4 | ⬜ | |
+| T14 | Las cuatro de autenticación, y `lang="es"` en `index.html` | T1–T4 | ⬜ | |
+| T15 | Cierre: borrar los alias de color, `Field.tsx` y `Card.tsx`; lint del frontend en cero | T5–T14 | ⬜ | |
+
+---
+
 ## Decisiones tomadas
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | Etapa 3 en 15 tareas: primero los componentes que faltan y el marco (T1–T4), después una página por tarea en el orden de §12, y un cierre que borra lo viejo. Se suman dos tareas que §12 no nombra: el marco (`Sidebar` y `TopBar` son 100 % estilos en línea, §4.2) y `CajasPage`, que no está en la lista | Este documento |
 | 11 nov 2026 | Etapa 2 en 10 tareas, en la rama `etapa-2`. Primero lo que solo borra (T1–T5), después lo que cambia lógica (T6–T9) y al final la migración de rol (T10), que toca la base de datos | Este documento |
 | 11 nov 2026 | `config/supabase.js` no estaba sin usar, como dice §6.4: lo importaban `auth.routes.js` y `profile.routes.js`. Auth pasa a `config/supabaseAuth.js` (clave anon, sin sesión persistente) y perfiles a `supabaseAdmin`. Un cliente que hace `signInWithPassword` guarda esa sesión en memoria y sus consultas siguientes salen con el token de ese usuario, así que el cliente de auth nunca se usa para tablas | `backend/config/supabaseAuth.js` |
 | 11 nov 2026 | Se quita `POST /api/auth/test-email`: era de prueba, no pedía sesión y permitía mandar correos de recuperación a cualquier dirección. El frontend no lo usaba | `backend/routes/auth.routes.js` |
@@ -210,6 +235,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** Plan de la Etapa 3 en 15 tareas; rama `etapa-3` abierta.
 - **12 nov 2026:** `etapa-2` fusionada en `main` con `--no-ff` (`e34de4f`). Build OK en `main`. Sin subir a GitHub; la migración `001` sigue sin ejecutar.
 - **12 nov 2026:** T10 hecha en el código; SQL de la migración escrito y sin ejecutar. Esquema revisado en Supabase (solo lectura). Prueba de permisos con los nombres nuevos: 175 de 175, y `admin` ya no pasa en ninguna ruta. 11 casos de `lib/roles.ts`; uno destapó que `"toString" in NIVEL` era verdadero, y se pasó a `Object.hasOwn`. Build OK; lint del frontend con los 9 errores previos, backend en cero.
 - **11 nov 2026:** T10 en espera: la migración de rol necesita ver el esquema de Supabase (tipo de la columna `rol`, restricciones, políticas y funciones que mencionen `'admin'`). Inventario del código hecho: 6 archivos del frontend y 6 del backend.
