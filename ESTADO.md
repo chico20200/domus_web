@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones. 13 de 15 tareas hechas (T1–T13).
+- **Etapa actual:** Etapa 1, Fundaciones. 14 de 15 tareas hechas (T1–T14).
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `01c40a6`
+- **Último commit de referencia:** `60ff35d`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | En curso: 13/15 |
+| 1 | Fundaciones | En curso: 14/15 |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -42,7 +42,7 @@ Leyenda: ⬜ pendiente · 🔄 en curso · ✅ hecha (con commit)
 | T11 | `PageShell`: anchos `formulario` (640 px) y `completo` (1200 px), siempre centrado | T2 | ✅ | `e7f9730` |
 | T12 | `Modal`: Escape, clic afuera, foco atrapado, `aria-modal` | T2 | ✅ | `1394d95` |
 | T13 | `LoadingState` y `EmptyState` | T2 | ✅ | `01c40a6` |
-| T14 | `Badge`: tonos `ok`, `alerta`, `destructivo`, `neutral` | T2 | ⬜ | |
+| T14 | `Badge`: tonos `ok`, `alerta`, `destructivo`, `neutral` | T2 | ✅ | `60ff35d` |
 | T15 | Página de muestra solo para desarrollo (`/dev/componentes`), en modo claro y oscuro | T6–T14 | ⬜ | |
 
 Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
@@ -103,6 +103,9 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | Foco inicial: primer control del cuerpo; si no hay, el botón Cerrar. Al cerrar vuelve al elemento que abrió el modal | `frontend/src/components/Modal.tsx` |
 | 11 nov 2026 | `LoadingState` usa `role="status"` y no gira con "reducir movimiento". `pantallaCompleta` cubre el caso de `App.tsx`, que carga antes de tener layout | `frontend/src/components/LoadingState.tsx` |
 | 11 nov 2026 | `EmptyState` tiene título, descripción opcional, ícono opcional y acción opcional. La búsqueda sin resultados se escribe con el mismo componente, sin acción. La acción se omite cuando el rol no puede crear | `frontend/src/components/EmptyState.tsx` |
+| 11 nov 2026 | `Badge` es de contorno, sin relleno. El patrón de hoy (texto sobre su propio color al 12 %) deja el texto en 3,9:1 sobre `bg-surface-2`, y con la paleta de T3 ningún tinte cumple: el destructivo sobre `surface-2` ya está en 4,62:1 sin fondo. Se descartó el relleno sólido porque una columna de estados se vería muy cargada | `frontend/src/components/Badge.tsx` |
+| 11 nov 2026 | Tonos de `Badge` por significado: `ok` al día o activo; `alerta` pendiente o por vencer; `destructivo` mora, castigado o bloqueado; `neutral` roles y estados sin carga. `neutral` usa `text-secondary` | `frontend/src/components/Badge.tsx` |
+| 11 nov 2026 | Consecuencia general: los fondos teñidos detrás de texto de color (`rgba(…, 0.06–0.12)`, como los avisos de prepago en Créditos) tampoco cumplen AA con esta paleta. Al migrar se usan superficies (`bg-surface-2`) con texto normal, o un borde del color del estado | Este documento, Hallazgos |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -139,6 +142,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | Las líneas que cita §4.1 (`ConfiguracionPage.tsx:235`, etc.) se corrieron con el formato de T1; hoy son `ConfiguracionPage.tsx:241`, `AhorrosPage.tsx:185`, `CreditosPage.tsx:260`, `ProfilePage.tsx:152` y `:202` | Etapa 3 (referencia) |
 | 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 2 (`DonacionModal` se borra); Etapa 3 (el resto, y `ConfirmDialog`) |
 | 10 textos "Cargando…" sueltos (`App.tsx`, 7 páginas, `AbonoModal`, `TablaAmortizacion`) y 7 "Aún no hay…" (Ahorros ×2, Dashboard, Socios, Cajas, Créditos ×2) se reemplazan por `LoadingState` y `EmptyState` | Etapa 3, al migrar cada página |
+| Etiquetas de estado escritas a mano con `rgba` fijo (`ESTADO_CONFIG` en `CreditosPage`, roles en `SociosPage`, más `CajasPage`, `ConfiguracionPage` y `PagosPage`) se pasan a `Badge`. Los bloques con fondo teñido de Créditos (líneas 389, 416, 430) no cumplen AA y se rediseñan | Etapa 3 |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan; hay más de un `primary` por pantalla en Pagos ("Pago completo" en cada fila) y en Créditos ("Nueva solicitud" y "Crear solicitud" a la vez con el formulario abierto) | Etapa 3, al migrar cada página |
 | Lint del frontend: 11 errores que ya existían. 2 en `ChatbotFlotante` y `DonacionModal`; 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 2 (chatbot y donaciones); Etapa 3 (el resto) |
 | Lint del backend: 6 errores, todos variables sin usar, en `cajas.routes.js`, `pagos.routes.js` y `reportes.routes.js` | Etapa 2 |
@@ -163,6 +167,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T14 hecha. `Badge` con cuatro tonos y ícono opcional. Se midió el patrón de fondo teñido y no cumple AA con la paleta de T3, así que el badge es de contorno; la regla se anota para la migración. Revisado sobre las tres superficies en claro y oscuro. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T13 hecha. `LoadingState` y `EmptyState`, revisados en claro y oscuro dentro de una tarjeta, sobre una página temporal ya borrada. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T12 hecha. `Modal` sobre `<dialog>`: Escape, clic afuera (sin cerrar por arrastre), foco atrapado, foco inicial y de regreso, `aria-modal`. 11 casos probados en Chromium con teclado y mouse reales, en claro y oscuro, sobre una página temporal ya borrada. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T11 hecha. `PageShell` con `ancho="formulario"` (640 px) y `"completo"` (1200 px), siempre centrado. Revisado con los providers reales a 1600 y 900 px de ancho, sobre una página temporal ya borrada. Las páginas todavía no lo usan (Etapa 3). Build OK; lint con los mismos 11 errores previos.
