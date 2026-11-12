@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones, **terminada** (15 de 15) y fusionada en `main` (`9a22d71`). Siguiente: Etapa 2, Limpieza.
-- **Rama de trabajo:** `main`. La Etapa 1 se trabajó en `etapa-1` y se fusionó con `--no-ff`; la Etapa 2 abrirá su propia rama `etapa-2`.
+- **Etapa actual:** Etapa 2, Limpieza, en curso (4 de 10). La Etapa 1 está terminada y fusionada en `main` (`9a22d71`).
+- **Rama de trabajo:** `etapa-2`, abierta desde `main` (`c954fb2`). La Etapa 1 se trabajó en `etapa-1` y se fusionó con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `9a22d71`
+- **Último commit de referencia:** `e6c9b65`
 
 ---
 
@@ -15,7 +15,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
-| 2 | Limpieza | Pendiente |
+| 2 | Limpieza | En curso: 4/10 |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
@@ -49,10 +49,34 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 
 ---
 
+## Etapa 2: tareas
+
+Rama `etapa-2`. Alcance de §12: quitar donaciones, PayPal y chatbot; borrar el código comentado y `config/supabase.js`; quitar los `console.log` de claves; migrar `admin` a `coordinador`; middleware único de permisos y `.eq('caja_id')` en toda escritura. Se suman los hallazgos de la Etapa 1 asignados a esta etapa.
+
+| # | Tarea | Depende de | Estado | Commit |
+| --- | --- | --- | --- | --- |
+| T1 | Quitar donaciones y PayPal: ruta, `config/paypal.js`, montaje, `DonacionModal`, botón "Donar", script de PayPal en `index.html`, variables del README | — | ✅ | `8c5d48a` |
+| T2 | Quitar el chatbot: ruta, montaje, `ChatbotFlotante`, `chatbot.service.ts`, render en `AppLayout`, variable del README | — | ✅ | `c65a8dc` |
+| T3 | Quitar los archivos de la plantilla de Vite (`favicon.svg`, `icons.svg`, `hero.png`, `react.svg`, `vite.svg`, `frontend/README.md`) | — | ✅ | `bc5cbc7` |
+| T4 | Quitar los `console.log` de claves y de depuración; reemplazar `config/supabase.js` y borrarlo | — | ✅ | `e6c9b65` |
+| T5 | Borrar el código comentado de las rutas del backend | T4 | ⬜ | |
+| T6 | Ruta `/resumen` duplicada y variables sin usar (lint del backend en cero); revisar `montoCapital` en pagos | T5 | ⬜ | |
+| T7 | Fecha local de Ecuador en el backend en lugar de `toISOString()` | T5 | ⬜ | |
+| T8 | Middleware único `requierePermiso` con la tabla de permisos; se borran las seis copias de `verificarRol` | T5 | ⬜ | |
+| T9 | `.eq('caja_id', cajaId)` en toda escritura | T8 | ⬜ | |
+| T10 | Migración de `admin` a `coordinador`: base de datos, backend y frontend | T8 | ⬜ | |
+
+---
+
 ## Decisiones tomadas
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 11 nov 2026 | Etapa 2 en 10 tareas, en la rama `etapa-2`. Primero lo que solo borra (T1–T5), después lo que cambia lógica (T6–T9) y al final la migración de rol (T10), que toca la base de datos | Este documento |
+| 11 nov 2026 | `config/supabase.js` no estaba sin usar, como dice §6.4: lo importaban `auth.routes.js` y `profile.routes.js`. Auth pasa a `config/supabaseAuth.js` (clave anon, sin sesión persistente) y perfiles a `supabaseAdmin`. Un cliente que hace `signInWithPassword` guarda esa sesión en memoria y sus consultas siguientes salen con el token de ese usuario, así que el cliente de auth nunca se usa para tablas | `backend/config/supabaseAuth.js` |
+| 11 nov 2026 | Se quita `POST /api/auth/test-email`: era de prueba, no pedía sesión y permitía mandar correos de recuperación a cualquier dirección. El frontend no lo usaba | `backend/routes/auth.routes.js` |
+| 11 nov 2026 | El resumen de caja devuelve 500 si alguna consulta falla, en vez de mostrar ceros. Antes el error solo se imprimía en consola | `backend/routes/cajas.routes.js` |
+| 11 nov 2026 | Los toasts bajan a 24 px del borde: estaban a 90 px para no tapar el botón del chatbot | `frontend/src/context/NotifContext.tsx` |
 | 11 nov 2026 | El coordinador sí registra movimientos; se conserva la escalera `socio < tesorero < admin` | Especificaciones §6.2 y §13 |
 | 11 nov 2026 | Naranja de marca más oscuro con texto blanco, para cumplir AA (hoy blanco sobre `#DD9A4C` da 2,4:1) | Este documento, tarea T3 |
 | 11 nov 2026 | `DataTable`, `StatCard`/`Panel` y `ConfirmDialog` pasan a la Etapa 3 | Especificaciones §12, Etapa 3 |
@@ -128,9 +152,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | Hallazgo | Etapa que lo resuelve |
 | --- | --- |
 | `GET /api/cajas/:cajaId/resumen` está definido dos veces en `cajas.routes.js` (líneas 102 y 249); Express solo usa el primero | Etapa 2 |
-| `frontend/index.html` tiene el client-id de PayPal escrito a mano en vez de leer `VITE_PAYPAL_CLIENT_ID` | Etapa 2 (se quita PayPal) |
 | `frontend/index.html` declara `lang="en"`; la interfaz es solo en español | Etapa 3 |
-| `favicon.svg`, `hero.png`, `react.svg`, `vite.svg` e `icons.svg` son archivos de la plantilla de Vite, no de DOMUS | Etapa 2 |
 | `graphify-out/` no está en `.gitignore` | Sin asignar |
 | Los alias `--color-primary_y` y compañía se resuelven en `:root`, así que solo siguen el modo oscuro porque `ThemeContext` pone `.dark` en `<html>`. Si algún día `.dark` se aplica a un subárbol, los alias no cambiarían. Desaparece al borrar los alias | Etapa 3 |
 | 5 sitios fuera de `Button` ponen `text-white` sobre un relleno de color. En modo oscuro dan 2,4:1. Se corrige usando `text-sobre-accion` | Etapa 3 |
@@ -144,12 +166,13 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | 8 `<select>` sueltos con estilo propio y `style={{}}` (Créditos, Ahorros, Reportes, Configuración ×4, AbonoModal) se reemplazan por `SelectField` | Etapa 3, al migrar cada página |
 | `PageShell` cubre solo las páginas con barra lateral. `CajasPage` y las cuatro de autenticación no usan `AppLayout` y centran con su propio `max-w-*` (`max-w-2xl`, `max-w-sm`). Decidir al migrarlas si tienen su propio contenedor o un tercer ancho | Etapa 3 |
 | Las líneas que cita §4.1 (`ConfiguracionPage.tsx:235`, etc.) se corrieron con el formato de T1; hoy son `ConfiguracionPage.tsx:241`, `AhorrosPage.tsx:185`, `CreditosPage.tsx:260`, `ProfilePage.tsx:152` y `:202` | Etapa 3 (referencia) |
-| 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 2 (`DonacionModal` se borra); Etapa 3 (el resto, y `ConfirmDialog`) |
+| 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 3 (`DonacionModal` ya se borró en la Etapa 2; quedan 6, y `ConfirmDialog`) |
 | 10 textos "Cargando…" sueltos (`App.tsx`, 7 páginas, `AbonoModal`, `TablaAmortizacion`) y 7 "Aún no hay…" (Ahorros ×2, Dashboard, Socios, Cajas, Créditos ×2) se reemplazan por `LoadingState` y `EmptyState` | Etapa 3, al migrar cada página |
 | Etiquetas de estado escritas a mano con `rgba` fijo (`ESTADO_CONFIG` en `CreditosPage`, roles en `SociosPage`, más `CajasPage`, `ConfiguracionPage` y `PagosPage`) se pasan a `Badge`. Los bloques con fondo teñido de Créditos (líneas 389, 416, 430) no cumplen AA y se rediseñan | Etapa 3 |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan; hay más de un `primary` por pantalla en Pagos ("Pago completo" en cada fila) y en Créditos ("Nueva solicitud" y "Crear solicitud" a la vez con el formulario abierto) | Etapa 3, al migrar cada página |
-| Lint del frontend: 11 errores que ya existían. 2 en `ChatbotFlotante` y `DonacionModal`; 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 2 (chatbot y donaciones); Etapa 3 (el resto) |
+| Lint del frontend: 9 errores que ya existían (eran 11; los de `ChatbotFlotante` y `DonacionModal` se fueron con T1 y T2). 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 3 |
 | Lint del backend: 6 errores, todos variables sin usar, en `cajas.routes.js`, `pagos.routes.js` y `reportes.routes.js` | Etapa 2 |
+| El documento de TIC debe declarar donaciones y chatbot como trabajo futuro en su sección 1.3 (§7). Ese documento no está en el repositorio | Fuera del código |
 | **Revisar:** en `pagos.routes.js`, a `montoCapital` se le asigna un valor que nunca se usa. Puede ser un error de cálculo en los pagos, no solo código sobrante | Etapa 2, con prioridad |
 
 ---
@@ -171,6 +194,11 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T4 hecha. Sin logs de claves ni de depuración; `config/supabase.js` reemplazado y borrado (sí se usaba, ver Decisiones); fuera `test-email`. El servidor arranca. Build OK; lint del backend con los mismos 6 errores previos.
+- **11 nov 2026:** T3 hecha. Borrados los recursos y el README de la plantilla de Vite; el favicon declara `image/png`. Build OK.
+- **11 nov 2026:** T2 hecha. Chatbot quitado del backend y del frontend. Lint del frontend baja de 11 a 9 errores. Build OK.
+- **11 nov 2026:** T1 hecha. Donaciones y PayPal quitados, incluido el script con el client-id en `index.html`. Build OK; lint sin errores nuevos.
+- **11 nov 2026:** Plan de la Etapa 2 en 10 tareas; rama `etapa-2` abierta.
 - **11 nov 2026:** `etapa-1` fusionada en `main` con `--no-ff` (`9a22d71`). Build OK en `main`. Sin subir a GitHub todavía.
 - **11 nov 2026:** Naranja de modo claro aclarado a `#b26000` y nuevo token `--color-accion-texto` para su uso como texto. Contraste medido de nuevo: todo AA, mínimo 4,60:1. Revisado en `/dev/componentes` y en login. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** **Etapa 1 terminada.** T15 hecha: página de muestra en `/dev/componentes` (solo desarrollo) con todos los primitivos. Revisada en claro y oscuro, y su formulario probado con teclado real. Al revisarla apareció un error de T6: el `Button` `secondary` no mostraba el contorno y se veía como `ghost`, también en las páginas reales. Corregido en `69d389d`. Build OK; lint con los mismos 11 errores previos.
