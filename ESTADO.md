@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (1 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (2 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración de base pendiente de ejecutar |
-| 3 | Migración de pantallas | En curso: 1/15 |
+| 3 | Migración de pantallas | En curso: 2/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -75,7 +75,7 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 | # | Tarea | Depende de | Estado | Commit |
 | --- | --- | --- | --- | --- |
 | T1 | `DataTable`: columnas declaradas, alineación, primera columna fija, pie de totales, cargando y vacío | — | ✅ | `0b01629` |
-| T2 | `Card` se divide en `StatCard` y `Panel` | — | ⬜ | |
+| T2 | `Card` se divide en `StatCard` y `Panel` | — | ✅ | `d142581` |
 | T3 | `ConfirmDialog` sobre `Modal`; `confirm()` de `NotifContext` lo usa, y el `window.confirm` de Socios pasa a él | — | ⬜ | |
 | T4 | Marco de la aplicación: `Sidebar`, `TopBar` y `AppLayout` a clases sobre tokens | — | ⬜ | |
 | T5 | Configuración, en tres componentes de sección | T1–T4 | ⬜ | |
@@ -96,6 +96,8 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | `StatCard` (T2): la tarjeta destacada ya no lleva relleno naranja con texto blanco, sino borde y valor en `accion-texto`. El relleno naranja es la señal del botón principal (§2.2, HT02), y una tarjeta naranja en el Dashboard competía con él. Además, el texto blanco al 70–80 % de opacidad de la Card vieja no cumplía AA | `frontend/src/components/StatCard.tsx` |
+| 12 nov 2026 | `Panel` (T2): `<section>` con título `<h2>` en `text-base` (subtítulo de §2.4), descripción y acciones opcionales; relleno y separación de 24 px. `sinRelleno` para listas que llegan al borde. `Card.tsx` se queda hasta que Dashboard y Reportes dejen de usarla y se borra en T15 | `frontend/src/components/Panel.tsx` |
 | 12 nov 2026 | `DataTable` (T1): las columnas se declaran como arreglo `{ clave, encabezado, celda, alinear, pie, fija }`. Las numéricas van a la derecha con cifras de ancho fijo (`tabular-nums`). Cuerpo en `text-sm` (14 px, cuerpo de §2.4) y encabezados en `text-xs`; las tablas de hoy usan `text-xs` en todo. `detalle` agrega una fila a todo el ancho debajo de otra (los pagos de cada cuota en la amortización). `descripcion` es obligatoria y va como `<caption>` oculto | `frontend/src/components/DataTable.tsx` |
 | 12 nov 2026 | La columna fija se separa con una sombra interior de 1 px, no con `border-r`: con `border-collapse`, el borde de una celda `sticky` se queda en su sitio al desplazar. Comprobado en Chromium a 760 px de ancho | `frontend/src/components/DataTable.tsx` |
 | 12 nov 2026 | Etapa 3 en 15 tareas: primero los componentes que faltan y el marco (T1–T4), después una página por tarea en el orden de §12, y un cierre que borra lo viejo. Se suman dos tareas que §12 no nombra: el marco (`Sidebar` y `TopBar` son 100 % estilos en línea, §4.2) y `CajasPage`, que no está en la lista | Este documento |
@@ -237,6 +239,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T2 hecha (`d142581`). `StatCard` y `Panel`, agregados a `/dev/componentes` y revisados en claro y oscuro. Build OK; lint del frontend con los 9 errores previos.
 - **12 nov 2026:** T1 hecha. `DataTable` con columnas declaradas, pie, fila de detalle, columna fija, cargando y vacío; agregada a `/dev/componentes`. Revisada en Chromium en claro, oscuro y a 760 px con desplazamiento horizontal; la prueba mostró que el borde de la columna fija no la seguía, y se cambió por una sombra interior. Build OK; lint del frontend con los 9 errores previos.
 - **12 nov 2026:** Plan de la Etapa 3 en 15 tareas; rama `etapa-3` abierta.
 - **12 nov 2026:** `etapa-2` fusionada en `main` con `--no-ff` (`e34de4f`). Build OK en `main`. Sin subir a GitHub; la migración `001` sigue sin ejecutar.
