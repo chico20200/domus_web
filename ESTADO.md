@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones. 6 de 15 tareas hechas (T1–T6).
+- **Etapa actual:** Etapa 1, Fundaciones. 7 de 15 tareas hechas (T1–T7).
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `e702fa9`
+- **Último commit de referencia:** `c515aaf`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | En curso: 6/15 |
+| 1 | Fundaciones | En curso: 7/15 |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -35,7 +35,7 @@ Leyenda: ⬜ pendiente · 🔄 en curso · ✅ hecha (con commit)
 | T4 | Documentar la escala de espaciado, texto y radios (equivalencias con Tailwind) | T2 | ✅ | `0d06d1e` |
 | T5 | `src/lib/format.ts`: `moneda`, `fecha`, `fechaHora`, `porcentaje` | T1 | ✅ | `d6e79eb` |
 | T6 | `Button`: variantes `primary`, `secondary`, `ghost`, `destructive`; `type`, `fullWidth`; sin `onEnter` ni `m-1` | T2 | ✅ | `e702fa9` |
-| T7 | `FieldBase`: label asociado con `useId`, colores por token, sin la prop `variant` | T2 | ⬜ | |
+| T7 | `FieldBase`: label asociado con `useId`, colores por token, sin la prop `variant` | T2 | ✅ | `c515aaf` |
 | T8 | `TextField` (incluye date y number); `Field` queda como alias | T7 | ⬜ | |
 | T9 | `SelectField` y `TextareaField` | T7 | ⬜ | |
 | T10 | `Form`: `preventDefault`, envío con Enter, error general | T6 | ⬜ | |
@@ -79,6 +79,11 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | `Button` en carga: muestra un spinner en lugar del ícono y conserva el texto, en vez de cambiarlo por "Cargando…", para que el botón no cambie de ancho. Marca `aria-busy` | `frontend/src/components/Button.tsx` |
 | 11 nov 2026 | `Button`: el ícono va antes del texto (antes iba después) | `frontend/src/components/Button.tsx` |
 | 11 nov 2026 | En T6 las páginas solo se tocaron donde dejaban de compilar o de verse bien (`danger` → `destructive`, sin `onEnter`, un `gap-3` en Reportes). Reasignar cada botón a su variante correcta es migración de páginas y se hace en la Etapa 3 | Este documento, Hallazgos |
+| 11 nov 2026 | Nuevo token `--border-control` (`#878782` claro, `#797974` oscuro) para el borde de los campos: 3:1 contra las tres superficies (WCAG 1.4.11). `--border-base` queda como borde decorativo | `frontend/src/index.css` |
+| 11 nov 2026 | `FieldBase` le pasa el control por una función hija (`{(control) => <input {...control} />}`), así `TextField`, `SelectField` y `TextareaField` comparten etiqueta, ayuda, error e ícono sin repetirlos | `frontend/src/components/FieldBase.tsx` |
+| 11 nov 2026 | Obligatorio se marca con `aria-required` y no con `required`, para que el navegador no muestre sus propios globos de validación cuando exista `Form` (T10). La validación la hace la aplicación | `frontend/src/components/FieldBase.tsx` |
+| 11 nov 2026 | Los campos tienen fondo `bg-surface` en los dos modos y se distinguen por el borde. Se quitaron sus márgenes propios (`mb-1`, `mt-1`): el espacio lo pone el contenedor | `frontend/src/components/FieldBase.tsx` |
+| 11 nov 2026 | `Field` se reescribió sobre `FieldBase` con la misma API (sin `variant` ni `status`, que nadie usaba; se agrega `disabled`), para no tocar las 29 llamadas | `frontend/src/components/Field.tsx` |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -108,8 +113,8 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | **Fechas un día atrasadas.** Las columnas `date` llegan como `"2026-11-11"` y las páginas hacen `new Date(f)`, que las toma como UTC: en Ecuador se ven como el día anterior (`fecha_apertura`, `fecha_ingreso`, `fecha_desembolso`, vencimientos). `fecha()` ya lo corrige; falta reemplazar las 6 funciones locales | Etapa 3, al migrar cada página |
 | **Fechas un día adelantadas en el backend.** `new Date().toISOString().split("T")[0]` (en `ahorros.routes.js:140`, `socios.routes.js:104` y `creditos.routes.js:177`) toma la fecha UTC: lo que se registra después de las 19:00 de Ecuador queda con fecha del día siguiente | Etapa 2 |
 | `DashboardPage` muestra fechas relativas ("Hoy", "Ayer") que `format.ts` no cubre. Al migrar, decidir si se agrega `fechaRelativa()` o se usa `fecha()` | Etapa 3 (Dashboard) |
+| `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan; hay más de un `primary` por pantalla en Pagos ("Pago completo" en cada fila) y en Créditos ("Nueva solicitud" y "Crear solicitud" a la vez con el formulario abierto) | Etapa 3, al migrar cada página |
-| `--border-base` mide 1,1–1,5:1 contra las superficies. Sirve para separar tarjetas, pero no como único borde de un campo de formulario (WCAG 1.4.11 pide 3:1) | T7 |
 | Lint del frontend: 11 errores que ya existían. 2 en `ChatbotFlotante` y `DonacionModal`; 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 2 (chatbot y donaciones); Etapa 3 (el resto) |
 | Lint del backend: 6 errores, todos variables sin usar, en `cajas.routes.js`, `pagos.routes.js` y `reportes.routes.js` | Etapa 2 |
 | **Revisar:** en `pagos.routes.js`, a `montoCapital` se le asigna un valor que nunca se usa. Puede ser un error de cálculo en los pagos, no solo código sobrante | Etapa 2, con prioridad |
@@ -133,6 +138,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T7 hecha. `FieldBase` con etiqueta asociada por `useId`, ayuda y error enlazados con `aria-describedby`, `aria-invalid` y colores por token. `Field` se apoya en él y pierde `variant`. Se resuelve el hallazgo del borde de los campos con `--border-control`. Revisado en el navegador (registro, claro y oscuro) y en el DOM. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T6 hecha. `Button` con las cuatro variantes por prioridad sobre tokens, `type` y `fullWidth`, sin `onEnter` ni `m-1`. Se revisó en el navegador la pantalla de login en claro y oscuro. En las páginas solo se cambiaron 3 `danger`, el `onEnter` de Login y un `gap`. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T5 hecha. `src/lib/format.ts` con `moneda`, `fecha`, `fechaHora` y `porcentaje`. Al escribirlo apareció que las fechas sin hora se ven un día atrasadas en el frontend, y que el backend registra con fecha del día siguiente a partir de las 19:00; los dos quedan en Hallazgos. 18 casos probados. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T4 hecha. Nuevo `docs/SISTEMA_DE_DISENO.md` con las clases de color, las escalas de espaciado, texto y radios con su equivalente en Tailwind, y un inventario de lo que hoy está fuera de escala con su reemplazo. No se tocó ninguna página. Build OK; lint con los mismos 11 errores previos.
