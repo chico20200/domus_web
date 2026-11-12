@@ -40,21 +40,6 @@
   --color-destructivo-hover: #a23921;
   --color-estado-ok: #47772a;
   --color-estado-alerta: #8a6500;
-
-  /*
-   * Alias de los nombres viejos. Solo para no romper el código que todavía los usa.
-   * No usar en código nuevo; se borran cuando la Etapa 3 termine de migrar las páginas.
-   */
-  /* primary_y se usa sobre todo como color de texto: apunta a accion-texto para seguir cumpliendo AA */
-  --color-primary_y: var(--color-accion-texto);
-  --color-primary_yh: var(--color-accion-primaria-hover);
-  --color-secondary_g: var(--color-estado-ok);
-  --color-secondary_gh: #5aa82d;
-  --color-danger_r: var(--color-destructivo);
-  --color-danger_rh: var(--color-destructivo-hover);
-  --color-blk_1: #2b2b2b;
-  --color-blk_2: #3b3b3b;
-  --color-secondary_wt: #e3e3e3;
 }
 
 /* Anchos de página (especificaciones §4.1). Clases: max-w-formulario, max-w-completo y max-w-acceso.
@@ -63,6 +48,22 @@
   --container-formulario: 40rem; /* 640 px */
   --container-completo: 75rem; /* 1200 px */
   --container-acceso: 24rem; /* 384 px: tarjeta de inicio de sesión, registro y contraseña */
+}
+
+/* Entrada de los avisos (NotifProvider). Se usa con motion-safe: quien pide menos movimiento no la ve */
+@theme {
+  --animate-aviso-entra: aviso-entra 200ms ease-out;
+
+  @keyframes aviso-entra {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 @theme inline {
@@ -96,10 +97,6 @@
   /* Borde de campos de formulario: 3:1 contra las tres superficies (WCAG 1.4.11) */
   --border-control: #878782;
   --border-focus: var(--color-accion-texto);
-
-  /* Solo los usa Sidebar; se reemplazan por bg-surface y text-secondary en la Etapa 3 */
-  --sidebar-bg: #ffffff;
-  --sidebar-text: #4b4b4b;
 }
 
 /* Modo oscuro */
@@ -124,7 +121,4 @@
   --border-base: #3a3a3a;
   --border-control: #797974;
   --border-focus: var(--color-accion-texto);
-
-  --sidebar-bg: #1e1e1e;
-  --sidebar-text: #c0c0c0;
 }

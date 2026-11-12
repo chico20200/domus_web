@@ -122,7 +122,7 @@ const COLUMNAS_SOCIOS: Columna<(typeof SOCIOS_MUESTRA)[number]>[] = [
 
 export default function ComponentesPage() {
   const { isDark, toggleTheme } = useTheme()
-  const { confirm } = useNotif()
+  const { confirm, toast } = useNotif()
   const [respuesta, setRespuesta] = useState("—")
 
   // Campos sueltos
@@ -409,6 +409,36 @@ export default function ComponentesPage() {
             ventana.
           </p>
         </Modal>
+      </Seccion>
+
+      <Seccion
+        titulo="Avisos"
+        nota="toast(tipo, mensaje) de useNotif. Abajo a la derecha, se cierran solos a los 4 s."
+      >
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant="secondary"
+            label="Éxito"
+            onClick={() =>
+              toast("exito", "Depósito de $25,00 registrado en la cuenta de Ana Torres.")
+            }
+          />
+          <Button
+            variant="secondary"
+            label="Error"
+            onClick={() => toast("error", "No se pudo guardar el pago: sin conexión.")}
+          />
+          <Button
+            variant="secondary"
+            label="Información"
+            onClick={() => toast("info", "Código copiado al portapapeles.")}
+          />
+          <Button
+            variant="secondary"
+            label="Advertencia"
+            onClick={() => toast("advertencia", "El ciclo termina en 5 días.")}
+          />
+        </div>
       </Seccion>
 
       <Seccion titulo="LoadingState y EmptyState">
