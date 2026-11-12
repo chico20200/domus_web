@@ -3,24 +3,10 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal } = require("../utils/fechas")
 
 router.use(verifyToken)
-
-// ── Helper de rol ─────────────────────────────────────────────
-async function verificarRol(userId, cajaId, rolMinimo = "socio") {
-  const jerarquia = { socio: 1, tesorero: 2, admin: 3 }
-  const { data } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-  if (!data) return null
-  if (jerarquia[data.rol] < jerarquia[rolMinimo]) return null
-  return data.rol
-}
 
 // ── Helper: genera número de cuenta único por caja ────────────
 async function generarNumeroCuenta(cajaId) {
@@ -36,10 +22,8 @@ async function generarNumeroCuenta(cajaId) {
 // GET /api/cajas/:cajaId/cuentas
 // Lista todas las cuentas de la caja con datos del socio
 // ─────────────────────────────────────────────
-router.get("/", async (req, res) => {
+router.get("/", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data, error } = await supabaseAdmin
     .from("cuentas_ahorro")
@@ -61,10 +45,8 @@ router.get("/", async (req, res) => {
 // GET /api/cajas/:cajaId/cuentas/:cuentaId
 // Detalle de una cuenta con sus transacciones
 // ─────────────────────────────────────────────
-router.get("/:cuentaId", async (req, res) => {
+router.get("/:cuentaId", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId, cuentaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data: cuenta, error } = await supabaseAdmin
     .from("cuentas_ahorro")
@@ -88,10 +70,8 @@ router.get("/:cuentaId", async (req, res) => {
 // GET /api/cajas/:cajaId/socios/:socioId/cuentas
 // Cuentas de un socio específico
 // ─────────────────────────────────────────────
-router.get("/socio/:socioId", async (req, res) => {
+router.get("/socio/:socioId", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId, socioId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data, error } = await supabaseAdmin
     .from("cuentas_ahorro")
@@ -109,10 +89,8 @@ router.get("/socio/:socioId", async (req, res) => {
 // POST /api/cajas/:cajaId/cuentas
 // Abre una nueva cuenta de ahorro para un socio
 // ─────────────────────────────────────────────
-router.post("/", async (req, res) => {
+router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { socio_id } = req.body
   if (!socio_id) return res.status(400).json({ error: "El socio_id es requerido" })
@@ -152,10 +130,8 @@ router.post("/", async (req, res) => {
 // POST /api/cajas/:cajaId/cuentas/:cuentaId/deposito
 // Registra un depósito
 // ─────────────────────────────────────────────
-router.post("/:cuentaId/deposito", async (req, res) => {
+router.post("/:cuentaId/deposito", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId, cuentaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { monto, descripcion } = req.body
   if (!monto || isNaN(monto) || monto <= 0) {
@@ -212,10 +188,8 @@ router.post("/:cuentaId/deposito", async (req, res) => {
 // POST /api/cajas/:cajaId/cuentas/:cuentaId/retiro
 // Registra un retiro
 // ─────────────────────────────────────────────
-router.post("/:cuentaId/retiro", async (req, res) => {
+router.post("/:cuentaId/retiro", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId, cuentaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { monto, descripcion } = req.body
   if (!monto || isNaN(monto) || monto <= 0) {
@@ -277,10 +251,8 @@ router.post("/:cuentaId/retiro", async (req, res) => {
 // PUT /api/cajas/:cajaId/cuentas/:cuentaId/estado
 // Cambia estado de cuenta — solo admin
 // ─────────────────────────────────────────────
-router.put("/:cuentaId/estado", async (req, res) => {
+router.put("/:cuentaId/estado", requierePermiso("cuentas.cambiar_estado"), async (req, res) => {
   const { cajaId, cuentaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "admin")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol admin" })
 
   const { estado } = req.body
   const estadosValidos = ["activa", "cerrada", "suspendida"]

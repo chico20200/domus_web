@@ -4,25 +4,10 @@ const router = express.Router()
 const supabase = require("../config/supabaseAdmin")
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { calcularCiclos } = require("../utils/ciclos")
 
 router.use(verifyToken)
-
-async function verificarRol(userId, cajaId, rolMinimo = "socio") {
-  const jerarquia = { socio: 1, tesorero: 2, admin: 3 }
-
-  const { data } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-
-  if (!data) return null
-  if (jerarquia[data.rol] < jerarquia[rolMinimo]) return null
-  return data.rol
-}
 
 // ─────────────────────────────────────────────
 // GET /api/cajas/mis-cajas
@@ -114,24 +99,10 @@ router.post("/", async (req, res) => {
 // GET /api/cajas/:cajaId/resumen
 // Datos de la caja, totales y movimientos recientes — solo miembros
 // ─────────────────────────────────────────────
-router.get("/:cajaId/resumen", async (req, res) => {
-  const userId = req.user.id
+router.get("/:cajaId/resumen", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId } = req.params
 
   try {
-    // Verifica membresía
-    const { data: miembro } = await supabaseAdmin
-      .from("miembros_caja")
-      .select("rol")
-      .eq("caja_id", cajaId)
-      .eq("user_id", userId)
-      .eq("activo", true)
-      .single()
-
-    if (!miembro) {
-      return res.status(403).json({ error: "No perteneces a esta caja" })
-    }
-
     const { data: caja, error: errorCaja } = await supabaseAdmin
       .from("cajas")
       .select("id, nombre, descripcion, created_at")
@@ -192,7 +163,7 @@ router.get("/:cajaId/resumen", async (req, res) => {
 
     return res.json({
       caja,
-      rol: miembro.rol,
+      rol: req.rol,
       resumen: {
         totalMiembros: totalMiembros ?? 0,
         totalSocios: totalSocios ?? 0,
@@ -212,23 +183,9 @@ router.get("/:cajaId/resumen", async (req, res) => {
 // PUT /api/cajas/:cajaId
 // Edita nombre/descripción — solo admin
 // ─────────────────────────────────────────────
-router.put("/:cajaId", async (req, res) => {
-  const userId = req.user.id
+router.put("/:cajaId", requierePermiso("caja.configurar"), async (req, res) => {
   const { cajaId } = req.params
   const { nombre, descripcion } = req.body
-
-  // Verifica que sea admin
-  const { data: miembro } = await supabase
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-
-  if (!miembro || miembro.rol !== "admin") {
-    return res.status(403).json({ error: "Solo el admin puede editar la caja" })
-  }
 
   const updates = {}
   if (nombre) updates.nombre = nombre.trim()
@@ -356,10 +313,8 @@ router.post("/unirse", async (req, res) => {
 // GET /api/cajas/:cajaId/ciclos
 // Lista todos los ciclos de la caja
 // ─────────────────────────────────────────────
-router.get("/:cajaId/ciclos", async (req, res) => {
+router.get("/:cajaId/ciclos", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data: caja } = await supabaseAdmin
     .from("cajas")
@@ -400,10 +355,8 @@ router.get("/:cajaId/ciclos", async (req, res) => {
 // PUT /api/cajas/:cajaId/configuracion-ciclo
 // Configura el periodo de la caja — solo admin
 // ─────────────────────────────────────────────
-router.put("/:cajaId/configuracion-ciclo", async (req, res) => {
+router.put("/:cajaId/configuracion-ciclo", requierePermiso("caja.configurar"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "admin")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol admin" })
 
   const { fecha_fundacion, mes_inicio_ciclo, duracion_ciclo } = req.body
 

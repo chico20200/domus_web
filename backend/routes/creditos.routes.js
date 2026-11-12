@@ -3,34 +3,18 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal, leerFecha } = require("../utils/fechas")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
 
 router.use(verifyToken)
 
-// Helper de rol (misma lógica que en ahorros)
-async function verificarRol(userId, cajaId, rolMinimo = "socio") {
-  const jerarquia = { socio: 1, tesorero: 2, admin: 3 }
-  const { data } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-  if (!data) return null
-  if (jerarquia[data.rol] < jerarquia[rolMinimo]) return null
-  return data.rol
-}
-
 // ─────────────────────────────────────────────
 // GET /api/cajas/:cajaId/creditos
 // Lista créditos de la caja
 // ─────────────────────────────────────────────
-router.get("/", async (req, res) => {
+router.get("/", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data, error } = await supabaseAdmin
     .from("creditos")
@@ -47,10 +31,8 @@ router.get("/", async (req, res) => {
 // GET /api/cajas/:cajaId/creditos/:creditoId
 // Detalle de un crédito y sus pagos
 // ─────────────────────────────────────────────
-router.get("/:creditoId", async (req, res) => {
+router.get("/:creditoId", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data: credito, error } = await supabaseAdmin
     .from("creditos")
@@ -74,10 +56,8 @@ router.get("/:creditoId", async (req, res) => {
 // GET /api/cajas/:cajaId/creditos/socio/:socioId
 // Créditos por socio
 // ─────────────────────────────────────────────
-router.get("/socio/:socioId", async (req, res) => {
+router.get("/socio/:socioId", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId, socioId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data, error } = await supabaseAdmin
     .from("creditos")
@@ -95,10 +75,8 @@ router.get("/socio/:socioId", async (req, res) => {
 // POST /api/cajas/:cajaId/creditos
 // Crear solicitud de crédito (estado: 'pendiente')
 // ─────────────────────────────────────────────
-router.post("/", async (req, res) => {
+router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { socio_id, monto_solicitado, tasa_interes, plazo_meses } = req.body
   if (!socio_id || !monto_solicitado || !tasa_interes || !plazo_meses) {
@@ -148,10 +126,8 @@ router.post("/", async (req, res) => {
 // PUT /api/cajas/:cajaId/creditos/:creditoId/aprobar
 // Aprueba el crédito: establece fechas y pone estado 'activo'
 // ─────────────────────────────────────────────
-router.put("/:creditoId/aprobar", async (req, res) => {
+router.put("/:creditoId/aprobar", requierePermiso("creditos.aprobar"), async (req, res) => {
   const { cajaId, creditoId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { fecha_desembolso } = req.body
   const fecha = fecha_desembolso ? leerFecha(fecha_desembolso) : new Date()
@@ -193,10 +169,8 @@ router.put("/:creditoId/aprobar", async (req, res) => {
 // PUT /api/cajas/:cajaId/creditos/:creditoId/estado
 // Cambia el estado del crédito (admin)
 // ─────────────────────────────────────────────
-router.put("/:creditoId/estado", async (req, res) => {
+router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), async (req, res) => {
   const { cajaId, creditoId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "admin")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol admin" })
 
   const { estado } = req.body
   const estadosValidos = ["pendiente", "activo", "pagado", "mora", "castigado"]
@@ -219,10 +193,8 @@ router.put("/:creditoId/estado", async (req, res) => {
 // GET /api/cajas/:cajaId/creditos/:creditoId/amortizacion
 // Tabla de amortización con estado de cada cuota
 // ─────────────────────────────────────────────
-router.get("/:creditoId/amortizacion", async (req, res) => {
+router.get("/:creditoId/amortizacion", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data: credito, error } = await supabaseAdmin
     .from("creditos")

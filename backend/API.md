@@ -24,7 +24,10 @@ Las rutas anidadas bajo `/api/cajas/:cajaId/...` validan el rol del usuario dent
 socio (1) < tesorero (2) < admin (3)
 ```
 
-Cada endpoint indica el **rol mínimo** requerido. Si el usuario no es miembro activo de la caja o no alcanza el rol mínimo, responde `403`.
+La verificación la hace un solo middleware, `requierePermiso("<permiso>")` en `middlewares/permisos.middleware.js`. Ahí está la tabla única que asigna a cada permiso su rol mínimo (`caja.ver` → socio, `movimientos.registrar` → tesorero, `caja.configurar` → admin, etc.). Cada endpoint indica el **rol mínimo** requerido.
+
+- `403 { error: 'Sin acceso a esta caja' }` — el usuario no es miembro activo de la caja.
+- `403 { error: 'Tu rol no permite esta acción' }` — no alcanza el rol mínimo. Un rol que no está en la escalera tampoco pasa.
 
 ---
 
@@ -72,14 +75,6 @@ Actualiza la contraseña del usuario autenticado (requiere token, incluyendo el 
 - 400: `{ error }` si la contraseña es muy corta o Supabase rechaza el cambio
 - 401: `{ error }` si la sesión no pudo establecerse
 
-### POST /api/auth/test-email
-Endpoint de diagnóstico para verificar el envío de correos (SMTP).
-
-- Auth: No
-- Body: `{ email }`
-- 200: `{ message }`
-- 400/500: `{ error, detalle }`
-
 ---
 
 ## 2. Perfiles — `/api/profiles`
@@ -122,10 +117,8 @@ Crea una nueva caja. El creador queda registrado automáticamente como `admin`.
 ### GET /api/cajas/:cajaId/resumen
 Devuelve el detalle de la caja, el rol del usuario y un resumen de indicadores (miembros, socios, saldo total en ahorros, créditos activos, saldo pendiente, últimas 5 transacciones). Solo accesible para miembros de la caja.
 
-> Nota: este endpoint está definido dos veces en `cajas.routes.js` (líneas 102 y 249) con lógica equivalente; Express usa la primera definición.
-
 - 200: `{ caja, rol, resumen: { totalMiembros, totalSocios, saldoTotal, creditosActivos, saldoPendiente }, transaccionesRecientes }`
-- 403: `{ error: 'No perteneces a esta caja' }`
+- 403: `{ error: 'Sin acceso a esta caja' }`
 
 ### PUT /api/cajas/:cajaId
 Edita nombre/descripción de la caja.
@@ -134,7 +127,7 @@ Edita nombre/descripción de la caja.
 - Body (al menos uno): `{ nombre?, descripcion? }`
 - 200: `{ message, caja }`
 - 400: `{ error }` si no se envían campos
-- 403: `{ error: 'Solo el admin puede editar la caja' }`
+- 403: `{ error: 'Tu rol no permite esta acción' }`
 
 ### POST /api/cajas/unirse
 El usuario se une a una caja mediante un código de invitación. Si existe un socio en la caja con el mismo email y sin `user_id` vinculado, se vincula automáticamente.

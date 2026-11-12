@@ -3,32 +3,17 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
 
 router.use(verifyToken)
-
-async function verificarRol(userId, cajaId, rolMinimo = "socio") {
-  const jerarquia = { socio: 1, tesorero: 2, admin: 3 }
-  const { data } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-  if (!data) return null
-  if (jerarquia[data.rol] < jerarquia[rolMinimo]) return null
-  return data.rol
-}
 
 // ─────────────────────────────────────────────
 // GET /api/cajas/:cajaId/creditos/:creditoId/pagos
 // Lista los pagos de un crédito
 // ─────────────────────────────────────────────
-router.get("/", async (req, res) => {
+router.get("/", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data, error } = await supabaseAdmin
     .from("pagos_credito")
@@ -46,10 +31,8 @@ router.get("/", async (req, res) => {
 // POST /api/cajas/:cajaId/creditos/:creditoId/pagos
 // Registra un pago de cuota separando capital e interés
 // ─────────────────────────────────────────────
-router.post("/", async (req, res) => {
+router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId, creditoId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { tipo_pago } = req.body
 
@@ -189,10 +172,8 @@ router.post("/", async (req, res) => {
 // GET /api/cajas/:cajaId/creditos/:creditoId/pagos/proxima-cuota
 // Devuelve exactamente cuánto falta pagar de la cuota actual
 // ─────────────────────────────────────────────
-router.get("/proxima-cuota", async (req, res) => {
+router.get("/proxima-cuota", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "socio")
-  if (!rol) return res.status(403).json({ error: "Sin acceso a esta caja" })
 
   const { data: credito } = await supabaseAdmin
     .from("creditos")
@@ -248,10 +229,8 @@ router.get("/proxima-cuota", async (req, res) => {
 
 // POST /api/cajas/:cajaId/creditos/:creditoId/pagos/prepago
 // Prepaga el capital de la última cuota disponible — sin interés
-router.post("/prepago", async (req, res) => {
+router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId, creditoId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { data: credito } = await supabaseAdmin
     .from("creditos")
@@ -333,10 +312,8 @@ router.post("/prepago", async (req, res) => {
 // POST /api/cajas/:cajaId/creditos/:creditoId/pagos/abono
 // Abono parcial de monto libre — se aplica primero a capital
 // ─────────────────────────────────────────────
-router.post("/abono", async (req, res) => {
+router.post("/abono", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId, creditoId } = req.params
-  const rol = await verificarRol(req.user.id, cajaId, "tesorero")
-  if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { monto, motivo } = req.body
 
