@@ -1,13 +1,14 @@
 // src/App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
-import { AuthProvider, useAuth } from "./context/AuthContext"
-import { ThemeProvider } from "./context/ThemeContext"
+import { useAuth } from "./context/AuthContext"
+import { AuthProvider } from "./context/AuthProvider"
+import { ThemeProvider } from "./context/ThemeProvider"
 import Login from "./pages/Login"
 import ProfilePage from "./pages/ProfilePage"
 import ForgotPasswordPage from "./pages/ForgotPasswordPage"
 import ResetPasswordPage from "./pages/ResetPasswordPage"
 import Register from "./pages/Register"
-import { CajaProvider } from "./context/CajaContext"
+import { CajaProvider } from "./context/CajaProvider"
 import CajasPage from "./pages/CajasPage"
 import DashboardPage from "./pages/DashboardPage"
 import SociosPage from "./pages/SociosPage"
@@ -16,7 +17,7 @@ import ConfiguracionPage from "./pages/ConfiguracionPage"
 import CreditosPage from "./pages/CreditosPage"
 import PagosPage from "./pages/PagosPage"
 import { RolRoute } from "./components/RolRoute"
-import { NotifProvider } from "./context/NotifContext"
+import { NotifProvider } from "./context/NotifProvider"
 import ReportesPage from "./pages/ReportesPage"
 import { lazy, Suspense } from "react"
 import { LoadingState } from "./components/LoadingState"
@@ -28,9 +29,7 @@ const ComponentesPage = import.meta.env.DEV
   : null
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth()
-
-  if (isLoading) return <p>Cargando...</p> // espera la verificación
+  const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace /> // sin sesión → login
 
   return children

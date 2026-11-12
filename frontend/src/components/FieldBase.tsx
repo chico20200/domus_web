@@ -26,6 +26,11 @@ export interface ControlProps {
 
 export interface FieldBaseProps {
   label: string
+  /**
+   * Oculta la etiqueta a la vista; el lector de pantalla la sigue leyendo. Solo para
+   * controles cuyo sentido ya da el contexto, como el rol dentro de una fila de miembro
+   */
+  ocultarEtiqueta?: boolean
   /** Si no se pasa, se genera uno con useId */
   id?: string
   /** Texto de ayuda bajo el campo. Si hay error, se muestra el error en su lugar */
@@ -35,6 +40,11 @@ export interface FieldBaseProps {
   disabled?: boolean
   /** Ícono decorativo a la derecha del control */
   icon?: LucideIcon
+  /**
+   * Botón a la derecha del control, en lugar del ícono (por ejemplo, mostrar u ocultar la
+   * contraseña). Si se pasa, `icon` se ignora
+   */
+  accion?: ReactNode
   children: (control: ControlProps) => ReactNode
 }
 
@@ -51,14 +61,17 @@ const CONTROL_ERROR = "border-destructivo focus:border-destructivo focus:ring-de
 
 export function FieldBase({
   label,
+  ocultarEtiqueta = false,
   id,
   hint,
   error,
   required = false,
   disabled = false,
-  icon: Icon,
+  icon,
+  accion,
   children,
 }: FieldBaseProps) {
+  const Icon = accion ? undefined : icon
   const autoId = useId()
   const controlId = id ?? autoId
   const mensajeId = `${controlId}-mensaje`
@@ -68,10 +81,14 @@ export function FieldBase({
 
   const control: ControlProps = {
     id: controlId,
-    // pr-9: 12 px de margen + 16 px del ícono + 8 px de separación (excepción documentada en T4)
-    className: [CONTROL_BASE, hayError ? CONTROL_ERROR : CONTROL_NORMAL, Icon ? "pr-9" : ""].join(
-      " ",
-    ),
+    // pr-9 (36 px, excepción documentada en T4): 12 px de margen + 16 px del ícono + 8 px de
+    // separación. El botón de `accion` mide lo mismo: 4 px de margen + 32 px de botón, con el
+    // ícono centrado, así que el texto queda igual de lejos del ojo que de un ícono
+    className: [
+      CONTROL_BASE,
+      hayError ? CONTROL_ERROR : CONTROL_NORMAL,
+      accion || Icon ? "pr-9" : "",
+    ].join(" "),
     disabled: disabled || undefined,
     "aria-required": required || undefined,
     "aria-invalid": hayError || undefined,
@@ -80,7 +97,10 @@ export function FieldBase({
 
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={controlId} className="text-sm font-medium text-primary">
+      <label
+        htmlFor={controlId}
+        className={`text-sm font-medium text-primary ${ocultarEtiqueta ? "sr-only" : ""}`}
+      >
         {label}
         {required && (
           <span className="ml-1 text-destructivo" aria-hidden="true">
@@ -100,6 +120,7 @@ export function FieldBase({
             />
           </span>
         )}
+        {accion && <div className="absolute inset-y-0 right-1 flex items-center">{accion}</div>}
       </div>
 
       {mensaje && (

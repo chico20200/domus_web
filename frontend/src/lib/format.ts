@@ -94,3 +94,13 @@ export function porcentaje(valor: number | null | undefined, decimales = 2): str
   }
   return fmt.format(valor / 100)
 }
+
+/**
+ * Fecha de hoy en hora local como "yyyy-MM-dd", el valor de un campo type="date".
+ * `new Date().toISOString()` da la fecha UTC: en Ecuador, después de las 19:00, ya es mañana.
+ */
+export function hoyISO(): string {
+  const d = new Date()
+  const dos = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`
+}

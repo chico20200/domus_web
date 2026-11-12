@@ -1,11 +1,21 @@
-// src/pages/RegisterPage.tsx
+// src/pages/Register.tsx
 import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
-import { Mail, Lock } from "lucide-react"
-import { Field } from "../components/Field"
-import { Button } from "../components/Button"
+import { useNavigate } from "react-router-dom"
+import { Mail } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { authService } from "../api/auth.service"
+import { PaginaAcceso, EnlaceAcceso } from "../components/layout/PaginaAcceso"
+import { Form } from "../components/Form"
+import { TextField } from "../components/TextField"
+import { Button } from "../components/Button"
+import { validarCorreo } from "../lib/validacion"
+
+/**
+ * Crear cuenta. Migración visual: la política de contraseña de HU001 (8 caracteres con
+ * letras y números) y la activación por correo son Etapa 4; hoy sigue pidiendo 6.
+ */
+
+type Campo = "email" | "password" | "confirm"
 
 export default function Register() {
   const navigate = useNavigate()
@@ -14,140 +24,94 @@ export default function Register() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [errores, setErrores] = useState<Partial<Record<Campo, string>>>({})
+  const [error, setError] = useState("")
+  const [cargando, setCargando] = useState(false)
 
-  // Errores por campo — undefined cuando no hay error
-  const [errorEmail, setErrorEmail] = useState<string | undefined>(undefined)
-  const [errorPassword, setErrorPassword] = useState<string | undefined>(undefined)
-  const [errorConfirm, setErrorConfirm] = useState<string | undefined>(undefined)
-  const [errorGeneral, setErrorGeneral] = useState<string | undefined>(undefined)
-
-  // ── Validación local antes de llamar al backend ──────────────
-  function validar(): boolean {
-    let valido = true
-
-    setErrorEmail(undefined)
-    setErrorPassword(undefined)
-    setErrorConfirm(undefined)
-    setErrorGeneral(undefined)
-
-    if (!email.includes("@") || !email.includes(".")) {
-      setErrorEmail("Ingresa un correo válido")
-      valido = false
-    }
-
-    if (password.length < 6) {
-      setErrorPassword("La contraseña debe tener al menos 6 caracteres")
-      valido = false
-    }
-
-    if (password !== confirm) {
-      setErrorConfirm("Las contraseñas no coinciden")
-      valido = false
-    }
-
-    return valido
+  function limpiar(campo: Campo) {
+    setErrores((e) => ({ ...e, [campo]: undefined }))
   }
 
-  async function handleRegister() {
-    if (!validar()) return // si hay errores locales no llama al backend
-
-    setLoading(true)
+  async function crear() {
+    const e: Partial<Record<Campo, string>> = {}
+    if (!email.trim()) e.email = "Escribe tu correo"
+    else if (validarCorreo(email)) e.email = validarCorreo(email)
+    if (password.length < 6) e.password = "Usa al menos 6 caracteres"
+    if (!e.password && password !== confirm) e.confirm = "Las contraseñas no coinciden"
+    setErrores(e)
+    setError("")
+    if (Object.keys(e).length > 0) return
+    setCargando(true)
     try {
-      // 1. Registra el usuario
-      await authService.register({ email, password })
-
-      // 2. Como no requiere confirmación, loguea directo
-      await login(email, password)
-
-      // 3. Redirige al perfil
+      await authService.register({ email: email.trim(), password })
+      // El registro no pide confirmar el correo, así que entra directo
+      await login(email.trim(), password)
       navigate("/perfil", { replace: true })
     } catch (err) {
-      setErrorGeneral(err instanceof Error ? err.message : "Error al crear la cuenta")
-    } finally {
-      setLoading(false)
+      setError(err instanceof Error ? err.message : "No se pudo crear la cuenta")
+      setCargando(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-base)" }}>
-      <div className="flex flex-row items-center justify-center mt-8">
-        <img src="/logo_domus.png" alt="Logo de la caja" className="w-24" />
-        <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
-          Domus
-        </h1>
-      </div>
-      <div className="mt-4 flex items-center justify-center ">
-        <div
-          className="w-full max-w-sm flex flex-col gap-5 p-5 rounded-lg shadow-md"
-          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-base)" }}
-        >
-          <div>
-            <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
-              Crear cuenta
-            </h1>
-            <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-              Ingresa tus datos para registrarte
-            </p>
-          </div>
-
-          <Field
-            label="Correo electrónico"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="ana@cajacomunidad.ec"
-            icon={Mail}
-            required
-            error={errorEmail}
-          />
-          <Field
-            label="Contraseña"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            icon={Lock}
-            required
-            hint="Mínimo 6 caracteres"
-            error={errorPassword}
-          />
-          <Field
-            label="Confirmar contraseña"
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder="••••••••"
-            icon={Lock}
-            required
-            error={errorConfirm}
-          />
-
-          {errorGeneral && (
-            <p className="text-sm" style={{ color: "var(--color-danger_r)" }}>
-              {errorGeneral}
-            </p>
-          )}
-
-          <Button
-            label="Crear cuenta"
-            variant="primary"
-            loading={loading}
-            onClick={handleRegister}
-          />
-
-          <p className="text-sm text-center" style={{ color: "var(--text-secondary)" }}>
-            ¿Ya tienes cuenta?{" "}
-            <Link
-              to="/login"
-              className="hover:underline"
-              style={{ color: "var(--color-primary_y)" }}
-            >
-              Inicia sesión
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+    <PaginaAcceso
+      titulo="Crear cuenta"
+      descripcion="Con tu cuenta podrás crear una caja o unirte a la de tu organización."
+      pie={
+        <>
+          ¿Ya tienes cuenta? <EnlaceAcceso a="/login">Inicia sesión</EnlaceAcceso>
+        </>
+      }
+    >
+      <Form
+        onSubmit={crear}
+        error={error}
+        actions={<Button type="submit" label="Crear cuenta" loading={cargando} fullWidth />}
+      >
+        <TextField
+          label="Correo electrónico"
+          type="email"
+          name="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value)
+            limpiar("email")
+          }}
+          placeholder="ana@cajacomunidad.ec"
+          icon={Mail}
+          error={errores.email}
+          required
+          autoFocus
+        />
+        <TextField
+          label="Contraseña"
+          type="password"
+          name="new-password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value)
+            limpiar("password")
+          }}
+          hint="Al menos 6 caracteres."
+          error={errores.password}
+          required
+        />
+        <TextField
+          label="Confirmar contraseña"
+          type="password"
+          name="confirm-password"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => {
+            setConfirm(e.target.value)
+            limpiar("confirm")
+          }}
+          error={errores.confirm}
+          required
+        />
+      </Form>
+    </PaginaAcceso>
   )
 }

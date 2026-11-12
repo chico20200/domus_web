@@ -1,530 +1,278 @@
 // src/pages/AhorrosPage.tsx
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  PiggyBank,
-  ChevronRight,
-  ChevronLeft,
-  Plus,
-} from "lucide-react"
-
-import { AppLayout } from "../components/layout/AppLayout"
+import { PiggyBank, Plus, UserRoundX } from "lucide-react"
+import { PageShell } from "../components/layout/PageShell"
 import { Button } from "../components/Button"
-import { Field } from "../components/Field"
+import { Badge } from "../components/Badge"
+import { DataTable, type Columna } from "../components/DataTable"
+import { EmptyState } from "../components/EmptyState"
+import { StatCard } from "../components/StatCard"
 import { useCaja } from "../context/CajaContext"
-import { ahorrosService } from "../api/ahorros.service"
-import { sociosService } from "../api/socios.service"
-import type { CuentaAhorro, Transaccion } from "../api/ahorros.types"
-import type { Socio } from "../api/socios.types"
 import { useAuth } from "../context/AuthContext"
 import { useNotif } from "../context/NotifContext"
+import { ahorrosService } from "../api/ahorros.service"
+import { sociosService } from "../api/socios.service"
+import type { CuentaAhorro } from "../api/ahorros.types"
+import { moneda } from "../lib/format"
+import { useDatos } from "../lib/useDatos"
+import { tieneRol } from "../lib/roles"
+import { nombreSocio } from "../lib/creditos"
+import { estadoCuenta } from "../lib/ahorros"
+import { DetalleCuenta } from "./ahorros/DetalleCuenta"
+import { NuevaCuentaModal } from "./ahorros/NuevaCuentaModal"
 
-function formatMonto(m: number) {
-  return new Intl.NumberFormat("es-EC", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(m)
-}
-
-function formatFecha(f: string) {
-  return new Date(f).toLocaleDateString("es-EC", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
-type Vista = "lista" | "detalle"
-type ModalTipo = "deposito" | "retiro" | "nueva" | null
-
+/**
+ * Cuentas de ahorro. El tesorero y el coordinador ven todas las cuentas de la caja, abren
+ * cuentas y registran depósitos y retiros. El socio ve solo las suyas, en solo lectura
+ * (es la única página operativa que ve).
+ */
 export default function AhorrosPage() {
   const navigate = useNavigate()
   const { cajaActiva } = useCaja()
   const { user } = useAuth()
 
-  // ── Estado principal ─────────────────────────────────────────
-  const [vista, setVista] = useState<Vista>("lista")
-  const [cuentas, setCuentas] = useState<CuentaAhorro[]>([])
-  const [cuentaActiva, setCuentaActiva] = useState<CuentaAhorro | null>(null)
-  const [transacciones, setTransacciones] = useState<Transaccion[]>([])
-  const [socios, setSocios] = useState<Socio[]>([])
-  const [loading, setLoading] = useState(true)
-  const [procesando, setProcesando] = useState(false)
-
-  // ── Modal ────────────────────────────────────────────────────
-  const [modal, setModal] = useState<ModalTipo>(null)
-  const [monto, setMonto] = useState("")
-  const [descripcion, setDescripcion] = useState("")
-  const [socioSel, setSocioSel] = useState("")
-  const [errorModal, setErrorModal] = useState<string | undefined>(undefined)
-  const { toast } = useNotif()
-
   useEffect(() => {
-    if (!cajaActiva) {
-      navigate("/cajas", { replace: true })
-      return
-    }
-    cargarDatos()
-  }, [cajaActiva])
+    if (!cajaActiva) navigate("/cajas", { replace: true })
+  }, [cajaActiva, navigate])
 
-  async function cargarDatos() {
-    setLoading(true)
-    try {
-      const esSocio = cajaActiva?.rol === "socio"
+  if (!cajaActiva) return null
+  const puedeOperar = tieneRol(cajaActiva.rol, "tesorero")
+  return puedeOperar ? (
+    <AhorrosCaja cajaId={cajaActiva.id} />
+  ) : (
+    <MisAhorros cajaId={cajaActiva.id} userId={user?.id} email={user?.email} />
+  )
+}
 
-      if (esSocio) {
-        // El socio solo ve sus propias cuentas
-        const resSocios = await sociosService.getSocios(cajaActiva!.id)
+// ── Tesorero y coordinador ────────────────────────────────────
 
-        // Busca el socio asociado al user actual.
-        // Si el socio fue invitado y aún no tiene user_id, usamos el email.
-        const miSocio = resSocios.socios.find(
-          (s) =>
-            s.user_id === user?.id ||
-            (user?.email && s.email?.toLowerCase() === user.email.toLowerCase()),
-        )
+function AhorrosCaja({ cajaId }: { cajaId: string }) {
+  const { toast } = useNotif()
+  const cargar = useCallback(async () => {
+    const [cuentas, socios] = await Promise.all([
+      ahorrosService.getCuentas(cajaId),
+      sociosService.getSocios(cajaId),
+    ])
+    return { cuentas: cuentas.cuentas, socios: socios.socios.filter((s) => s.activo) }
+  }, [cajaId])
+  const { datos, cargando, error, recargar } = useDatos(cargar)
+  const [seleccionada, setSeleccionada] = useState<string | null>(null)
+  const [nueva, setNueva] = useState(false)
 
-        if (miSocio) {
-          const resCuentas = await ahorrosService.getCuentasSocio(cajaActiva!.id, miSocio.id)
-          setCuentas(resCuentas.cuentas)
-        } else {
-          setCuentas([])
-        }
-      } else {
-        // Tesorero y coordinador ven todas las cuentas
-        const [resCuentas, resSocios] = await Promise.all([
-          ahorrosService.getCuentas(cajaActiva!.id),
-          sociosService.getSocios(cajaActiva!.id),
-        ])
-        setCuentas(resCuentas.cuentas)
-        setSocios(resSocios.socios.filter((s) => s.activo))
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function verDetalle(cuenta: CuentaAhorro) {
-    setCuentaActiva(cuenta)
-    setLoading(true)
-    try {
-      const res = await ahorrosService.getCuenta(cajaActiva!.id, cuenta.id)
-      setCuentaActiva(res.cuenta)
-      setTransacciones(res.transacciones)
-      setVista("detalle")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function abrirModal(tipo: ModalTipo) {
-    setMonto("")
-    setDescripcion("")
-    setSocioSel("")
-    setErrorModal(undefined)
-    setModal(tipo)
-  }
-
-  function cerrarModal() {
-    setModal(null)
-    setMonto("")
-    setDescripcion("")
-    setSocioSel("")
-    setErrorModal(undefined)
-  }
-
-  async function handleNuevaCuenta() {
-    if (!socioSel) {
-      setErrorModal("Selecciona un socio")
-      return
-    }
-    setProcesando(true)
-    setErrorModal(undefined)
-    try {
-      await ahorrosService.abrirCuenta(cajaActiva!.id, socioSel)
-      await cargarDatos()
-      cerrarModal()
-    } catch (err) {
-      setErrorModal(err instanceof Error ? err.message : "Error al abrir cuenta")
-    } finally {
-      setProcesando(false)
-    }
-  }
-
-  async function handleOperacion(tipo: "deposito" | "retiro") {
-    const montoNum = parseFloat(monto)
-    if (!monto || isNaN(montoNum) || montoNum <= 0) {
-      setErrorModal("Ingresa un monto válido mayor a 0")
-      return
-    }
-    setProcesando(true)
-    try {
-      const fn = tipo === "deposito" ? ahorrosService.depositar : ahorrosService.retirar
-      await fn(cajaActiva!.id, cuentaActiva!.id, montoNum, descripcion)
-      const res = await ahorrosService.getCuenta(cajaActiva!.id, cuentaActiva!.id)
-      setCuentaActiva(res.cuenta)
-      setTransacciones(res.transacciones)
-      await cargarDatos()
-      cerrarModal()
-      toast("exito", tipo === "deposito" ? "Depósito registrado" : "Retiro registrado")
-    } catch (err) {
-      setErrorModal(err instanceof Error ? err.message : "Error al procesar operación")
-    } finally {
-      setProcesando(false)
-    }
-  }
-
-  // ── VISTA DETALLE ────────────────────────────────────────────
-  if (vista === "detalle" && cuentaActiva) {
-    const socio = cuentaActiva.socios
+  if (seleccionada) {
     return (
-      <AppLayout titulo="Ahorros">
-        <div className="flex flex-col gap-4 max-w-2xl">
-          {/* Botón volver */}
-          <button
-            className="flex items-center gap-1 text-sm w-fit"
-            style={{ color: "var(--text-secondary)" }}
-            onClick={() => setVista("lista")}
-          >
-            <ChevronLeft size={14} /> Volver a cuentas
-          </button>
-
-          {/* Card de la cuenta */}
-          <div className="rounded-xl p-5" style={{ background: "var(--color-primary_y)" }}>
-            <p className="text-xs text-white opacity-80 mb-1">{cuentaActiva.numero_cuenta}</p>
-            <p className="text-2xl font-semibold text-white mb-1">
-              {formatMonto(cuentaActiva.saldo)}
-            </p>
-            <p className="text-sm text-white opacity-80">
-              {socio ? `${socio.nombre} ${socio.apellido}` : ""}
-              {" · "}
-              {cuentaActiva.estado}
-            </p>
-          </div>
-
-          {/* Acciones */}
-          {cajaActiva?.rol !== "socio" && cuentaActiva.estado === "activa" && (
-            <div className="flex gap-3">
-              <Button
-                label="Depósito"
-                variant="secondary"
-                icon={ArrowDownCircle}
-                onClick={() => abrirModal("deposito")}
-              />
-              <Button
-                label="Retiro"
-                variant="destructive"
-                icon={ArrowUpCircle}
-                onClick={() => abrirModal("retiro")}
-              />
-            </div>
-          )}
-
-          {/* Historial */}
-          <div
-            className="rounded-xl overflow-hidden"
-            style={{
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-base)",
-            }}
-          >
-            <div className="px-5 py-3" style={{ borderBottom: "1px solid var(--border-base)" }}>
-              <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                Historial de movimientos
-              </p>
-            </div>
-
-            {transacciones.length === 0 && (
-              <div className="px-5 py-10 text-center">
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                  Aún no hay movimientos en esta cuenta
-                </p>
-              </div>
-            )}
-
-            {transacciones.map((tx) => {
-              const esDeposito = tx.tipo === "deposito"
-              return (
-                <div
-                  key={tx.id}
-                  className="flex items-center gap-4 px-5 py-3"
-                  style={{ borderBottom: "1px solid var(--border-base)" }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{
-                      background: esDeposito ? "rgba(106,178,62,0.12)" : "rgba(217,97,70,0.12)",
-                    }}
-                  >
-                    {esDeposito ? (
-                      <ArrowDownCircle size={15} style={{ color: "var(--color-secondary_g)" }} />
-                    ) : (
-                      <ArrowUpCircle size={15} style={{ color: "var(--color-danger_r)" }} />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-                      {esDeposito ? "Depósito" : "Retiro"}
-                      {tx.descripcion && ` · ${tx.descripcion}`}
-                    </p>
-                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                      {formatFecha(tx.created_at)} · Saldo: {formatMonto(tx.saldo_posterior)}
-                    </p>
-                  </div>
-                  <span
-                    className="text-sm font-medium"
-                    style={{
-                      color: esDeposito ? "var(--color-secondary_g)" : "var(--color-danger_r)",
-                    }}
-                  >
-                    {esDeposito ? "+" : "-"}
-                    {formatMonto(tx.monto)}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Modal depósito/retiro */}
-        {(modal === "deposito" || modal === "retiro") && (
-          <ModalOperacion
-            tipo={modal}
-            monto={monto}
-            descripcion={descripcion}
-            error={errorModal}
-            procesando={procesando}
-            onMonto={setMonto}
-            onDescripcion={setDescripcion}
-            onConfirmar={() => handleOperacion(modal)}
-            onCerrar={cerrarModal}
-          />
-        )}
-      </AppLayout>
+      <PageShell titulo="Ahorros" ancho="formulario">
+        <DetalleCuenta
+          cajaId={cajaId}
+          cuentaId={seleccionada}
+          puedeOperar
+          textoVolver="Volver a cuentas"
+          onVolver={() => setSeleccionada(null)}
+          onCambio={recargar}
+        />
+      </PageShell>
     )
   }
 
-  // ── VISTA LISTA ──────────────────────────────────────────────
+  const cuentas = datos?.cuentas ?? []
+  const total = cuentas.reduce((s, c) => s + Number(c.saldo), 0)
+
   return (
-    <AppLayout titulo="Ahorros">
-      <div className="flex flex-col gap-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            {cuentas.length} cuenta{cuentas.length !== 1 ? "s" : ""} registradas
-          </p>
-          {cajaActiva?.rol !== "socio" && (
-            <Button
-              label="Nueva cuenta"
-              variant="primary"
-              icon={Plus}
-              onClick={() => abrirModal("nueva")}
+    <PageShell titulo="Ahorros" ancho="formulario">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-secondary">
+          {cargando
+            ? "Cargando…"
+            : `${cuentas.length} ${cuentas.length === 1 ? "cuenta" : "cuentas"} · ${moneda(total)} ahorrados`}
+        </p>
+        <Button
+          label="Abrir cuenta"
+          icon={Plus}
+          disabled={cargando || !!error}
+          onClick={() => setNueva(true)}
+        />
+      </div>
+
+      {error ? (
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-base bg-surface p-6">
+          <p className="text-sm text-secondary">No se pudieron cargar las cuentas: {error}</p>
+          <Button label="Reintentar" variant="secondary" onClick={recargar} />
+        </div>
+      ) : (
+        <DataTable<CuentaAhorro>
+          descripcion="Cuentas de ahorro de la caja con su titular, estado y saldo"
+          cargando={cargando}
+          textoCargando="Cargando cuentas…"
+          filas={cuentas}
+          claveFila={(c) => c.id}
+          vacio={
+            <EmptyState
+              icono={PiggyBank}
+              titulo="Aún no hay cuentas de ahorro"
+              descripcion="Abre la primera cuenta para un socio y registra su depósito inicial."
             />
-          )}
-        </div>
-
-        {/* Lista */}
-        <div
-          className="rounded-xl overflow-hidden"
-          style={{
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-base)",
-          }}
-        >
-          {loading && (
-            <div className="px-5 py-10 text-center">
-              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                Cargando cuentas...
-              </p>
-            </div>
-          )}
-
-          {!loading && cuentas.length === 0 && (
-            <div className="px-5 py-10 text-center">
-              <PiggyBank
-                size={32}
-                className="mx-auto mb-2"
-                style={{ color: "var(--text-muted)" }}
-              />
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                Aún no hay cuentas de ahorro registradas
-              </p>
-            </div>
-          )}
-
-          {!loading &&
-            cuentas.map((cuenta) => {
-              const esSocio = cajaActiva?.rol === "socio"
-              const socio = cuenta.socios
-              const avatarText = esSocio
-                ? cuenta.numero_cuenta.slice(0, 2)
-                : socio
-                  ? `${socio.nombre[0]}${socio.apellido[0]}`
-                  : "?"
-              return (
-                <button
-                  key={cuenta.id}
-                  onClick={() => verDetalle(cuenta)}
-                  className="w-full flex items-center gap-4 px-5 py-3 text-left"
-                  style={{ borderBottom: "1px solid var(--border-base)" }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-medium"
-                    style={{ background: "rgba(221,154,76,0.12)", color: "var(--color-primary_y)" }}
-                  >
-                    {avatarText}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                      {esSocio
-                        ? cuenta.numero_cuenta
-                        : socio
-                          ? `${socio.nombre} ${socio.apellido}`
-                          : "Sin socio"}
-                    </p>
-                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                      {esSocio ? cuenta.estado : `${cuenta.numero_cuenta} · ${cuenta.estado}`}
-                    </p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                      {formatMonto(cuenta.saldo)}
-                    </p>
-                  </div>
-                  <ChevronRight size={14} style={{ color: "var(--text-muted)" }} />
-                </button>
-              )
-            })}
-        </div>
-      </div>
-
-      {/* Modal nueva cuenta */}
-      {modal === "nueva" && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50"
-          style={{ background: "rgba(0,0,0,0.4)" }}
-        >
-          <div
-            className="w-full max-w-sm rounded-xl p-5 flex flex-col gap-4"
-            style={{ background: "var(--bg-surface)" }}
-          >
-            <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>
-              Nueva cuenta de ahorro
-            </h3>
-            <div>
-              <label className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                Socio
-              </label>
-              <select
-                value={socioSel}
-                onChange={(e) => setSocioSel(e.target.value)}
-                className="w-full mt-1 px-3 py-2 text-sm rounded-lg outline-none"
-                style={{
-                  background: "var(--bg-base)",
-                  border: "1px solid var(--border-base)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <option value="">Selecciona un socio...</option>
-                {socios.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre} {s.apellido} · {s.cedula}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {errorModal && (
-              <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>
-                {errorModal}
-              </p>
-            )}
-            <div className="flex gap-3">
-              <Button
-                label="Abrir cuenta"
-                variant="primary"
-                loading={procesando}
-                onClick={handleNuevaCuenta}
-              />
-              <Button label="Cancelar" variant="secondary" onClick={cerrarModal} />
-            </div>
-          </div>
-        </div>
+          }
+          columnas={columnas({ titular: true, onAbrir: setSeleccionada })}
+        />
       )}
-    </AppLayout>
+
+      {nueva && datos && (
+        <NuevaCuentaModal
+          cajaId={cajaId}
+          socios={datos.socios}
+          onCerrar={() => setNueva(false)}
+          onCreada={async (numero) => {
+            setNueva(false)
+            await recargar()
+            toast("exito", `Cuenta ${numero} abierta`)
+          }}
+        />
+      )}
+    </PageShell>
   )
 }
 
-// ── Componente modal de depósito/retiro ───────────────────────
-interface ModalProps {
-  tipo: "deposito" | "retiro"
-  monto: string
-  descripcion: string
-  error?: string
-  procesando: boolean
-  onMonto: (v: string) => void
-  onDescripcion: (v: string) => void
-  onConfirmar: () => void
-  onCerrar: () => void
-}
+// ── Socio ─────────────────────────────────────────────────────
 
-function ModalOperacion({
-  tipo,
-  monto,
-  descripcion,
-  error,
-  procesando,
-  onMonto,
-  onDescripcion,
-  onConfirmar,
-  onCerrar,
-}: ModalProps) {
-  const esDeposito = tipo === "deposito"
-  return (
-    <div
-      className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ background: "rgba(0,0,0,0.4)" }}
-    >
-      <div
-        className="w-full max-w-sm rounded-xl p-5 flex flex-col gap-4"
-        style={{ background: "var(--bg-surface)" }}
-      >
-        <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>
-          {esDeposito ? "Registrar depósito" : "Registrar retiro"}
-        </h3>
-        <Field
-          label="Monto ($)"
-          type="number"
-          value={monto}
-          onChange={(e) => onMonto(e.target.value)}
-          placeholder="0.00"
-          required
-          icon={esDeposito ? ArrowDownCircle : ArrowUpCircle}
+function MisAhorros({
+  cajaId,
+  userId,
+  email,
+}: {
+  cajaId: string
+  userId?: string
+  email?: string
+}) {
+  // La ficha del socio se busca por usuario y, si aún no está vinculada, por correo
+  const cargar = useCallback(async () => {
+    const { socios } = await sociosService.getSocios(cajaId)
+    const correo = email?.toLowerCase()
+    const miSocio = socios.find(
+      (s) => (userId && s.user_id === userId) || (correo && s.email?.toLowerCase() === correo),
+    )
+    if (!miSocio) return { vinculado: false as const }
+    const { cuentas } = await ahorrosService.getCuentasSocio(cajaId, miSocio.id)
+    return { vinculado: true as const, cuentas }
+  }, [cajaId, userId, email])
+  const { datos, cargando, error, recargar } = useDatos(cargar)
+  const [seleccionada, setSeleccionada] = useState<string | null>(null)
+
+  if (seleccionada) {
+    return (
+      <PageShell titulo="Mis ahorros" ancho="formulario">
+        <DetalleCuenta
+          cajaId={cajaId}
+          cuentaId={seleccionada}
+          puedeOperar={false}
+          textoVolver="Volver a mis cuentas"
+          onVolver={() => setSeleccionada(null)}
+          onCambio={recargar}
         />
-        <Field
-          label="Descripción (opcional)"
-          type="text"
-          value={descripcion}
-          onChange={(e) => onDescripcion(e.target.value)}
-          placeholder="Ej: Aporte mensual"
-        />
-        {error && (
-          <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>
-            {error}
-          </p>
-        )}
-        <div className="flex gap-3">
-          <Button
-            label={esDeposito ? "Depositar" : "Retirar"}
-            variant={esDeposito ? "secondary" : "destructive"}
-            loading={procesando}
-            onClick={onConfirmar}
-          />
-          <Button label="Cancelar" variant="secondary" onClick={onCerrar} />
+      </PageShell>
+    )
+  }
+
+  if (error) {
+    return (
+      <PageShell titulo="Mis ahorros" ancho="formulario">
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-base bg-surface p-6">
+          <p className="text-sm text-secondary">No se pudieron cargar tus cuentas: {error}</p>
+          <Button label="Reintentar" variant="secondary" onClick={recargar} />
         </div>
-      </div>
-    </div>
+      </PageShell>
+    )
+  }
+
+  if (datos && !datos.vinculado) {
+    return (
+      <PageShell titulo="Mis ahorros" ancho="formulario">
+        <div className="rounded-xl border border-base bg-surface">
+          <EmptyState
+            icono={UserRoundX}
+            titulo="Tu usuario aún no está vinculado a una ficha de socio"
+            descripcion="Pide al tesorero que registre tu ficha con el mismo correo con el que entras a DOMUS. Después verás aquí tus cuentas."
+          />
+        </div>
+      </PageShell>
+    )
+  }
+
+  const cuentas = datos?.cuentas ?? []
+  const total = cuentas.reduce((s, c) => s + Number(c.saldo), 0)
+
+  return (
+    <PageShell titulo="Mis ahorros" ancho="formulario">
+      {cuentas.length > 0 && (
+        <StatCard
+          etiqueta="Total ahorrado"
+          valor={moneda(total)}
+          detalle={`En ${cuentas.length} ${cuentas.length === 1 ? "cuenta" : "cuentas"}`}
+          icono={PiggyBank}
+          destacada
+        />
+      )}
+      <DataTable<CuentaAhorro>
+        descripcion="Tus cuentas de ahorro en esta caja"
+        cargando={cargando}
+        textoCargando="Cargando tus cuentas…"
+        filas={cuentas}
+        claveFila={(c) => c.id}
+        vacio={
+          <EmptyState
+            icono={PiggyBank}
+            titulo="Aún no tienes cuentas de ahorro"
+            descripcion="El tesorero de la caja abre las cuentas. Cuando tengas una, la verás aquí."
+          />
+        }
+        columnas={columnas({ titular: false, onAbrir: setSeleccionada })}
+      />
+    </PageShell>
   )
+}
+
+// ── Columnas compartidas ──────────────────────────────────────
+
+function columnas({
+  titular,
+  onAbrir,
+}: {
+  titular: boolean
+  onAbrir: (id: string) => void
+}): Columna<CuentaAhorro>[] {
+  const enlace =
+    "w-fit text-left font-medium text-accion-texto hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+  return [
+    {
+      clave: "cuenta",
+      encabezado: titular ? "Socio" : "Cuenta",
+      celda: (c) =>
+        titular ? (
+          <div className="flex flex-col">
+            <button type="button" onClick={() => onAbrir(c.id)} className={enlace}>
+              {nombreSocio(c.socios)}
+            </button>
+            <span className="text-xs text-secondary">Cuenta {c.numero_cuenta}</span>
+          </div>
+        ) : (
+          <button type="button" onClick={() => onAbrir(c.id)} className={enlace}>
+            Cuenta {c.numero_cuenta}
+          </button>
+        ),
+    },
+    {
+      clave: "estado",
+      encabezado: "Estado",
+      celda: (c) => {
+        const e = estadoCuenta(c.estado)
+        return <Badge tono={e.tono} label={e.etiqueta} />
+      },
+    },
+    {
+      clave: "saldo",
+      encabezado: "Saldo",
+      alinear: "derecha",
+      celda: (c) => <span className="font-medium tabular-nums">{moneda(Number(c.saldo))}</span>,
+    },
+  ]
 }

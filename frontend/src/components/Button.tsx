@@ -21,6 +21,11 @@ interface ButtonProps {
   /** Ocupa todo el ancho del contenedor */
   fullWidth?: boolean
   icon?: LucideIcon
+  /**
+   * Nombre completo para el lector de pantalla cuando el texto visible se repite, como
+   * "Registrar pago" en cada fila de una tabla. Debe empezar con el texto visible.
+   */
+  ariaLabel?: string
   onClick?: () => void
 }
 
@@ -54,6 +59,7 @@ export function Button({
   loading = false,
   fullWidth = false,
   icon: Icon,
+  ariaLabel,
   onClick,
 }: ButtonProps) {
   const clases = [BASE, VARIANTES[variant], fullWidth ? "w-full" : ""].join(" ")
@@ -65,6 +71,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
+      aria-label={ariaLabel}
     >
       {loading ? (
         <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />

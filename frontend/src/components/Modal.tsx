@@ -33,7 +33,10 @@ interface ModalProps {
   titulo: string
   /** Una línea bajo el título que explica para qué es el modal */
   descripcion?: string
-  /** Botones del pie, en fila a la derecha */
+  /**
+   * Botones del pie, en fila a la derecha. La acción principal va al final (la más a la
+   * derecha) y Cancelar o Cerrar antes. En `Form`, que alinea a la izquierda, es al revés
+   */
   acciones?: ReactNode
   /** normal: 448 px (formularios, confirmaciones). amplio: 768 px (tablas) */
   ancho?: AnchoModal
@@ -147,7 +150,9 @@ export function Modal({
     >
       {abierto && (
         <div className="flex max-h-[calc(100dvh-2rem)] flex-col">
-          <header className="flex items-start justify-between gap-4 p-6 pb-4">
+          <header
+            className={`flex items-start justify-between gap-4 p-6 ${children ? "pb-4" : ""}`}
+          >
             <div className="flex flex-col gap-1">
               <h2 id={tituloId} className="text-base font-semibold text-primary">
                 {titulo}
@@ -168,9 +173,12 @@ export function Modal({
             </button>
           </header>
 
-          <div ref={cuerpoRef} className="flex-1 overflow-y-auto px-6 pb-6">
-            {children}
-          </div>
+          {/* Sin contenido (una confirmación), el cuerpo no se pinta para no dejar un hueco */}
+          {children && (
+            <div ref={cuerpoRef} className="flex-1 overflow-y-auto px-6 pb-6">
+              {children}
+            </div>
+          )}
 
           {acciones && (
             <footer className="flex flex-wrap justify-end gap-3 border-t border-base px-6 py-4">

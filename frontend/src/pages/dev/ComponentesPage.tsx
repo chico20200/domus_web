@@ -11,6 +11,8 @@ import {
   Trash2,
   TriangleAlert,
   Users,
+  Wallet,
+  CreditCard,
 } from "lucide-react"
 import { PageShell } from "../../components/layout/PageShell"
 import { Button } from "../../components/Button"
@@ -22,7 +24,11 @@ import { Modal } from "../../components/Modal"
 import { LoadingState } from "../../components/LoadingState"
 import { EmptyState } from "../../components/EmptyState"
 import { Badge } from "../../components/Badge"
+import { DataTable, type Columna } from "../../components/DataTable"
+import { StatCard } from "../../components/StatCard"
+import { Panel } from "../../components/Panel"
 import { useTheme } from "../../context/ThemeContext"
+import { useNotif } from "../../context/NotifContext"
 import { fecha, fechaHora, moneda, porcentaje } from "../../lib/format"
 
 /**
@@ -68,8 +74,56 @@ const SOCIOS = [
   { value: "3", label: "Rosa Quishpe · 0601234567", disabled: true },
 ]
 
+const MESES_MUESTRA = [
+  { mes: "2026-09", capital: 4200, interes: 63.4, tasa: 1.5095 },
+  { mes: "2026-10", capital: 4810.5, interes: 71.25, tasa: 1.4811 },
+  { mes: "2026-11", capital: 5120, interes: 0, tasa: 0 },
+]
+
+const SOCIOS_MUESTRA = ["Ana Pérez", "Luis Andrade", "Rosa Chicaiza"].map((nombre, i) => ({
+  id: i,
+  nombre,
+  meses: MESES_MUESTRA.map((m) => m.interes / (i + 2)),
+}))
+
+const COLUMNAS_MESES: Columna<(typeof MESES_MUESTRA)[number]>[] = [
+  { clave: "mes", encabezado: "Mes", celda: (m) => m.mes, pie: "Total" },
+  {
+    clave: "capital",
+    encabezado: "Capital de la caja",
+    alinear: "derecha",
+    celda: (m) => moneda(m.capital),
+  },
+  {
+    clave: "interes",
+    encabezado: "Interés recaudado",
+    alinear: "derecha",
+    celda: (m) => moneda(m.interes),
+    pie: moneda(134.65),
+  },
+  {
+    clave: "tasa",
+    encabezado: "Rendimiento",
+    alinear: "derecha",
+    celda: (m) => porcentaje(m.tasa, 4),
+    pie: porcentaje(2.9906, 4),
+  },
+]
+
+const COLUMNAS_SOCIOS: Columna<(typeof SOCIOS_MUESTRA)[number]>[] = [
+  { clave: "socio", encabezado: "Socio", celda: (s) => s.nombre, fija: true },
+  ...Array.from({ length: 12 }, (_, i) => ({
+    clave: `m${i}`,
+    encabezado: `Mes ${i + 1}`,
+    alinear: "derecha" as const,
+    celda: (s: (typeof SOCIOS_MUESTRA)[number]) => moneda(s.meses[i % 3]),
+  })),
+]
+
 export default function ComponentesPage() {
   const { isDark, toggleTheme } = useTheme()
+  const { confirm, toast } = useNotif()
+  const [respuesta, setRespuesta] = useState("—")
 
   // Campos sueltos
   const [texto, setTexto] = useState("")
@@ -100,7 +154,7 @@ export default function ComponentesPage() {
   }
 
   // Modal
-  const [modal, setModal] = useState<"" | "normal" | "amplio" | "confirmar">("")
+  const [modal, setModal] = useState<"" | "normal" | "amplio">("")
   const [deposito, setDeposito] = useState("")
 
   return (
@@ -288,9 +342,33 @@ export default function ComponentesPage() {
           <Button
             variant="destructive"
             label="Confirmación"
-            onClick={() => setModal("confirmar")}
+            onClick={async () => {
+              const ok = await confirm({
+                titulo: "¿Eliminar a Ana Pérez?",
+                mensaje:
+                  "Se borrarán sus cuentas sin movimientos. Esta acción no se puede deshacer.",
+                labelOk: "Eliminar",
+                peligroso: true,
+              })
+              setRespuesta(ok ? "Confirmó" : "Canceló")
+            }}
+          />
+          <Button
+            variant="secondary"
+            label="Confirmación no destructiva"
+            onClick={async () => {
+              const ok = await confirm({
+                titulo: "¿Prepagar la última cuota?",
+                mensaje: "Se abonará el capital y se condonará el interés de esa cuota.",
+                labelOk: "Prepagar",
+              })
+              setRespuesta(ok ? "Confirmó" : "Canceló")
+            }}
           />
         </div>
+        <p className="text-sm text-secondary" data-respuesta>
+          Última respuesta de confirm(): {respuesta}
+        </p>
 
         <Modal
           abierto={modal === "normal"}
@@ -331,19 +409,36 @@ export default function ComponentesPage() {
             ventana.
           </p>
         </Modal>
+      </Seccion>
 
-        <Modal
-          abierto={modal === "confirmar"}
-          onCerrar={() => setModal("")}
-          titulo="¿Eliminar a Ana Pérez?"
-          descripcion="Se borrarán sus cuentas sin movimientos. Esta acción no se puede deshacer."
-          acciones={
-            <>
-              <Button variant="ghost" label="Cancelar" onClick={() => setModal("")} />
-              <Button variant="destructive" label="Eliminar" onClick={() => setModal("")} />
-            </>
-          }
-        />
+      <Seccion
+        titulo="Avisos"
+        nota="toast(tipo, mensaje) de useNotif. Abajo a la derecha, se cierran solos a los 4 s."
+      >
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant="secondary"
+            label="Éxito"
+            onClick={() =>
+              toast("exito", "Depósito de $25,00 registrado en la cuenta de Ana Torres.")
+            }
+          />
+          <Button
+            variant="secondary"
+            label="Error"
+            onClick={() => toast("error", "No se pudo guardar el pago: sin conexión.")}
+          />
+          <Button
+            variant="secondary"
+            label="Información"
+            onClick={() => toast("info", "Código copiado al portapapeles.")}
+          />
+          <Button
+            variant="secondary"
+            label="Advertencia"
+            onClick={() => toast("advertencia", "El ciclo termina en 5 días.")}
+          />
+        </div>
       </Seccion>
 
       <Seccion titulo="LoadingState y EmptyState">
@@ -383,6 +478,88 @@ export default function ComponentesPage() {
           <Badge tono="alerta" label="Sobre surface-2" />
           <Badge tono="destructivo" label="Sobre surface-2" />
         </div>
+      </Seccion>
+
+      <Seccion
+        titulo="StatCard y Panel"
+        nota="La división de Card: métricas por un lado y contenedor por otro."
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            etiqueta="Saldo total en ahorros"
+            valor={moneda(15320.75)}
+            icono={Wallet}
+            destacada
+          />
+          <StatCard
+            etiqueta="Socios activos"
+            valor={12}
+            detalle="15 miembros del sistema"
+            icono={Users}
+          />
+          <StatCard
+            etiqueta="Créditos activos"
+            valor={4}
+            detalle={`${moneda(3200)} pendiente`}
+            icono={CreditCard}
+          />
+          <StatCard etiqueta="Por cobrar" valor={moneda(3200)} detalle="en créditos activos" />
+        </div>
+        <Panel
+          titulo="Ciclo de la caja"
+          descripcion="Periodo entre cortes de cuentas."
+          acciones={<Button label="Editar" variant="secondary" />}
+        >
+          <p className="text-sm text-secondary">Contenido del panel con relleno de 24 px.</p>
+        </Panel>
+        <Panel titulo="Movimientos recientes" sinRelleno>
+          <ul>
+            {["Depósito de Ana Pérez", "Retiro de Luis Andrade", "Pago de Rosa Chicaiza"].map(
+              (t) => (
+                <li
+                  key={t}
+                  className="border-b border-base px-6 py-3 text-sm text-primary last:border-b-0"
+                >
+                  {t}
+                </li>
+              ),
+            )}
+          </ul>
+        </Panel>
+      </Seccion>
+
+      <Seccion
+        titulo="DataTable"
+        nota="Columnas declaradas, números a la derecha, pie de totales, fila de detalle y columna fija."
+      >
+        <DataTable
+          descripcion="Interés recaudado por mes"
+          filas={MESES_MUESTRA}
+          claveFila={(m) => m.mes}
+          columnas={COLUMNAS_MESES}
+          detalle={(m) => (m.interes === 0 ? "Sin pagos registrados este mes" : null)}
+        />
+        <DataTable
+          descripcion="Interés por socio y por mes"
+          filas={SOCIOS_MUESTRA}
+          claveFila={(s) => s.id}
+          columnas={COLUMNAS_SOCIOS}
+        />
+        <DataTable
+          descripcion="Tabla cargando"
+          filas={[]}
+          claveFila={() => 0}
+          columnas={COLUMNAS_MESES}
+          cargando
+          textoCargando="Cargando distribución…"
+        />
+        <DataTable
+          descripcion="Tabla vacía"
+          filas={[]}
+          claveFila={() => 0}
+          columnas={COLUMNAS_MESES}
+          vacio={<EmptyState icono={Users} titulo="Aún no hay movimientos en este ciclo" />}
+        />
       </Seccion>
 
       <Seccion titulo="Formato" nota="src/lib/format.ts">

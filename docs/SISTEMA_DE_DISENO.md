@@ -29,9 +29,9 @@ Los valores y su medición de contraste están en `frontend/src/index.css`. Aqu�
 | Estado de alerta: por vencer, pendiente | `text-estado-alerta`, `bg-estado-alerta` | |
 | Error, mensaje de validación | `text-destructivo` | |
 
-**No poner texto de color sobre un fondo teñido de ese color** (`bg-estado-ok/10` con `text-estado-ok`, o los `rgba(…, 0.12)` de hoy). Con esta paleta el texto baja de 4,5:1, sobre todo encima de `bg-surface-2`. Para marcar un estado: `Badge` (contorno), o un bloque `bg-surface-2` con texto normal y un borde del color del estado.
+**No poner texto de color sobre un fondo teñido de ese color** (`bg-estado-ok/10` con `text-estado-ok`, o los `rgba(…, 0.12)` que había antes de la Etapa 3). Con esta paleta el texto baja de 4,5:1, sobre todo encima de `bg-surface-2`. Para marcar un estado: `Badge` (contorno), o un bloque `bg-surface-2` con texto normal y un borde del color del estado.
 
-Los nombres viejos (`primary_y`, `secondary_g`, `danger_r`, `blk_1`, `blk_2`, `secondary_wt`) siguen funcionando como alias hasta terminar la Etapa 3. No se usan en código nuevo.
+Los nombres viejos (`primary_y`, `secondary_g`, `danger_r`, `blk_1`, `blk_2`, `secondary_wt`) y las variables `--sidebar-*` se borraron al cerrar la Etapa 3: una clase con esos nombres ya no pinta nada. Tampoco se escriben colores con `style={{}}` ni `var(--…)` en los componentes; van las clases de esta tabla.
 
 ---
 
@@ -55,7 +55,7 @@ Fuera de la escala (no usar): `-0.5`, `-1.5`, `-2.5`, `-5`, `-7`, `-10` y cualqu
 **Excepciones:**
 
 - Anchos y altos (`w-*`, `h-*`, `size-*`) no están limitados a la escala; se usan los que el contenido necesite (íconos `size-4` y `size-5`, avatares, etc.).
-- El hueco para un ícono dentro de un campo es `pr-9` (12 px de margen + 16 px de ícono + 8 px de separación). Lo pone `FieldBase`; las páginas no lo escriben. Los buscadores de Socios y Pagos usan `pl-9` con el ícono a la izquierda hasta que se migren.
+- El hueco para un ícono dentro de un campo es `pr-9` (12 px de margen + 16 px de ícono + 8 px de separación). Lo pone `FieldBase`; las páginas no lo escriben. Los buscadores de Socios y Pagos también usan `TextField` con el ícono a la derecha.
 - Bordes de 1 px (`border`) y anillos de foco (`ring-2`) no son espaciado.
 
 ---

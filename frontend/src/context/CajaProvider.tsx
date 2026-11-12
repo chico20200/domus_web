@@ -1,23 +1,9 @@
-// src/context/CajaContext.tsx
-import { createContext, useContext, useState } from "react"
-import { normalizarRol, type RolCaja } from "../lib/roles"
+// src/context/CajaProvider.tsx
+import { useState, type ReactNode } from "react"
+import { normalizarRol } from "../lib/roles"
+import { CajaContext, type Caja } from "./CajaContext"
 
-interface Caja {
-  id: string
-  nombre: string
-  descripcion: string
-  rol: RolCaja
-}
-
-interface CajaContextType {
-  cajaActiva: Caja | null
-  setCajaActiva: (caja: Caja) => void
-  salirDeCaja: () => void
-}
-
-const CajaContext = createContext<CajaContextType | null>(null)
-
-export function CajaProvider({ children }: { children: React.ReactNode }) {
+export function CajaProvider({ children }: { children: ReactNode }) {
   const [cajaActiva, setCajaActivaState] = useState<Caja | null>(() => {
     // Recupera la caja activa del localStorage si existe. Si el rol guardado no es
     // válido se descarta la caja y el usuario vuelve a elegirla.
@@ -47,10 +33,4 @@ export function CajaProvider({ children }: { children: React.ReactNode }) {
       {children}
     </CajaContext.Provider>
   )
-}
-
-export function useCaja() {
-  const context = useContext(CajaContext)
-  if (!context) throw new Error("useCaja debe usarse dentro de CajaProvider")
-  return context
 }
