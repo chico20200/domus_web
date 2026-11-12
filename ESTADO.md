@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones. 7 de 15 tareas hechas (T1–T7).
+- **Etapa actual:** Etapa 1, Fundaciones. 8 de 15 tareas hechas (T1–T8).
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `c515aaf`
+- **Último commit de referencia:** `29bb919`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | En curso: 7/15 |
+| 1 | Fundaciones | En curso: 8/15 |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -36,7 +36,7 @@ Leyenda: ⬜ pendiente · 🔄 en curso · ✅ hecha (con commit)
 | T5 | `src/lib/format.ts`: `moneda`, `fecha`, `fechaHora`, `porcentaje` | T1 | ✅ | `d6e79eb` |
 | T6 | `Button`: variantes `primary`, `secondary`, `ghost`, `destructive`; `type`, `fullWidth`; sin `onEnter` ni `m-1` | T2 | ✅ | `e702fa9` |
 | T7 | `FieldBase`: label asociado con `useId`, colores por token, sin la prop `variant` | T2 | ✅ | `c515aaf` |
-| T8 | `TextField` (incluye date y number); `Field` queda como alias | T7 | ⬜ | |
+| T8 | `TextField` (incluye date y number); `Field` queda como alias | T7 | ✅ | `29bb919` |
 | T9 | `SelectField` y `TextareaField` | T7 | ⬜ | |
 | T10 | `Form`: `preventDefault`, envío con Enter, error general | T6 | ⬜ | |
 | T11 | `PageShell`: anchos `formulario` (640 px) y `completo` (1200 px), siempre centrado | T2 | ⬜ | |
@@ -84,6 +84,10 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | Obligatorio se marca con `aria-required` y no con `required`, para que el navegador no muestre sus propios globos de validación cuando exista `Form` (T10). La validación la hace la aplicación | `frontend/src/components/FieldBase.tsx` |
 | 11 nov 2026 | Los campos tienen fondo `bg-surface` en los dos modos y se distinguen por el borde. Se quitaron sus márgenes propios (`mb-1`, `mt-1`): el espacio lo pone el contenedor | `frontend/src/components/FieldBase.tsx` |
 | 11 nov 2026 | `Field` se reescribió sobre `FieldBase` con la misma API (sin `variant` ni `status`, que nadie usaba; se agrega `disabled`), para no tocar las 29 llamadas | `frontend/src/components/Field.tsx` |
+| 11 nov 2026 | `TextField` acepta solo `text`, `email`, `password`, `tel`, `number`, `date` y `search`. Las 30 llamadas actuales ya usan esos valores | `frontend/src/components/TextField.tsx` |
+| 11 nov 2026 | Para cédula y teléfono se usará `type="text"` con `inputMode="numeric"` y `maxLength`, no `type="number"`: así sale el teclado numérico y no se pierden los ceros a la izquierda | `frontend/src/components/TextField.tsx` |
+| 11 nov 2026 | `color-scheme: light` en `:root` y `dark` en `.dark`, para que el calendario, las flechas de número y las barras de scroll nativas sigan el modo | `frontend/src/index.css` |
+| 11 nov 2026 | `Field.tsx` queda como una reexportación de `TextField`. Se borra cuando la Etapa 3 termine de migrar las páginas | `frontend/src/components/Field.tsx` |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -138,6 +142,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T8 hecha. `TextField` con `name`, `autoComplete`, `onBlur`, `maxLength`, `inputMode` y `min`/`max`/`step`; `Field` pasa a ser su alias. Se agregó `color-scheme` para los controles nativos. Fecha, número, error y deshabilitado revisados en claro y oscuro con el CSS compilado. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T7 hecha. `FieldBase` con etiqueta asociada por `useId`, ayuda y error enlazados con `aria-describedby`, `aria-invalid` y colores por token. `Field` se apoya en él y pierde `variant`. Se resuelve el hallazgo del borde de los campos con `--border-control`. Revisado en el navegador (registro, claro y oscuro) y en el DOM. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T6 hecha. `Button` con las cuatro variantes por prioridad sobre tokens, `type` y `fullWidth`, sin `onEnter` ni `m-1`. Se revisó en el navegador la pantalla de login en claro y oscuro. En las páginas solo se cambiaron 3 `danger`, el `onEnter` de Login y un `gap`. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T5 hecha. `src/lib/format.ts` con `moneda`, `fecha`, `fechaHora` y `porcentaje`. Al escribirlo apareció que las fechas sin hora se ven un día atrasadas en el frontend, y que el backend registra con fecha del día siguiente a partir de las 19:00; los dos quedan en Hallazgos. 18 casos probados. Build OK; lint con los mismos 11 errores previos.
