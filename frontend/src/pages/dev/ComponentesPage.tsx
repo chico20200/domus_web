@@ -11,6 +11,8 @@ import {
   Trash2,
   TriangleAlert,
   Users,
+  Wallet,
+  CreditCard,
 } from "lucide-react"
 import { PageShell } from "../../components/layout/PageShell"
 import { Button } from "../../components/Button"
@@ -23,6 +25,8 @@ import { LoadingState } from "../../components/LoadingState"
 import { EmptyState } from "../../components/EmptyState"
 import { Badge } from "../../components/Badge"
 import { DataTable, type Columna } from "../../components/DataTable"
+import { StatCard } from "../../components/StatCard"
+import { Panel } from "../../components/Panel"
 import { useTheme } from "../../context/ThemeContext"
 import { fecha, fechaHora, moneda, porcentaje } from "../../lib/format"
 
@@ -430,6 +434,54 @@ export default function ComponentesPage() {
           <Badge tono="alerta" label="Sobre surface-2" />
           <Badge tono="destructivo" label="Sobre surface-2" />
         </div>
+      </Seccion>
+
+      <Seccion
+        titulo="StatCard y Panel"
+        nota="La división de Card: métricas por un lado y contenedor por otro."
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            etiqueta="Saldo total en ahorros"
+            valor={moneda(15320.75)}
+            icono={Wallet}
+            destacada
+          />
+          <StatCard
+            etiqueta="Socios activos"
+            valor={12}
+            detalle="15 miembros del sistema"
+            icono={Users}
+          />
+          <StatCard
+            etiqueta="Créditos activos"
+            valor={4}
+            detalle={`${moneda(3200)} pendiente`}
+            icono={CreditCard}
+          />
+          <StatCard etiqueta="Por cobrar" valor={moneda(3200)} detalle="en créditos activos" />
+        </div>
+        <Panel
+          titulo="Ciclo de la caja"
+          descripcion="Periodo entre cortes de cuentas."
+          acciones={<Button label="Editar" variant="secondary" />}
+        >
+          <p className="text-sm text-secondary">Contenido del panel con relleno de 24 px.</p>
+        </Panel>
+        <Panel titulo="Movimientos recientes" sinRelleno>
+          <ul>
+            {["Depósito de Ana Pérez", "Retiro de Luis Andrade", "Pago de Rosa Chicaiza"].map(
+              (t) => (
+                <li
+                  key={t}
+                  className="border-b border-base px-6 py-3 text-sm text-primary last:border-b-0"
+                >
+                  {t}
+                </li>
+              ),
+            )}
+          </ul>
+        </Panel>
       </Seccion>
 
       <Seccion
