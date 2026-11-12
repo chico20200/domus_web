@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 2, Limpieza: código terminado (10 de 10). **Falta ejecutar la migración `001` en Supabase al desplegar**, y después fusionar en `main`. La Etapa 1 está terminada y fusionada en `main` (`9a22d71`).
-- **Rama de trabajo:** `etapa-2`, abierta desde `main` (`c954fb2`). La Etapa 1 se trabajó en `etapa-1` y se fusionó con `--no-ff`.
+- **Etapa actual:** Etapa 2, Limpieza: terminada (10 de 10) y fusionada en `main` (`e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones). Siguiente: Etapa 3. La Etapa 1 está terminada y fusionada en `main` (`9a22d71`).
+- **Rama de trabajo:** `main`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`; la Etapa 3 abrirá `etapa-3`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `1aebb13`
+- **Último commit de referencia:** `e34de4f`
 
 ---
 
@@ -15,7 +15,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
-| 2 | Limpieza | Código 10/10; migración de base pendiente de ejecutar |
+| 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración de base pendiente de ejecutar |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
@@ -88,6 +88,7 @@ Rama `etapa-2`. Alcance de §12: quitar donaciones, PayPal y chatbot; borrar el 
 | 11 nov 2026 | T9: ocho `update` sin `caja_id` (depósito, retiro, aprobar crédito, pago, prepago, abono, y socio e invitación en `/unirse`). Los `insert` ya lo llevaban. Los `update` sobre la tabla `cajas` filtran por su `id`, que es la caja misma | `backend/routes/` |
 | 12 nov 2026 | Esquema de Supabase revisado con acceso de solo lectura. `rol` es el enum `rol_caja` (`admin`, `tesorero`, `socio`), usado por `miembros_caja` (6 coordinadores, 2 socios) e `invitaciones_caja` (3 invitaciones de socio, todas usadas). Ninguna política, función, trigger ni vista menciona el valor | Este documento |
 | 12 nov 2026 | La migración es `alter type public.rol_caja rename value 'admin' to 'coordinador'`: cambia las filas existentes sin copiarlas y se deshace con la sentencia inversa. Queda en `backend/migraciones/001_admin_a_coordinador.sql`. La ejecuta el usuario en el editor SQL, en el mismo momento en que despliega este backend: el backend viejo inserta `'admin'` al crear una caja, y el nuevo no reconoce `'admin'` | `backend/migraciones/001_admin_a_coordinador.sql` |
+| 12 nov 2026 | **Despliegue de la Etapa 2: hay que desplegar backend y frontend, no solo el backend.** Con la base ya migrada, el frontend viejo deja en blanco "Mis cajas" y Configuración para los coordinadores (`rolConfig["coordinador"]` no existe), y el backend viejo no puede crear cajas. Orden más seguro: subir `main`, esperar a que terminen Render y Netlify, y entonces ejecutar el SQL. Mientras tanto, los coordinadores solo tienen permisos de socio, pero nada se rompe | Este documento |
 | 12 nov 2026 | Frontend: `src/lib/roles.ts` es el único lugar con el tipo `RolCaja`, la escalera, las etiquetas ("Coordinador") y `normalizarRol()`. `RolRoute` usa `tieneRol()`, que rechaza roles desconocidos (antes tenía el mismo fallo que el backend). La barra lateral muestra la etiqueta y no el valor en crudo. `CajaContext` traduce el `admin` que haya quedado en el localStorage y descarta la caja guardada si el rol no es válido | `frontend/src/lib/roles.ts` |
 | 12 nov 2026 | `POST /miembros/invitaciones` valida `rolInvitado`; antes un valor fuera del enum daba un 500 de la base | `backend/routes/miembros.routes.js` |
 | 12 nov 2026 | `fecha_pago` se manda desde el backend con `fechaLocal()`. Confirmado en la base: el valor por defecto es `CURRENT_DATE` y la base está en UTC | `backend/routes/pagos.routes.js` |
@@ -209,6 +210,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** `etapa-2` fusionada en `main` con `--no-ff` (`e34de4f`). Build OK en `main`. Sin subir a GitHub; la migración `001` sigue sin ejecutar.
 - **12 nov 2026:** T10 hecha en el código; SQL de la migración escrito y sin ejecutar. Esquema revisado en Supabase (solo lectura). Prueba de permisos con los nombres nuevos: 175 de 175, y `admin` ya no pasa en ninguna ruta. 11 casos de `lib/roles.ts`; uno destapó que `"toString" in NIVEL` era verdadero, y se pasó a `Object.hasOwn`. Build OK; lint del frontend con los 9 errores previos, backend en cero.
 - **11 nov 2026:** T10 en espera: la migración de rol necesita ver el esquema de Supabase (tipo de la columna `rol`, restricciones, políticas y funciones que mencionen `'admin'`). Inventario del código hecho: 6 archivos del frontend y 6 del backend.
 - **11 nov 2026:** T9 hecha. `caja_id` en las ocho escrituras que no lo tenían. Prueba de permisos repetida: 175 de 175. Lint del backend en cero.
