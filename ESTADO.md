@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones. 9 de 15 tareas hechas (T1–T9).
+- **Etapa actual:** Etapa 1, Fundaciones. 10 de 15 tareas hechas (T1–T10).
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `118967e`
+- **Último commit de referencia:** `30b5c23`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | En curso: 9/15 |
+| 1 | Fundaciones | En curso: 10/15 |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -38,7 +38,7 @@ Leyenda: ⬜ pendiente · 🔄 en curso · ✅ hecha (con commit)
 | T7 | `FieldBase`: label asociado con `useId`, colores por token, sin la prop `variant` | T2 | ✅ | `c515aaf` |
 | T8 | `TextField` (incluye date y number); `Field` queda como alias | T7 | ✅ | `29bb919` |
 | T9 | `SelectField` y `TextareaField` | T7 | ✅ | `118967e` |
-| T10 | `Form`: `preventDefault`, envío con Enter, error general | T6 | ⬜ | |
+| T10 | `Form`: `preventDefault`, envío con Enter, error general | T6 | ✅ | `30b5c23` |
 | T11 | `PageShell`: anchos `formulario` (640 px) y `completo` (1200 px), siempre centrado | T2 | ⬜ | |
 | T12 | `Modal`: Escape, clic afuera, foco atrapado, `aria-modal` | T2 | ⬜ | |
 | T13 | `LoadingState` y `EmptyState` | T2 | ⬜ | |
@@ -91,6 +91,10 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | `SelectField` recibe `options` como arreglo `{ value, label }` con valores de texto; la página convierte a número si lo necesita. `placeholder` crea una primera opción vacía, deshabilitada y atenuada. Una opción "Todos" de un filtro va en `options`, no como placeholder | `frontend/src/components/SelectField.tsx` |
 | 11 nov 2026 | `SelectField` reemplaza la flecha nativa por un chevron en el lugar del ícono de `FieldBase`, para que se vea igual en todos los navegadores | `frontend/src/components/SelectField.tsx` |
 | 11 nov 2026 | `TextareaField`: 3 líneas por defecto, solo se agranda hacia abajo, y con `maxLength` muestra un contador "n / máximo" (sin anunciarlo en cada tecla al lector de pantalla) | `frontend/src/components/TextareaField.tsx` |
+| 11 nov 2026 | `Form` fija el orden: campos, error general, acciones (prop `actions`, en fila con `gap-3`). Los campos van en columna con `gap-4` (16 px, la separación entre campos de §2 de `SISTEMA_DE_DISENO.md`) | `frontend/src/components/Form.tsx` |
+| 11 nov 2026 | `Form` usa `noValidate`, en línea con `aria-required` de T7: valida la aplicación, no el navegador | `frontend/src/components/Form.tsx` |
+| 11 nov 2026 | `Form` ignora un segundo envío mientras el primero no termina (si `onSubmit` devuelve una promesa). Evita depósitos o pagos duplicados por pulsar Enter dos veces | `frontend/src/components/Form.tsx` |
+| 11 nov 2026 | El error general se pinta dentro de un contenedor `role="alert"` que siempre está montado, para que el lector de pantalla lo anuncie al aparecer | `frontend/src/components/Form.tsx` |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -147,6 +151,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T10 hecha. `Form` con `preventDefault`, envío con Enter, protección contra doble envío y error general accesible. Probado en Chromium con pulsaciones reales de teclado sobre una página temporal (ya borrada): Enter envía, dos Enter dan un envío, no recarga, Cancelar no envía. Las páginas todavía no lo usan (Etapa 3). Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T9 hecha. `SelectField` (opciones, placeholder atenuado, chevron propio) y `TextareaField` (filas, contador). Revisados en claro y oscuro con el CSS compilado. No hay `<textarea>` en el código pese a lo que dice §3; queda en Hallazgos. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T8 hecha. `TextField` con `name`, `autoComplete`, `onBlur`, `maxLength`, `inputMode` y `min`/`max`/`step`; `Field` pasa a ser su alias. Se agregó `color-scheme` para los controles nativos. Fecha, número, error y deshabilitado revisados en claro y oscuro con el CSS compilado. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T7 hecha. `FieldBase` con etiqueta asociada por `useId`, ayuda y error enlazados con `aria-describedby`, `aria-invalid` y colores por token. `Field` se apoya en él y pierde `variant`. Se resuelve el hallazgo del borde de los campos con `--border-control`. Revisado en el navegador (registro, claro y oscuro) y en el DOM. Build OK; lint con los mismos 11 errores previos.
