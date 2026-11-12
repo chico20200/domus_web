@@ -157,6 +157,7 @@ router.put("/:creditoId/aprobar", requierePermiso("creditos.aprobar"), async (re
       updated_at: new Date().toISOString(),
     })
     .eq("id", creditoId)
+    .eq("caja_id", cajaId)
     .select()
     .single()
 

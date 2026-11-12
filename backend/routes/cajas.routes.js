@@ -279,6 +279,7 @@ router.post("/unirse", async (req, res) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", socioExistente.id)
+          .eq("caja_id", invitacion.caja_id)
 
         socioVinculado = true
       }
@@ -297,6 +298,7 @@ router.post("/unirse", async (req, res) => {
       activo: false,
     })
     .eq("id", invitacion.id)
+    .eq("caja_id", invitacion.caja_id)
 
   return res.json({
     message: `Te uniste a ${invitacion.cajas.nombre} correctamente`,

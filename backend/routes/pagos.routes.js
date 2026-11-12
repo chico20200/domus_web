@@ -153,6 +153,7 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
       updated_at: new Date().toISOString(),
     })
     .eq("id", creditoId)
+    .eq("caja_id", cajaId)
 
   return res.status(201).json({
     message: "Pago registrado correctamente",
@@ -296,6 +297,7 @@ router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, re
       updated_at: new Date().toISOString(),
     })
     .eq("id", creditoId)
+    .eq("caja_id", cajaId)
 
   return res.status(201).json({
     message: `Prepago de la cuota ${prepagable.numero_cuota} registrado`,
@@ -404,6 +406,7 @@ router.post("/abono", requierePermiso("movimientos.registrar"), async (req, res)
       updated_at: new Date().toISOString(),
     })
     .eq("id", creditoId)
+    .eq("caja_id", cajaId)
 
   // Cuánto queda pendiente de esa cuota tras el abono
   const restaCapital = +(faltaCapital - montoCapital).toFixed(2)

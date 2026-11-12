@@ -157,6 +157,7 @@ router.post("/:cuentaId/deposito", requierePermiso("movimientos.registrar"), asy
     .from("cuentas_ahorro")
     .update({ saldo: saldoPosterior, updated_at: new Date().toISOString() })
     .eq("id", cuentaId)
+    .eq("caja_id", cajaId)
 
   // Registra la transacción
   const { data: tx, error } = await supabaseAdmin
@@ -221,6 +222,7 @@ router.post("/:cuentaId/retiro", requierePermiso("movimientos.registrar"), async
     .from("cuentas_ahorro")
     .update({ saldo: saldoPosterior, updated_at: new Date().toISOString() })
     .eq("id", cuentaId)
+    .eq("caja_id", cajaId)
 
   const { data: tx, error } = await supabaseAdmin
     .from("transacciones")
