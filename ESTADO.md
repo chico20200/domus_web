@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (6 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (7 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración de base pendiente de ejecutar |
-| 3 | Migración de pantallas | En curso: 6/15 |
+| 3 | Migración de pantallas | En curso: 7/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -80,7 +80,7 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 | T4 | Marco de la aplicación: `Sidebar`, `TopBar` y `AppLayout` a clases sobre tokens | — | ✅ | `ddfd551` |
 | T5 | Configuración, en tres componentes de sección | T1–T4 | ✅ | `a706ef5` |
 | T6 | Créditos, con `TablaAmortizacion` y `AbonoModal` sobre `Modal` | T1–T4 | ✅ | `b4615dc` |
-| T7 | Reportes, incluidos los colores de los PDF | T1–T4 | ⬜ | |
+| T7 | Reportes, incluidos los colores de los PDF | T1–T4 | ✅ | `383d22e` |
 | T8 | Ahorros | T1–T4 | ⬜ | |
 | T9 | Socios | T1–T4 | ⬜ | |
 | T10 | Dashboard | T1–T4 | ⬜ | |
@@ -96,6 +96,12 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | Reportes (T7): `PageShell` de 1200 px; las cuatro métricas con `StatCard` (el total ahorrado, destacada); las dos tablas con `DataTable` (el interés por socio con la columna del nombre fija); el aviso de cuadre con `bg-surface-2` y borde de estado. Todos los montos con `moneda()`: el interés por socio y por mes salía con `toFixed(2)` sin signo ni separador de miles. El generador del PDF pasa a `pages/reportes/pdfReporte.ts` | `frontend/src/pages/ReportesPage.tsx`, `pages/reportes/` |
+| 12 nov 2026 | Sin periodo configurado, Reportes muestra un estado vacío que lo explica. Al coordinador le ofrece "Configurar el periodo" (lleva a Configuración); al tesorero le dice que se lo pida al coordinador. Antes mostraba un toast de error y la página quedaba con "Ciclo undefined" (§10) | `frontend/src/pages/ReportesPage.tsx` |
+| 12 nov 2026 | `ApiError` en `api.client.ts`: el error de una respuesta no 2xx conserva el código y el cuerpo, además del mensaje. Hace falta para distinguir `requiere_configuracion`. Hereda de `Error`, así que las 27 comprobaciones `instanceof Error` siguen igual | `frontend/src/api/api.client.ts` |
+| 12 nov 2026 | `Tabs`: pestañas con el patrón ARIA (`tablist`, `tab`, `tabpanel`, `aria-selected`), flechas e Inicio/Fin para moverse y la pestaña activa con borde y texto `accion-texto`. Antes eran botones sueltos sin semántica | `frontend/src/components/Tabs.tsx` |
+| 12 nov 2026 | Al cambiar de ciclo, el reporte anterior queda a la vista atenuado (`aria-busy`) hasta que llega el nuevo, y "Descargar PDF" se deshabilita mientras tanto. Antes la página entera se cambiaba por "Calculando reporte..." | `frontend/src/pages/ReportesPage.tsx` |
+| 12 nov 2026 | PDF del reporte: cabeceras con el naranja `#b26000`, montos con `moneda()`, porcentajes con `porcentaje(…, 4)`, fecha de generación con `fecha()`, y el número de ciclo en el nombre del archivo | `frontend/src/pages/reportes/pdfReporte.ts` |
 | 12 nov 2026 | Créditos (T6): la página (695 líneas) queda en una lista, `pages/creditos/DetalleCredito.tsx` y `pages/creditos/NuevaSolicitudModal.tsx`. Las dos vistas usan `PageShell` de 640 px. La lista es un `DataTable` (socio con plazo y tasa, monto, saldo, estado); el nombre del socio es el botón que abre el detalle | `frontend/src/pages/creditos/` |
 | 12 nov 2026 | La nueva solicitud pasa de un formulario dentro de la página a un `Modal` con `Form`. Así hay un solo `primary` a la vista ("Nueva solicitud" en la página, "Crear solicitud" en el modal) y Enter envía. Valida cada campo con su mensaje (monto y tasa mayores que 0, plazo entero) y muestra una estimación del interés, total y cuota con la misma fórmula del backend | `frontend/src/pages/creditos/NuevaSolicitudModal.tsx` |
 | 12 nov 2026 | Aprobar un crédito pide confirmación y avisa que fija las fechas, desembolsa y ya no se puede editar (HU-O04). Antes se aprobaba con un clic | `frontend/src/pages/creditos/DetalleCredito.tsx` |
@@ -231,19 +237,18 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | Los alias `--color-primary_y` y compañía se resuelven en `:root`, así que solo siguen el modo oscuro porque `ThemeContext` pone `.dark` en `<html>`. Si algún día `.dark` se aplica a un subárbol, los alias no cambiarían. Desaparece al borrar los alias | Etapa 3 |
 | 5 sitios fuera de `Button` ponen `text-white` sobre un relleno de color. En modo oscuro dan 2,4:1. Se corrige usando `text-sobre-accion`. Quedan en `ProfilePage` (avatar), `AhorrosPage` (tarjeta de la cuenta, 3) y `ForgotPasswordPage` (ícono). Los del marco, que eran estilos en línea, se corrigieron en T4 | Etapa 3 (Perfil, Ahorros, autenticación) |
 | Valores fuera de escala en las páginas: 57 usos de 20 px (`p-5`, `px-5`…), 12 de 40 px, 13 `borderRadius` y 12 `fontSize` en `style={{}}`, 6 `text-lg`. Inventario y reemplazos en `docs/SISTEMA_DE_DISENO.md` §5 | Etapa 3, página por página |
-| Los PDF de `ReportesPage` pintan la cabecera con el naranja viejo `[221, 154, 76]` y texto blanco (2,4:1) | Etapa 3 (Reportes). El PDF de la tabla de amortización tenía el mismo problema y se corrigió en T6 |
 | **Fechas un día atrasadas.** Las columnas `date` llegan como `"2026-11-11"` y las páginas hacen `new Date(f)`, que las toma como UTC: en Ecuador se ven como el día anterior (`fecha_apertura`, `fecha_ingreso`, `fecha_desembolso`, vencimientos). `fecha()` ya lo corrige; falta reemplazar las 6 funciones locales | Etapa 3, al migrar cada página |
 | `DashboardPage` muestra fechas relativas ("Hoy", "Ayer") que `format.ts` no cubre. Al migrar, decidir si se agrega `fechaRelativa()` o se usa `fecha()` | Etapa 3 (Dashboard) |
 | `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
 | §3 dice que hay `<textarea>` sueltos en `SociosPage` y `CreditosPage`, pero en el código actual no hay ninguno. `TextareaField` se hizo igual; corregir la tabla de §3 o confirmar dónde hacen falta | Sin asignar (documento) |
-| 8 `<select>` sueltos con estilo propio y `style={{}}` (Ahorros, Reportes; los de Configuración, Créditos y `AbonoModal` se resolvieron en T5 y T6) se reemplazan por `SelectField` | Etapa 3, al migrar cada página |
+| 8 `<select>` sueltos con estilo propio y `style={{}}` (queda el de Ahorros; los de Configuración, Créditos, `AbonoModal` y Reportes se resolvieron en T5–T7) se reemplazan por `SelectField` | Etapa 3, al migrar cada página |
 | `PageShell` cubre solo las páginas con barra lateral. `CajasPage` y las cuatro de autenticación no usan `AppLayout` y centran con su propio `max-w-*` (`max-w-2xl`, `max-w-sm`). Decidir al migrarlas si tienen su propio contenedor o un tercer ancho | Etapa 3 |
 | Las líneas que cita §4.1 (`ConfiguracionPage.tsx:235`, etc.) se corrieron con el formato de T1; hoy son `AhorrosPage.tsx:185`, `CreditosPage.tsx:260`, `ProfilePage.tsx:152` y `:202` | Etapa 3 (referencia; Configuración ya resuelta en T5) |
 | 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 3. `DonacionModal` se borró en la Etapa 2; el de `NotifContext` pasó a `ConfirmDialog` en T3; `AbonoModal`, `ConfirmarPagoModal` y `TablaAmortizacion` pasaron a `Modal` en T6. Quedan los dos de `AhorrosPage` |
 | 10 textos "Cargando…" sueltos (`App.tsx`, 7 páginas, `AbonoModal`, `TablaAmortizacion`) y 7 "Aún no hay…" (Ahorros ×2, Dashboard, Socios, Cajas, Créditos ×2) se reemplazan por `LoadingState` y `EmptyState` | Etapa 3, al migrar cada página |
 | Etiquetas de estado escritas a mano con `rgba` fijo (roles en `SociosPage`, más `CajasPage` y `PagosPage`; las de `ConfiguracionPage` se resolvieron en T5) se pasan a `Badge`. Los de Créditos y sus bloques teñidos se resolvieron en T6 | Etapa 3 |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan; hay más de un `primary` por pantalla en Pagos ("Pago completo" en cada fila) (Créditos se resolvió en T6) | Etapa 3, al migrar cada página |
-| Lint del frontend: 7 errores que ya existían (eran 11; se fueron los de `ChatbotFlotante` y `DonacionModal` en la Etapa 2 y los 2 `any` de `TablaAmortizacion` en T6). 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 1 `any` y un `let` que debería ser `const` en `ReportesPage` | Etapa 3 |
+| Lint del frontend: 5 errores que ya existían (eran 11; se fueron los de `ChatbotFlotante` y `DonacionModal` en la Etapa 2, los 2 `any` de `TablaAmortizacion` en T6 y el `any` y el `let` de `ReportesPage` en T7). 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34` | Etapa 3 (T15) |
 | `SociosPage.tsx:30` propone como fecha de ingreso `new Date().toISOString().split("T")[0]`, que después de las 19:00 da mañana | Etapa 3 (Socios) |
 | El vencimiento del crédito (`creditos.fecha_vencimiento`, desembolso + plazo, mismo día del mes) no coincide con el de su última cuota (último día del mes). Con un desembolso el 31, `setMonth` además salta al mes siguiente. Es la lógica de antes; no se cambió | Sin asignar (decisión de negocio) |
 | Para la decisión pendiente de aislamiento (§6.3, §13.2): RLS ya está activado en las 9 tablas de `public` y hay 11 políticas, pero el backend usa la clave de servicio, que las ignora. Antes de decidir, revisar qué dicen esas 11 políticas | Decisión pendiente |
@@ -269,6 +274,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T7 hecha (`383d22e`). Reportes migrada, sin `style={{}}`. Probada en Chromium con la API simulada: ciclo actual con 12 meses y tres socios, pestañas con las flechas, cambio al ciclo 2 (reparto que no cuadra), PDF descargado y revisado como imagen, sin periodo como coordinador y como tesorero; en claro y oscuro. Build OK; lint del frontend baja de 7 a 5 errores. `Card.tsx` ya solo la usa el Dashboard.
 - **12 nov 2026:** T6 hecha (`b4615dc`). Créditos migrada, con sus tres modales, sin `style={{}}`. Probada en Chromium con la API simulada: lista; nueva solicitud vacía (4 errores), corregida y enviada con Enter; aprobar con confirmación; pago completo con desglose y aviso de cuota atrasada; abono sin motivo (error); tabla de amortización y su PDF (revisado como imagen); en claro y oscuro. La prueba destapó que los errores no se borraban al corregir el campo y que la línea del total se cortaba; corregidos. Build OK; lint del frontend baja de 9 a 7 errores.
 - **12 nov 2026:** T5 hecha (`a706ef5`). Configuración migrada: 645 líneas en un archivo pasan a una página de 45 y tres secciones, sin `style={{}}`. Probada en Chromium con la API simulada como coordinador (periodo configurado y sin configurar, guardar con Enter, error de fecha vacía, cambio de rol, remover con confirmación, generar código) y como socio (solo la lista, sin controles); en claro y oscuro. Build OK; lint del frontend con los 9 errores previos y un aviso menos (7 → 6).
 - **12 nov 2026:** T4 hecha (`ddfd551`). Marco de la aplicación a clases sobre tokens. Revisado en Chromium con la barra abierta y contraída, en claro y oscuro (ancho contraído 56 px, nombres de los enlaces en `aria-label`). El enlace activo no se pudo ver sin sesión; su contraste se midió: 4,61:1 y 5,69:1. Build OK; lint del frontend con los 9 errores previos.
