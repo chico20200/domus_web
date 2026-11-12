@@ -14,17 +14,23 @@
  *   text-primary, text-secondary, text-muted, border-base, border-focus, ring-focus,
  *   outline-focus.
  *
- * Los valores de color de marca son los de antes; el ajuste de contraste es la tarea T3.
+ * Contraste (tarea T3, WCAG AA): todo color de texto y de estado da al menos 4,5:1 sobre
+ * bg-base, bg-surface y bg-surface-2 en su modo, y --color-sobre-accion da 4,5:1 sobre cada
+ * relleno (acción, destructivo, ok, alerta y sus hover). El foco da al menos 3:1.
+ * En claro los rellenos son oscuros y llevan texto blanco; en oscuro los rellenos son claros
+ * y llevan texto oscuro. Por eso el texto sobre un relleno siempre es text-sobre-accion,
+ * nunca text-white. Hover: más oscuro en claro, más claro en oscuro.
+ * Si se cambia un valor, volver a medir todas las combinaciones.
  */
 
 @theme static {
-  --color-accion-primaria: #dd9a4c;
-  --color-accion-primaria-hover: #f39007;
+  --color-accion-primaria: #a35800;
+  --color-accion-primaria-hover: #8c4b00;
   --color-sobre-accion: #ffffff;
-  --color-destructivo: #d96146;
-  --color-destructivo-hover: #da2b2b;
-  --color-estado-ok: #6ab23e;
-  --color-estado-alerta: #b45309;
+  --color-destructivo: #bc4227;
+  --color-destructivo-hover: #a23921;
+  --color-estado-ok: #47772a;
+  --color-estado-alerta: #8a6500;
 
   /*
    * Alias de los nombres viejos. Solo para no romper el código que todavía los usa.
@@ -62,8 +68,8 @@
   --bg-surface: #ffffff;
   --bg-surface-2: #f0efea;
   --text-primary: #2b2b2b;
-  --text-secondary: #6b6b6b;
-  --text-muted: #9b9b9b;
+  --text-secondary: #555555;
+  --text-muted: #6b6b6b;
   --border-base: #e2e2dc;
   --border-focus: var(--color-accion-primaria);
 
@@ -75,19 +81,19 @@
 /* Modo oscuro */
 .dark {
   --color-accion-primaria: #dd9a4c;
-  --color-accion-primaria-hover: #f39007;
-  --color-sobre-accion: #ffffff;
-  --color-destructivo: #d96146;
-  --color-destructivo-hover: #da2b2b;
+  --color-accion-primaria-hover: #e6ad6a;
+  --color-sobre-accion: #1a1a1a;
+  --color-destructivo: #df7b64;
+  --color-destructivo-hover: #e4907e;
   --color-estado-ok: #6ab23e;
-  --color-estado-alerta: #e0a33a;
+  --color-estado-alerta: #d4a72c;
 
   --bg-base: #1a1a1a;
   --bg-surface: #242424;
   --bg-surface-2: #2e2e2e;
   --text-primary: #e3e3e3;
-  --text-secondary: #a0a0a0;
-  --text-muted: #6b6b6b;
+  --text-secondary: #bdbdbd;
+  --text-muted: #979797;
   --border-base: #3a3a3a;
   --border-focus: var(--color-accion-primaria);
 
