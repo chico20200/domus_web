@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (9 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (10 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración `001` ejecutada |
-| 3 | Migración de pantallas | En curso: 9/15 |
+| 3 | Migración de pantallas | En curso: 10/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -83,7 +83,7 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 | T7 | Reportes, incluidos los colores de los PDF | T1–T4 | ✅ | `383d22e` |
 | T8 | Ahorros | T1–T4 | ✅ | `3c10e2d` |
 | T9 | Socios | T1–T4 | ✅ | `29246e4` |
-| T10 | Dashboard | T1–T4 | ⬜ | |
+| T10 | Dashboard | T1–T4 | ✅ | `dc9dca2` |
 | T11 | Pagos (`ConfirmarPagoModal` ya quedó sobre `Modal` en T6) | T1–T4 | ⬜ | |
 | T12 | Perfil | T1–T4 | ⬜ | |
 | T13 | Cajas (solo la migración visual; el asistente de creación es Etapa 4) | T1–T4 | ⬜ | |
@@ -96,6 +96,10 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | Dashboard (T10): `PageShell` de 1200 px (§4.1); cuatro `StatCard` (ahorros destacada, socios activos, créditos activos, por cobrar); los movimientos recientes en un `Panel` con `DataTable`. La tarjeta "Créditos activos" repetía como detalle el mismo monto de "Por cobrar"; ahora explica qué cuenta. Error con "Reintentar" en vez de un texto rojo suelto | `frontend/src/pages/DashboardPage.tsx` |
+| 12 nov 2026 | Las fechas del Dashboard usan `fecha()` y no "Hoy"/"Ayer": §4.3 pide un solo formato, y el cálculo anterior contaba bloques de 24 h, así que un movimiento de anoche salía como "Hoy". No se agrega `fechaRelativa()` | `frontend/src/pages/DashboardPage.tsx` |
+| 12 nov 2026 | La lista de siguientes pasos para una caja recién creada (§9, `DashboardPage`) no entra en T10: es el paso 5 del asistente de creación (§5.1), Etapa 4 | Etapa 4 |
+| 12 nov 2026 | `DataTable` con `sinMarco`: dentro de un `Panel sinRelleno` el panel ya dibuja el borde, y la tabla con el suyo dejaba una línea doble. Lo usan el Dashboard y el historial de Ahorros | `frontend/src/components/DataTable.tsx` |
 | 12 nov 2026 | Socios (T9): `PageShell` de 1200 px (la tabla tiene seis columnas); `DataTable` con socio, cédula, contacto, ingreso, estado (`Badge`) y acciones. Activos primero y por apellido. La búsqueda ignora tildes y mayúsculas ("perez" encuentra a "Pérez") y cuenta "N de M". La ficha vinculada a una cuenta de DOMUS lo indica bajo el nombre | `frontend/src/pages/SociosPage.tsx` |
 | 12 nov 2026 | La ficha (HU-O01) pasa de un formulario en la página a un `Modal` con `Form`: error por campo, Enter envía, "Cancelar" `ghost`. Explica qué es la ficha y, junto al correo, cómo se vincula a una cuenta de DOMUS (§8, "Crear un socio"). Al editar, la fecha de ingreso se muestra como texto porque el backend no la cambia | `frontend/src/pages/socios/SocioModal.tsx` |
 | 12 nov 2026 | `lib/validacion.ts`: cédula ecuatoriana (10 dígitos, provincia 01–24 o 30, tercer dígito menor que 6, dígito verificador módulo 10), teléfono (celular 09 de 10 dígitos, fijo 02–07 de 9, o con +593) y correo. Se aceptan espacios y guiones al escribir y se guardan solo los dígitos. Al editar, la cédula se valida solo si cambió, para no bloquear fichas antiguas | `frontend/src/lib/validacion.ts` |
@@ -255,7 +259,6 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | 5 sitios fuera de `Button` ponen `text-white` sobre un relleno de color. En modo oscuro dan 2,4:1. Se corrige usando `text-sobre-accion`. Quedan en `ProfilePage` (avatar) y `ForgotPasswordPage` (ícono). Los del marco se corrigieron en T4 y los 3 de la tarjeta de `AhorrosPage` en T8 (la tarjeta ya no tiene relleno naranja) | Etapa 3 (Perfil, autenticación) |
 | Valores fuera de escala en las páginas: 57 usos de 20 px (`p-5`, `px-5`…), 12 de 40 px, 13 `borderRadius` y 12 `fontSize` en `style={{}}`, 6 `text-lg`. Inventario y reemplazos en `docs/SISTEMA_DE_DISENO.md` §5 | Etapa 3, página por página |
 | **Fechas un día atrasadas.** Las columnas `date` llegan como `"2026-11-11"` y las páginas hacen `new Date(f)`, que las toma como UTC: en Ecuador se ven como el día anterior (`fecha_apertura`, `fecha_ingreso`, `fecha_desembolso`, vencimientos). `fecha()` ya lo corrige; falta reemplazar las 6 funciones locales | Etapa 3, al migrar cada página |
-| `DashboardPage` muestra fechas relativas ("Hoy", "Ayer") que `format.ts` no cubre. Al migrar, decidir si se agrega `fechaRelativa()` o se usa `fecha()` | Etapa 3 (Dashboard) |
 | `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
 | §3 dice que hay `<textarea>` sueltos en `SociosPage` y `CreditosPage`, pero en el código actual no hay ninguno. `TextareaField` se hizo igual; corregir la tabla de §3 o confirmar dónde hacen falta | Sin asignar (documento) |
 | 8 `<select>` sueltos con estilo propio y `style={{}}` se reemplazan por `SelectField`. Resueltos todos: Configuración (T5), Créditos y `AbonoModal` (T6), Reportes (T7), Ahorros (T8) | Etapa 3 ✅ |
@@ -290,6 +293,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T10 hecha (`dc9dca2`). Dashboard migrado, sin `style={{}}`; `Card.tsx` ya no la usa ninguna página (se borra en T15). Probado en Chromium con la API simulada: con movimientos (uno sin socio), caja vacía y error del servidor; en claro y oscuro. La prueba mostró el borde doble de la tabla dentro del panel, también en Ahorros; corregido con `sinMarco`. Build OK; lint del frontend sigue en 5 errores.
 - **12 nov 2026:** T9 hecha (`29246e4`). Socios migrada, sin `style={{}}`. Validaciones probadas con 21 casos (cédulas válidas e inválidas, teléfonos, correos). Probada en Chromium con la API simulada: lista como coordinador y tesorero (sin desactivar), búsqueda sin tildes y sin resultados, ficha nueva con cuatro errores y luego válida con espacios y guiones, edición de una ficha con cédula antigua inválida, desactivar con confirmación; en claro y oscuro. La prueba mostró el lápiz desalineado en filas inactivas; corregido. Build OK; lint del frontend sigue en 5 errores.
 - **12 nov 2026:** El usuario confirma que subió `main` y ejecutó la migración `001`. Comprobado en Supabase (solo lectura): `rol_caja` tiene `coordinador`, `tesorero` y `socio`.
 - **12 nov 2026:** T8 hecha (`3c10e2d`). Ahorros migrada, sin `style={{}}`. Probada en Chromium con la API simulada como tesorero (lista; abrir cuenta vacía y con socio; depósito vacío, con tres decimales y de $0,29 con revisión; retiro mayor al saldo; Escape; cuenta suspendida) y como socio (vinculado y sin ficha); en claro y oscuro. Build OK; lint del frontend sigue en 5 errores (los de T15).
