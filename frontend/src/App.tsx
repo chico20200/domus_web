@@ -18,6 +18,14 @@ import PagosPage from "./pages/PagosPage"
 import { RolRoute } from "./components/RolRoute"
 import { NotifProvider } from "./context/NotifContext"
 import ReportesPage from "./pages/ReportesPage"
+import { lazy, Suspense } from "react"
+import { LoadingState } from "./components/LoadingState"
+
+// Página de muestra de componentes: solo en desarrollo. En el build de producción
+// import.meta.env.DEV es false, la rama se elimina y el módulo no se empaqueta.
+const ComponentesPage = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/ComponentesPage"))
+  : null
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth()
@@ -128,6 +136,17 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
+                {ComponentesPage && (
+                  <Route
+                    path="/dev/componentes"
+                    element={
+                      <Suspense fallback={<LoadingState pantallaCompleta />}>
+                        <ComponentesPage />
+                      </Suspense>
+                    }
+                  />
+                )}
 
                 {/* Redirige la raíz a /cajas */}
                 <Route path="/" element={<Navigate to="/cajas" replace />} />
