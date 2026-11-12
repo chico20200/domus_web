@@ -84,7 +84,7 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | Obligatorio se marca con `aria-required` y no con `required`, para que el navegador no muestre sus propios globos de validación cuando exista `Form` (T10). La validación la hace la aplicación | `frontend/src/components/FieldBase.tsx` |
 | 11 nov 2026 | Los campos tienen fondo `bg-surface` en los dos modos y se distinguen por el borde. Se quitaron sus márgenes propios (`mb-1`, `mt-1`): el espacio lo pone el contenedor | `frontend/src/components/FieldBase.tsx` |
 | 11 nov 2026 | `Field` se reescribió sobre `FieldBase` con la misma API (sin `variant` ni `status`, que nadie usaba; se agrega `disabled`), para no tocar las 29 llamadas | `frontend/src/components/Field.tsx` |
-| 11 nov 2026 | `TextField` acepta solo `text`, `email`, `password`, `tel`, `number`, `date` y `search`. Las 30 llamadas actuales ya usan esos valores | `frontend/src/components/TextField.tsx` |
+| 11 nov 2026 | `TextField` acepta solo `text`, `email`, `password`, `tel`, `number`, `date` y `search`. Las 29 llamadas actuales ya usan esos valores | `frontend/src/components/TextField.tsx` |
 | 11 nov 2026 | Para cédula y teléfono se usará `type="text"` con `inputMode="numeric"` y `maxLength`, no `type="number"`: así sale el teclado numérico y no se pierden los ceros a la izquierda | `frontend/src/components/TextField.tsx` |
 | 11 nov 2026 | `color-scheme: light` en `:root` y `dark` en `.dark`, para que el calendario, las flechas de número y las barras de scroll nativas sigan el modo | `frontend/src/index.css` |
 | 11 nov 2026 | `Field.tsx` queda como una reexportación de `TextField`. Se borra cuando la Etapa 3 termine de migrar las páginas | `frontend/src/components/Field.tsx` |
