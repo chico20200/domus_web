@@ -49,3 +49,22 @@ export function validarCorreo(valor: string): string {
   if (!e) return ""
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? "" : "Revisa el correo: falta la @ o el dominio"
 }
+
+/**
+ * Nombre completo del perfil (HU016): al menos 6 caracteres y solo letras, con espacios,
+ * tildes, ñ, apóstrofo y guion ("María José", "O'Neil", "Ruiz-Tagle").
+ */
+export function validarNombrePerfil(valor: string): string {
+  const n = valor.trim().replace(/\s+/g, " ")
+  if (!n) return "Escribe tu nombre"
+  if (!/^[\p{L}][\p{L}' -]*$/u.test(n)) return "Usa solo letras y espacios"
+  if (n.length < 6) return "Escribe al menos 6 caracteres"
+  return ""
+}
+
+/** Teléfono del perfil (HU016): opcional, y si se escribe, exactamente 10 dígitos */
+export function validarTelefonoPerfil(valor: string): string {
+  const t = soloDigitos(valor)
+  if (!t) return ""
+  return /^\d{10}$/.test(t) ? "" : "El teléfono tiene exactamente 10 dígitos"
+}
