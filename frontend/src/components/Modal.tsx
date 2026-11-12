@@ -33,7 +33,10 @@ interface ModalProps {
   titulo: string
   /** Una línea bajo el título que explica para qué es el modal */
   descripcion?: string
-  /** Botones del pie, en fila a la derecha */
+  /**
+   * Botones del pie, en fila a la derecha. La acción principal va al final (la más a la
+   * derecha) y Cancelar o Cerrar antes. En `Form`, que alinea a la izquierda, es al revés
+   */
   acciones?: ReactNode
   /** normal: 448 px (formularios, confirmaciones). amplio: 768 px (tablas) */
   ancho?: AnchoModal

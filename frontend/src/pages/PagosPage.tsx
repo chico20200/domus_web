@@ -1,227 +1,210 @@
 // src/pages/PagosPage.tsx
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Wallet, Coins, Search, CheckCircle } from "lucide-react"
-import { AppLayout } from "../components/layout/AppLayout"
+import { CircleCheck, HandCoins, Search } from "lucide-react"
+import { PageShell } from "../components/layout/PageShell"
 import { Button } from "../components/Button"
+import { Badge } from "../components/Badge"
+import { DataTable } from "../components/DataTable"
+import { EmptyState } from "../components/EmptyState"
+import { TextField } from "../components/TextField"
+import { ConfirmarPagoModal } from "../components/ConfirmarPagoModal"
 import { useCaja } from "../context/CajaContext"
+import { useNotif } from "../context/NotifContext"
 import { creditosService } from "../api/creditos.service"
 import { pagosService } from "../api/pagos.service"
 import type { Credito } from "../api/creditos.types"
 import type { TipoPago } from "../api/pagos.types"
-import { ConfirmarPagoModal } from "../components/ConfirmarPagoModal"
-import { useNotif } from "../context/NotifContext"
+import { moneda, porcentaje } from "../lib/format"
+import { useDatos } from "../lib/useDatos"
+import { estadoCredito, nombreSocio } from "../lib/creditos"
+import { normalizar } from "../lib/texto"
+import { ElegirPagoModal } from "./pagos/ElegirPagoModal"
 
-function formatMonto(m: number) {
-  return new Intl.NumberFormat("es-EC", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(m)
-}
-
+/**
+ * Cobranza: los créditos que aceptan pagos (activos y en mora) y, para cada uno,
+ * "Registrar pago". El pago va en dos pasos: elegir qué se paga y confirmar el desglose.
+ * Abono y prepago siguen en el detalle del crédito, en Créditos.
+ */
 export default function PagosPage() {
   const navigate = useNavigate()
   const { cajaActiva } = useCaja()
 
-  const [creditos, setCreditos] = useState<Credito[]>([])
-  const [loading, setLoading] = useState(true)
-  const [procesando, setProcesando] = useState<string | null>(null) // id del crédito que se procesa
-  const [busqueda, setBusqueda] = useState("")
-  const [confirmacion, setConfirmacion] = useState<{ credito: Credito; tipo: TipoPago } | null>(
-    null,
-  )
-  const { toast } = useNotif()
-
   useEffect(() => {
-    if (!cajaActiva) {
-      navigate("/cajas", { replace: true })
-      return
-    }
-    cargarCreditos()
-  }, [cajaActiva])
+    if (!cajaActiva) navigate("/cajas", { replace: true })
+  }, [cajaActiva, navigate])
 
-  async function cargarCreditos() {
-    setLoading(true)
-    try {
-      const res = await creditosService.getCreditos(cajaActiva!.id)
-      // Solo créditos activos — son los únicos que aceptan pagos
-      setCreditos(res.creditos.filter((c) => c.estado === "activo"))
-    } finally {
-      setLoading(false)
-    }
-  }
+  if (!cajaActiva) return null
+  return <Pagos cajaId={cajaActiva.id} />
+}
 
-  async function ejecutarPago() {
-    if (!confirmacion) return
-    const { credito, tipo } = confirmacion
-    setConfirmacion(null)
-    setProcesando(credito.id)
+// Los únicos estados que reciben pagos; mora primero porque es lo urgente
+const COBRABLES = ["mora", "activo"]
+
+function Pagos({ cajaId }: { cajaId: string }) {
+  const { toast } = useNotif()
+  const cargar = useCallback(async () => {
+    const { creditos } = await creditosService.getCreditos(cajaId)
+    return creditos
+      .filter((c) => COBRABLES.includes(c.estado))
+      .sort(
+        (a, b) =>
+          COBRABLES.indexOf(a.estado) - COBRABLES.indexOf(b.estado) ||
+          nombreSocio(a.socios).localeCompare(nombreSocio(b.socios), "es"),
+      )
+  }, [cajaId])
+  const { datos, cargando, error, recargar } = useDatos(cargar)
+  const [busqueda, setBusqueda] = useState("")
+  // Paso 1: crédito elegido, sin tipo. Paso 2: con tipo, se confirma el desglose
+  const [pago, setPago] = useState<{ credito: Credito; tipo: TipoPago | null } | null>(null)
+  const [procesando, setProcesando] = useState(false)
+
+  const creditos = datos ?? []
+  const q = normalizar(busqueda.trim())
+  const filtrados = creditos.filter(
+    (c) => !q || normalizar(`${nombreSocio(c.socios)} ${c.socios?.cedula ?? ""}`).includes(q),
+  )
+
+  async function registrar() {
+    if (!pago?.tipo) return
+    const { credito, tipo } = pago
+    const nombre = nombreSocio(credito.socios)
+    setProcesando(true)
     try {
-      const res = await pagosService.registrarPago(cajaActiva!.id, credito.id, tipo)
-      await cargarCreditos()
-      const nombre = credito.socios
-        ? `${credito.socios.nombre} ${credito.socios.apellido}`
-        : "el socio"
+      const res = await pagosService.registrarPago(cajaId, credito.id, tipo)
+      setPago(null)
+      await recargar()
       toast(
         "exito",
         res.credito_pagado
           ? `Crédito de ${nombre} pagado por completo`
-          : "Pago registrado correctamente",
+          : `Pago de ${nombre} registrado: ${moneda(res.desglose.total)}. Saldo pendiente: ${moneda(res.saldo_pendiente)}`,
       )
     } catch (err) {
-      toast("error", err instanceof Error ? err.message : "Error al registrar pago")
+      toast("error", err instanceof Error ? err.message : "No se pudo registrar el pago")
     } finally {
-      setProcesando(null)
+      setProcesando(false)
     }
   }
 
-  // Filtro por nombre de socio
-  const creditosFiltrados = creditos.filter((c) => {
-    const nombre = `${c.socios?.nombre ?? ""} ${c.socios?.apellido ?? ""}`.toLowerCase()
-    return nombre.includes(busqueda.toLowerCase())
-  })
-
   return (
-    <AppLayout titulo="Pagos">
-      <div className="flex flex-col gap-4">
-        {/* Buscador */}
-        <div className="relative">
-          <Search
-            size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2"
-            style={{ color: "var(--text-muted)" }}
-          />
-          <input
-            type="text"
-            placeholder="Buscar por socio..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg outline-none"
-            style={{
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-base)",
-              color: "var(--text-primary)",
-            }}
-          />
-        </div>
-
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          {creditosFiltrados.length} crédito{creditosFiltrados.length !== 1 ? "s" : ""} activo
-          {creditosFiltrados.length !== 1 ? "s" : ""} con pagos pendientes
-        </p>
-
-        {/* Lista de créditos activos */}
-        {loading && (
-          <div
-            className="rounded-xl px-5 py-10 text-center"
-            style={{ background: "var(--bg-surface)", border: "1px solid var(--border-base)" }}
-          >
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              Cargando créditos...
-            </p>
-          </div>
+    <PageShell titulo="Pagos" ancho="formulario">
+      <div className="flex flex-col gap-2">
+        <TextField
+          label="Buscar crédito"
+          ocultarEtiqueta
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por socio o cédula"
+          icon={Search}
+        />
+        {!cargando && !error && (
+          <p className="text-sm text-secondary" aria-live="polite">
+            {q
+              ? `${filtrados.length} de ${creditos.length} ${creditos.length === 1 ? "crédito" : "créditos"}`
+              : `${creditos.length} ${creditos.length === 1 ? "crédito recibe" : "créditos reciben"} pagos`}
+          </p>
         )}
-
-        {!loading && creditosFiltrados.length === 0 && (
-          <div
-            className="rounded-xl px-5 py-10 text-center"
-            style={{ background: "var(--bg-surface)", border: "1px solid var(--border-base)" }}
-          >
-            <CheckCircle
-              size={32}
-              className="mx-auto mb-2"
-              style={{ color: "var(--text-muted)" }}
-            />
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              {busqueda
-                ? "No se encontraron créditos con ese socio"
-                : "No hay créditos activos con pagos pendientes"}
-            </p>
-          </div>
-        )}
-
-        {!loading &&
-          creditosFiltrados.map((c) => {
-            const socio = c.socios
-            const enProceso = procesando === c.id
-            return (
-              <div
-                key={c.id}
-                className="rounded-xl p-4"
-                style={{ background: "var(--bg-surface)", border: "1px solid var(--border-base)" }}
-              >
-                {/* Info del crédito */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-medium"
-                    style={{ background: "rgba(221,154,76,0.12)", color: "var(--color-primary_y)" }}
-                  >
-                    {socio ? `${socio.nombre[0]}${socio.apellido[0]}` : "?"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                      {socio ? `${socio.nombre} ${socio.apellido}` : "Sin socio"}
-                    </p>
-                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                      Cuota: {formatMonto(c.cuota_mensual)} · {c.plazo_meses}m · {c.tasa_interes}%
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      Saldo
-                    </p>
-                    <p className="text-sm font-medium" style={{ color: "var(--color-danger_r)" }}>
-                      {formatMonto(c.saldo_pendiente)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Botones de pago */}
-                <div className="flex gap-2">
-                  <Button
-                    label="Pago completo"
-                    variant="primary"
-                    icon={Wallet}
-                    loading={enProceso}
-                    onClick={() => setConfirmacion({ credito: c, tipo: "completo" })}
-                  />
-                  <Button
-                    label="Solo capital"
-                    variant="secondary"
-                    icon={Coins}
-                    loading={enProceso}
-                    onClick={() => setConfirmacion({ credito: c, tipo: "solo_capital" })}
-                  />
-                  <Button
-                    label="Solo interés"
-                    variant="secondary"
-                    icon={Coins}
-                    loading={enProceso}
-                    onClick={() => setConfirmacion({ credito: c, tipo: "solo_interes" })}
-                  />
-                </div>
-              </div>
-            )
-          })}
       </div>
 
-      {/* Modal de confirmación */}
-      {confirmacion && cajaActiva && (
-        <ConfirmarPagoModal
-          cajaId={cajaActiva.id}
-          creditoId={confirmacion.credito.id}
-          tipo={confirmacion.tipo}
-          nombreSocio={
-            confirmacion.credito.socios
-              ? `${confirmacion.credito.socios.nombre} ${confirmacion.credito.socios.apellido}`
-              : undefined
+      {error ? (
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-base bg-surface p-6">
+          <p className="text-sm text-secondary">No se pudieron cargar los créditos: {error}</p>
+          <Button label="Reintentar" variant="secondary" onClick={recargar} />
+        </div>
+      ) : (
+        <DataTable<Credito>
+          descripcion="Créditos activos y en mora, con su cuota, saldo y estado"
+          cargando={cargando}
+          textoCargando="Cargando créditos…"
+          filas={filtrados}
+          claveFila={(c) => c.id}
+          vacio={
+            q ? (
+              <EmptyState
+                icono={Search}
+                titulo="Ningún crédito coincide con la búsqueda"
+                descripcion="Prueba con otra parte del nombre o con la cédula."
+              />
+            ) : (
+              <EmptyState
+                icono={CircleCheck}
+                titulo="No hay créditos por cobrar"
+                descripcion="Aquí aparecen los créditos desembolsados que aún tienen saldo."
+              />
+            )
           }
-          procesando={procesando === confirmacion.credito.id}
-          onConfirmar={ejecutarPago}
-          onCancelar={() => setConfirmacion(null)}
+          columnas={[
+            {
+              clave: "socio",
+              encabezado: "Socio",
+              celda: (c) => (
+                <div className="flex flex-col">
+                  <span className="font-medium text-primary">{nombreSocio(c.socios)}</span>
+                  <span className="text-xs text-secondary">
+                    {c.plazo_meses} meses · {porcentaje(c.tasa_interes)}
+                  </span>
+                </div>
+              ),
+            },
+            {
+              clave: "cuota",
+              encabezado: "Cuota",
+              alinear: "derecha",
+              celda: (c) => moneda(Number(c.cuota_mensual)),
+            },
+            {
+              clave: "saldo",
+              encabezado: "Saldo",
+              alinear: "derecha",
+              celda: (c) => moneda(Number(c.saldo_pendiente)),
+            },
+            {
+              clave: "estado",
+              encabezado: "Estado",
+              celda: (c) => {
+                const e = estadoCredito(c.estado)
+                return <Badge tono={e.tono} label={e.etiqueta} />
+              },
+            },
+            {
+              clave: "accion",
+              encabezado: <span className="sr-only">Acción</span>,
+              alinear: "derecha",
+              celda: (c) => (
+                <Button
+                  label="Registrar pago"
+                  variant="secondary"
+                  icon={HandCoins}
+                  ariaLabel={`Registrar pago de ${nombreSocio(c.socios)}`}
+                  onClick={() => setPago({ credito: c, tipo: null })}
+                />
+              ),
+            },
+          ]}
         />
       )}
-    </AppLayout>
+
+      {pago && !pago.tipo && (
+        <ElegirPagoModal
+          nombreSocio={nombreSocio(pago.credito.socios)}
+          cuotaMensual={Number(pago.credito.cuota_mensual)}
+          onCerrar={() => setPago(null)}
+          onContinuar={(tipo) => setPago({ ...pago, tipo })}
+        />
+      )}
+      {pago?.tipo && (
+        <ConfirmarPagoModal
+          cajaId={cajaId}
+          creditoId={pago.credito.id}
+          tipo={pago.tipo}
+          nombreSocio={nombreSocio(pago.credito.socios)}
+          procesando={procesando}
+          onConfirmar={registrar}
+          onCancelar={() => setPago(null)}
+        />
+      )}
+    </PageShell>
   )
 }

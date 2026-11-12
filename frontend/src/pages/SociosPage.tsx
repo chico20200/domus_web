@@ -15,6 +15,7 @@ import type { Socio } from "../api/socios.types"
 import { fecha } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
 import { tieneRol } from "../lib/roles"
+import { normalizar } from "../lib/texto"
 import { SocioModal } from "./socios/SocioModal"
 
 /**
@@ -33,9 +34,7 @@ export default function SociosPage() {
   return <Socios cajaId={cajaActiva.id} puedeDesactivar={tieneRol(cajaActiva.rol, "coordinador")} />
 }
 
-// La búsqueda ignora tildes y mayúsculas: "perez" encuentra a "Pérez"
-const normalizar = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()
-
+// La búsqueda ignora tildes y mayúsculas: "perez" encuentra a "Pérez" (normalizar)
 function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: boolean }) {
   const { toast, confirm } = useNotif()
   const cargar = useCallback(async () => (await sociosService.getSocios(cajaId)).socios, [cajaId])

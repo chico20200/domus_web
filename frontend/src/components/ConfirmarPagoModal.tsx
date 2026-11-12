@@ -8,6 +8,7 @@ import { pagosService } from "../api/pagos.service"
 import type { TipoPago } from "../api/pagos.types"
 import { fecha, moneda } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
+import { TIPO_PAGO } from "../lib/creditos"
 
 /**
  * Confirmación de un pago de cuota (Créditos y Pagos). Pide al backend la próxima cuota
@@ -16,18 +17,6 @@ import { useDatos } from "../lib/useDatos"
  * Se monta solo cuando hay un pago por confirmar; al desmontarse, el foco vuelve al botón
  * que lo abrió.
  */
-
-const TITULOS: Record<TipoPago, string> = {
-  completo: "Pago completo de la cuota",
-  solo_capital: "Pago solo de capital",
-  solo_interes: "Pago solo de interés",
-}
-
-const EXPLICACION: Record<TipoPago, string> = {
-  completo: "Cubre lo que falta de capital y de interés de la cuota.",
-  solo_capital: "Cubre el capital de la cuota. El interés queda pendiente.",
-  solo_interes: "Cubre el interés de la cuota. El capital queda pendiente.",
-}
 
 interface Props {
   cajaId: string
@@ -72,8 +61,8 @@ export function ConfirmarPagoModal({
     <Modal
       abierto
       onCerrar={onCancelar}
-      titulo={TITULOS[tipo]}
-      descripcion={EXPLICACION[tipo]}
+      titulo={TIPO_PAGO[tipo].titulo}
+      descripcion={TIPO_PAGO[tipo].explicacion}
       acciones={
         <>
           <Button label={puedePagar ? "Cancelar" : "Cerrar"} variant="ghost" onClick={onCancelar} />

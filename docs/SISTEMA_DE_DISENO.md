@@ -55,7 +55,7 @@ Fuera de la escala (no usar): `-0.5`, `-1.5`, `-2.5`, `-5`, `-7`, `-10` y cualqu
 **Excepciones:**
 
 - Anchos y altos (`w-*`, `h-*`, `size-*`) no están limitados a la escala; se usan los que el contenido necesite (íconos `size-4` y `size-5`, avatares, etc.).
-- El hueco para un ícono dentro de un campo es `pr-9` (12 px de margen + 16 px de ícono + 8 px de separación). Lo pone `FieldBase`; las páginas no lo escriben. Los buscadores de Socios y Pagos usan `pl-9` con el ícono a la izquierda hasta que se migren.
+- El hueco para un ícono dentro de un campo es `pr-9` (12 px de margen + 16 px de ícono + 8 px de separación). Lo pone `FieldBase`; las páginas no lo escriben. Los buscadores de Socios y Pagos también usan `TextField` con el ícono a la derecha.
 - Bordes de 1 px (`border`) y anillos de foco (`ring-2`) no son espaciado.
 
 ---

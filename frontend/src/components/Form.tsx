@@ -26,7 +26,10 @@ interface FormProps {
   onSubmit: () => void | Promise<void>
   /** Error general del formulario */
   error?: string
-  /** Botones; se muestran en fila después del error */
+  /**
+   * Botones en fila después del error, alineados a la izquierda: el de enviar primero y
+   * Cancelar después. En el pie de `Modal`, que alinea a la derecha, es al revés
+   */
   actions?: ReactNode
   /** Nombre accesible del formulario, si la página tiene más de uno */
   "aria-label"?: string

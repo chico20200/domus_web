@@ -90,13 +90,13 @@ export function OperacionModal({
         cerrarAlClicFuera={false}
         acciones={
           <>
-            <Button label={textos.confirmar} loading={guardando} onClick={guardar} />
             <Button
               label="Volver a editar"
               variant="ghost"
               disabled={guardando}
               onClick={() => setRevisando(false)}
             />
+            <Button label={textos.confirmar} loading={guardando} onClick={guardar} />
           </>
         }
       >
