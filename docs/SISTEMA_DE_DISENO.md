@@ -28,6 +28,8 @@ Los valores y su medición de contraste están en `frontend/src/index.css`. Aqu�
 | Estado de alerta: por vencer, pendiente | `text-estado-alerta`, `bg-estado-alerta` | |
 | Error, mensaje de validación | `text-destructivo` | |
 
+**No poner texto de color sobre un fondo teñido de ese color** (`bg-estado-ok/10` con `text-estado-ok`, o los `rgba(…, 0.12)` de hoy). Con esta paleta el texto baja de 4,5:1, sobre todo encima de `bg-surface-2`. Para marcar un estado: `Badge` (contorno), o un bloque `bg-surface-2` con texto normal y un borde del color del estado.
+
 Los nombres viejos (`primary_y`, `secondary_g`, `danger_r`, `blk_1`, `blk_2`, `secondary_wt`) siguen funcionando como alias hasta terminar la Etapa 3. No se usan en código nuevo.
 
 ---
