@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (4 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (5 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración de base pendiente de ejecutar |
-| 3 | Migración de pantallas | En curso: 4/15 |
+| 3 | Migración de pantallas | En curso: 5/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -78,7 +78,7 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 | T2 | `Card` se divide en `StatCard` y `Panel` | — | ✅ | `d142581` |
 | T3 | `ConfirmDialog` sobre `Modal`; `confirm()` de `NotifContext` lo usa, y el `window.confirm` de Socios pasa a él | — | ✅ | `6e367c5` |
 | T4 | Marco de la aplicación: `Sidebar`, `TopBar` y `AppLayout` a clases sobre tokens | — | ✅ | `ddfd551` |
-| T5 | Configuración, en tres componentes de sección | T1–T4 | ⬜ | |
+| T5 | Configuración, en tres componentes de sección | T1–T4 | ✅ | `a706ef5` |
 | T6 | Créditos, con `TablaAmortizacion` y `AbonoModal` sobre `Modal` | T1–T4 | ⬜ | |
 | T7 | Reportes, incluidos los colores de los PDF | T1–T4 | ⬜ | |
 | T8 | Ahorros | T1–T4 | ⬜ | |
@@ -96,6 +96,14 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | Configuración (T5) se divide en `pages/configuracion/PeriodoCaja.tsx`, `CodigoInvitacion.tsx` y `MiembrosCaja.tsx`. Cada sección carga sus propios datos y muestra su propio estado de carga y error con "Reintentar"; antes, un fallo de una petición dejaba la sección en blanco y solo avisaba con un toast. La página queda en 45 líneas, en `PageShell` de 640 px centrado (§4.1) | `frontend/src/pages/configuracion/` |
+| 12 nov 2026 | `lib/useDatos.ts`: hook común para cargar datos de una sección (`datos`, `cargando`, `error`, `recargar`). Descarta respuestas que llegan tarde, y `await recargar()` vuelve a pedir sin mostrar otra vez el estado de carga. Se hizo porque la regla `react-hooks/set-state-in-effect` marca el patrón de todas las páginas; se usará en las demás | `frontend/src/lib/useDatos.ts` |
+| 12 nov 2026 | `api/miembros.service.ts` y `miembros.types.ts`: Configuración llamaba a `apiClient` directo (§10). Listar, cambiar rol, remover, ver y generar invitación | `frontend/src/api/miembros.service.ts` |
+| 12 nov 2026 | `FieldBase` acepta `ocultarEtiqueta`: la etiqueta pasa a `sr-only` y el lector de pantalla la sigue leyendo. Solo para controles cuyo sentido da el contexto, como el rol en cada fila de miembro ("Rol de Luis Andrade") | `frontend/src/components/FieldBase.tsx` |
+| 12 nov 2026 | En la fila propia de Miembros no hay selector de rol ni botón de remover, sino la etiqueta del rol y "(tú)". El backend ya rechazaba cambiar el rol propio y removerse a sí mismo, pero la interfaz ofrecía los controles y fallaban con un error | `frontend/src/pages/configuracion/MiembrosCaja.tsx` |
+| 12 nov 2026 | Configuración tiene una sola acción `primary`, "Guardar periodo", y solo mientras el formulario está abierto (HT02). "Generar código" pasa a `secondary` (antes había dos `primary` cuando el periodo no estaba configurado); Cancelar es `ghost`; "Copiar" es un `Button` y ya no se pone verde: el cambio de texto a "Copiado" lo anuncia también al lector de pantalla | `frontend/src/pages/configuracion/` |
+| 12 nov 2026 | Textos de Configuración: el rol se muestra con su etiqueta (antes "coordinador" y "socio" en crudo en "Tu rol" y en el código); la fecha de fundación y el vencimiento del código con `fecha()` (antes "2024-04-01" y "19 de noviembre de 2026"); el aviso de periodo sin configurar y el ciclo actual pasan de fondos teñidos a `bg-surface-2` con borde de estado o `Badge`. La fecha de fundación vacía se marca en el campo y no con un toast. Ayuda junto a la fundación: "Puede ser anterior a la fecha en que la caja se registró en DOMUS" (§8). Los textos completos de ayuda son `InfoTip`, Etapa 5 | `frontend/src/pages/configuracion/` |
+| 12 nov 2026 | Para revisar páginas con sesión sin tocar datos reales: Vite con `VITE_API_URL` apuntando a una dirección inventada, un token falso en localStorage y las respuestas de la API simuladas desde Chromium (protocolo de depuración). El guion vive fuera del repositorio | Este documento |
 | 12 nov 2026 | Marco (T4): `Sidebar`, `TopBar` y `AppLayout` sin un solo `style={{}}`. El avatar y el logo de la caja pasan de blanco sobre `primary_y` (2,4:1 en oscuro) a `bg-accion-primaria` con `text-sobre-accion` (4,60:1 claro, 7,29:1 oscuro). El enlace activo pasa del fondo teñido `rgba(221,154,76,0.12)` a `bg-surface-2` con texto `accion-texto` y la barra de 3 px (4,61:1 claro, 5,69:1 oscuro) | `frontend/src/components/layout/` |
 | 12 nov 2026 | Tamaños del marco a la escala de §2.4: el título de la barra superior pasa de 15 px a `text-xl` (20 px), los enlaces de 13 px a `text-sm` y el rol de 10 px a `text-xs`. Para el título se eligió 20 y no los 24 de "título de página" porque va dentro de una barra de 56 px junto a botones de 32 px; si se prefiere 24, es cambiar una clase en `TopBar.tsx` | `frontend/src/components/layout/TopBar.tsx` |
 | 12 nov 2026 | La barra lateral usa `bg-surface` en lugar de `--sidebar-bg`, y los enlaces `text-secondary` en lugar de `--sidebar-text`. En claro no cambia nada (`#ffffff`); en oscuro pasa de `#1e1e1e` a `#242424`, igual que la barra superior. Las dos variables quedan sin uso y se borran en T15 | `frontend/src/components/layout/Sidebar.tsx` |
@@ -204,6 +212,8 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 | Hallazgo | Etapa que lo resuelve |
 | --- | --- |
+| Cambiar el rol de un miembro en Configuración se aplica al elegirlo en la lista, sin confirmación. Promover a alguien a coordinador le da acceso total a la caja; se conservó el comportamiento de antes. Decidir si pide confirmación (al menos al subir a coordinador o al bajar a un coordinador) | Etapa 4 (flujos) |
+| Las páginas cargan datos con `useEffect` y funciones que llaman a `setState`; la regla `react-hooks/set-state-in-effect` lo marca. Al migrar cada página se pasa a `lib/useDatos.ts` | Etapa 3, al migrar cada página |
 | `frontend/index.html` declara `lang="en"`; la interfaz es solo en español | Etapa 3 |
 | `graphify-out/` no está en `.gitignore` | Sin asignar |
 | Los alias `--color-primary_y` y compañía se resuelven en `:root`, así que solo siguen el modo oscuro porque `ThemeContext` pone `.dark` en `<html>`. Si algún día `.dark` se aplica a un subárbol, los alias no cambiarían. Desaparece al borrar los alias | Etapa 3 |
@@ -214,12 +224,12 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | `DashboardPage` muestra fechas relativas ("Hoy", "Ayer") que `format.ts` no cubre. Al migrar, decidir si se agrega `fechaRelativa()` o se usa `fecha()` | Etapa 3 (Dashboard) |
 | `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
 | §3 dice que hay `<textarea>` sueltos en `SociosPage` y `CreditosPage`, pero en el código actual no hay ninguno. `TextareaField` se hizo igual; corregir la tabla de §3 o confirmar dónde hacen falta | Sin asignar (documento) |
-| 8 `<select>` sueltos con estilo propio y `style={{}}` (Créditos, Ahorros, Reportes, Configuración ×4, AbonoModal) se reemplazan por `SelectField` | Etapa 3, al migrar cada página |
+| 8 `<select>` sueltos con estilo propio y `style={{}}` (Créditos, Ahorros, Reportes, AbonoModal; los 4 de Configuración se resolvieron en T5) se reemplazan por `SelectField` | Etapa 3, al migrar cada página |
 | `PageShell` cubre solo las páginas con barra lateral. `CajasPage` y las cuatro de autenticación no usan `AppLayout` y centran con su propio `max-w-*` (`max-w-2xl`, `max-w-sm`). Decidir al migrarlas si tienen su propio contenedor o un tercer ancho | Etapa 3 |
-| Las líneas que cita §4.1 (`ConfiguracionPage.tsx:235`, etc.) se corrieron con el formato de T1; hoy son `ConfiguracionPage.tsx:241`, `AhorrosPage.tsx:185`, `CreditosPage.tsx:260`, `ProfilePage.tsx:152` y `:202` | Etapa 3 (referencia) |
+| Las líneas que cita §4.1 (`ConfiguracionPage.tsx:235`, etc.) se corrieron con el formato de T1; hoy son `AhorrosPage.tsx:185`, `CreditosPage.tsx:260`, `ProfilePage.tsx:152` y `:202` | Etapa 3 (referencia; Configuración ya resuelta en T5) |
 | 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 3 (`DonacionModal` ya se borró en la Etapa 2; quedan 6, y `ConfirmDialog`) |
 | 10 textos "Cargando…" sueltos (`App.tsx`, 7 páginas, `AbonoModal`, `TablaAmortizacion`) y 7 "Aún no hay…" (Ahorros ×2, Dashboard, Socios, Cajas, Créditos ×2) se reemplazan por `LoadingState` y `EmptyState` | Etapa 3, al migrar cada página |
-| Etiquetas de estado escritas a mano con `rgba` fijo (`ESTADO_CONFIG` en `CreditosPage`, roles en `SociosPage`, más `CajasPage`, `ConfiguracionPage` y `PagosPage`) se pasan a `Badge`. Los bloques con fondo teñido de Créditos (líneas 389, 416, 430) no cumplen AA y se rediseñan | Etapa 3 |
+| Etiquetas de estado escritas a mano con `rgba` fijo (`ESTADO_CONFIG` en `CreditosPage`, roles en `SociosPage`, más `CajasPage` y `PagosPage`; las de `ConfiguracionPage` se resolvieron en T5) se pasan a `Badge`. Los bloques con fondo teñido de Créditos (líneas 389, 416, 430) no cumplen AA y se rediseñan | Etapa 3 |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan; hay más de un `primary` por pantalla en Pagos ("Pago completo" en cada fila) y en Créditos ("Nueva solicitud" y "Crear solicitud" a la vez con el formulario abierto) | Etapa 3, al migrar cada página |
 | Lint del frontend: 9 errores que ya existían (eran 11; los de `ChatbotFlotante` y `DonacionModal` se fueron con T1 y T2). 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 3 |
 | `SociosPage.tsx:30` propone como fecha de ingreso `new Date().toISOString().split("T")[0]`, que después de las 19:00 da mañana | Etapa 3 (Socios) |
@@ -247,6 +257,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T5 hecha (`a706ef5`). Configuración migrada: 645 líneas en un archivo pasan a una página de 45 y tres secciones, sin `style={{}}`. Probada en Chromium con la API simulada como coordinador (periodo configurado y sin configurar, guardar con Enter, error de fecha vacía, cambio de rol, remover con confirmación, generar código) y como socio (solo la lista, sin controles); en claro y oscuro. Build OK; lint del frontend con los 9 errores previos y un aviso menos (7 → 6).
 - **12 nov 2026:** T4 hecha (`ddfd551`). Marco de la aplicación a clases sobre tokens. Revisado en Chromium con la barra abierta y contraída, en claro y oscuro (ancho contraído 56 px, nombres de los enlaces en `aria-label`). El enlace activo no se pudo ver sin sesión; su contraste se midió: 4,61:1 y 5,69:1. Build OK; lint del frontend con los 9 errores previos.
 - **12 nov 2026:** CLAUDE.md con una sección de Git: commits solo locales en la rama de la etapa; push y fusión en `main` los decide el usuario.
 - **12 nov 2026:** T3 hecha (`6e367c5`). `ConfirmDialog` sobre `Modal`, usado por `confirm()`. Probado en Chromium con teclado y mouse: Enter sobre Cerrar, Escape y clic afuera dan "no"; Tab hasta Eliminar y Enter da "sí"; el foco vuelve al botón que abrió. Build OK; lint del frontend con los 9 errores previos.
