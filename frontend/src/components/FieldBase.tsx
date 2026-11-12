@@ -26,6 +26,11 @@ export interface ControlProps {
 
 export interface FieldBaseProps {
   label: string
+  /**
+   * Oculta la etiqueta a la vista; el lector de pantalla la sigue leyendo. Solo para
+   * controles cuyo sentido ya da el contexto, como el rol dentro de una fila de miembro
+   */
+  ocultarEtiqueta?: boolean
   /** Si no se pasa, se genera uno con useId */
   id?: string
   /** Texto de ayuda bajo el campo. Si hay error, se muestra el error en su lugar */
@@ -51,6 +56,7 @@ const CONTROL_ERROR = "border-destructivo focus:border-destructivo focus:ring-de
 
 export function FieldBase({
   label,
+  ocultarEtiqueta = false,
   id,
   hint,
   error,
@@ -80,7 +86,10 @@ export function FieldBase({
 
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={controlId} className="text-sm font-medium text-primary">
+      <label
+        htmlFor={controlId}
+        className={`text-sm font-medium text-primary ${ocultarEtiqueta ? "sr-only" : ""}`}
+      >
         {label}
         {required && (
           <span className="ml-1 text-destructivo" aria-hidden="true">
