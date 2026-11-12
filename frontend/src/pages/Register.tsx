@@ -1,7 +1,7 @@
 // src/pages/Register.tsx
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Lock, Mail } from "lucide-react"
+import { Mail } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { authService } from "../api/auth.service"
 import { PaginaAcceso, EnlaceAcceso } from "../components/layout/PaginaAcceso"
@@ -94,7 +94,6 @@ export default function Register() {
             setPassword(e.target.value)
             limpiar("password")
           }}
-          icon={Lock}
           hint="Al menos 6 caracteres."
           error={errores.password}
           required
@@ -109,7 +108,6 @@ export default function Register() {
             setConfirm(e.target.value)
             limpiar("confirm")
           }}
-          icon={Lock}
           error={errores.confirm}
           required
         />

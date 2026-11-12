@@ -1,7 +1,7 @@
 // src/pages/Login.tsx
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Lock, Mail } from "lucide-react"
+import { Mail } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { PaginaAcceso, EnlaceAcceso } from "../components/layout/PaginaAcceso"
 import { Form } from "../components/Form"
@@ -87,7 +87,6 @@ export default function LoginPage() {
             setPassword(e.target.value)
             setErrores((x) => ({ ...x, password: undefined }))
           }}
-          icon={Lock}
           error={errores.password}
           required
         />

@@ -1,4 +1,5 @@
-import type { ChangeEvent, FocusEvent, HTMLAttributes } from "react"
+import { useState, type ChangeEvent, type FocusEvent, type HTMLAttributes } from "react"
+import { Eye, EyeOff } from "lucide-react"
 import { FieldBase, type FieldBaseProps } from "./FieldBase"
 
 /**
@@ -11,6 +12,8 @@ import { FieldBase, type FieldBaseProps } from "./FieldBase"
  *   inputMode="numeric" muestra el teclado numérico sin las flechas de type="number".
  * - En type="date" no se pasa `icon`: el navegador ya pone el suyo a la derecha.
  *   El valor va y viene como "yyyy-MM-dd".
+ * - En type="password" va siempre el botón del ojo para mostrar u ocultar lo escrito;
+ *   ocupa el lugar del ícono, así que `icon` se ignora.
  */
 
 export type TextFieldType = "text" | "email" | "password" | "tel" | "number" | "date" | "search"
@@ -49,12 +52,29 @@ export function TextField({
   autoFocus,
   ...base
 }: TextFieldProps) {
+  const [visible, setVisible] = useState(false)
+  const esClave = type === "password"
+  const accion = esClave ? (
+    <button
+      type="button"
+      onClick={() => setVisible((v) => !v)}
+      disabled={base.disabled}
+      aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+      aria-pressed={visible}
+      className="flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {visible ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+    </button>
+  ) : undefined
+
   return (
-    <FieldBase {...base}>
+    <FieldBase {...base} accion={accion}>
       {(control) => (
         <input
           {...control}
-          type={type}
+          // [&::-ms-reveal]: Edge pone su propio ojo; se oculta para que no salgan dos
+          className={esClave ? `${control.className} [&::-ms-reveal]:hidden` : control.className}
+          type={esClave && visible ? "text" : type}
           value={value}
           onChange={onChange}
           onBlur={onBlur}

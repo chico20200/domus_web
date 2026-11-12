@@ -1,7 +1,7 @@
 // src/pages/ResetPasswordPage.tsx
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { CircleCheck, Lock, TriangleAlert } from "lucide-react"
+import { CircleCheck, TriangleAlert } from "lucide-react"
 import { authService } from "../api/auth.service"
 import { PaginaAcceso, EnlaceAcceso } from "../components/layout/PaginaAcceso"
 import { Form } from "../components/Form"
@@ -116,7 +116,6 @@ export default function ResetPasswordPage() {
             setPassword(e.target.value)
             setErrores((x) => ({ ...x, password: undefined }))
           }}
-          icon={Lock}
           hint="Al menos 6 caracteres."
           error={errores.password}
           required
@@ -132,7 +131,6 @@ export default function ResetPasswordPage() {
             setConfirm(e.target.value)
             setErrores((x) => ({ ...x, confirm: undefined }))
           }}
-          icon={Lock}
           error={errores.confirm}
           required
         />

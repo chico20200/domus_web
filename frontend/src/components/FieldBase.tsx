@@ -40,6 +40,11 @@ export interface FieldBaseProps {
   disabled?: boolean
   /** Ícono decorativo a la derecha del control */
   icon?: LucideIcon
+  /**
+   * Botón a la derecha del control, en lugar del ícono (por ejemplo, mostrar u ocultar la
+   * contraseña). Si se pasa, `icon` se ignora
+   */
+  accion?: ReactNode
   children: (control: ControlProps) => ReactNode
 }
 
@@ -62,9 +67,11 @@ export function FieldBase({
   error,
   required = false,
   disabled = false,
-  icon: Icon,
+  icon,
+  accion,
   children,
 }: FieldBaseProps) {
+  const Icon = accion ? undefined : icon
   const autoId = useId()
   const controlId = id ?? autoId
   const mensajeId = `${controlId}-mensaje`
@@ -74,10 +81,13 @@ export function FieldBase({
 
   const control: ControlProps = {
     id: controlId,
-    // pr-9: 12 px de margen + 16 px del ícono + 8 px de separación (excepción documentada en T4)
-    className: [CONTROL_BASE, hayError ? CONTROL_ERROR : CONTROL_NORMAL, Icon ? "pr-9" : ""].join(
-      " ",
-    ),
+    // pr-9: 12 px de margen + 16 px del ícono + 8 px de separación (excepción documentada en T4).
+    // pr-11: el botón de `accion` ocupa 36 px desde el borde derecho
+    className: [
+      CONTROL_BASE,
+      hayError ? CONTROL_ERROR : CONTROL_NORMAL,
+      accion ? "pr-11" : Icon ? "pr-9" : "",
+    ].join(" "),
     disabled: disabled || undefined,
     "aria-required": required || undefined,
     "aria-invalid": hayError || undefined,
@@ -109,6 +119,7 @@ export function FieldBase({
             />
           </span>
         )}
+        {accion && <div className="absolute inset-y-0 right-1 flex items-center">{accion}</div>}
       </div>
 
       {mensaje && (
