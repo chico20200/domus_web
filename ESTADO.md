@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (13 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (14 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración `001` ejecutada |
-| 3 | Migración de pantallas | En curso: 13/15 |
+| 3 | Migración de pantallas | En curso: 14/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -87,8 +87,8 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 | T11 | Pagos (`ConfirmarPagoModal` ya quedó sobre `Modal` en T6) | T1–T4 | ✅ | `5650cbe` |
 | T12 | Perfil | T1–T4 | ✅ | `78be44d` |
 | T13 | Cajas (solo la migración visual; el asistente de creación es Etapa 4) | T1–T4 | ✅ | `6525796` |
-| T14 | Las cuatro de autenticación, y `lang="es"` en `index.html` | T1–T4 | ⬜ | |
-| T15 | Cierre: borrar los alias de color, `Field.tsx` y `Card.tsx`; lint del frontend en cero | T5–T14 | ⬜ | |
+| T14 | Las cuatro de autenticación, y `lang="es"` en `index.html` | T1–T4 | ✅ | `bd7d70d` |
+| T15 | Cierre: borrar los alias de color, `Field.tsx` y `Card.tsx`; los avisos (toasts) de `NotifContext` sin `style={{}}`; lint del frontend en cero | T5–T14 | ⬜ | |
 
 ---
 
@@ -96,6 +96,12 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | `PaginaAcceso`: contenedor de las cuatro páginas sin sesión. Logo arriba, tarjeta centrada de 384 px con el título como `<h1>`, enlaces secundarios debajo y el cambio de tema arriba a la derecha. Su ancho es un tercer token, `--container-acceso` (`max-w-acceso`), junto a `formulario` y `completo`. `EnlaceAcceso` da el estilo de los enlaces de texto | `frontend/src/components/layout/PaginaAcceso.tsx`, `frontend/src/index.css` |
+| 12 nov 2026 | Las cuatro páginas de acceso (T14) pasan a `Form` y `TextField`: Enter envía (antes en Login no había `<form>`), error por campo y error general aparte, `autoComplete` (`email`, `current-password`, `new-password`) para que el navegador ofrezca guardar la contraseña, y foco inicial en el primer campo. En Login el error del backend ya no se repite en los dos campos | `frontend/src/pages/Login.tsx`, `Register.tsx`, `ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx` |
+| 12 nov 2026 | HU002: en Login, "¿No tienes cuenta? Crea una" va justo debajo de "¿Olvidaste tu contraseña?", los dos bajo la tarjeta. Antes el registro estaba al pie de la pantalla, en verde | `frontend/src/pages/Login.tsx` |
+| 12 nov 2026 | La política de contraseña sigue en 6 caracteres: HU001 (8 con letras y números) y la activación por correo son Etapa 4 (§12). El texto de ayuda dice "Al menos 6 caracteres" | `frontend/src/pages/Register.tsx`, `ResetPasswordPage.tsx` |
+| 12 nov 2026 | Restablecer contraseña: el enlace inválido explica qué pasó y ofrece pedir uno nuevo con `Link` (antes `<a href>`, que recargaba la app); la vista de éxito tiene enlace a iniciar sesión además del salto automático, que pasa de 2,5 s a 4 s y se cancela si se sale antes. Los íconos de resultado van sobre `bg-surface-2` con color de estado, sin `text-white` | `frontend/src/pages/ResetPasswordPage.tsx`, `ForgotPasswordPage.tsx` |
+| 12 nov 2026 | `index.html` con `lang="es"` y título "DOMUS". Ninguna página usa ya `Field.tsx` ni `Card.tsx` | `frontend/index.html` |
 | 12 nov 2026 | `PaginaSinMenu`: contenedor de las páginas con sesión pero sin caja elegida (hoy "Mis cajas"). Barra superior con logo, acciones y cambio de tema; contenido centrado con `max-w-formulario` y el título como `<h1>`. Así la página no escribe `max-w-*` (§4.1). `BotonIcono` sale de `TopBar` a su propio archivo y lo usan los dos | `frontend/src/components/layout/PaginaSinMenu.tsx`, `BotonIcono.tsx` |
 | 12 nov 2026 | Mis cajas (T13): cada caja es un botón con nombre, descripción y el rol en un `Badge` neutro con su ícono (antes el rol iba en color propio: naranja, verde o gris). "Crear una caja" y "Unirse con un código" son los dos `secondary` y van juntos, con el mismo peso (HU004); antes unirse era un enlace de texto. Los dos abren un `Modal` con `Form` | `frontend/src/pages/CajasPage.tsx`, `pages/cajas/` |
 | 12 nov 2026 | Mis cajas muestra el error de carga con "Reintentar". Antes lo tragaba y mostraba "Aún no perteneces a ninguna caja", invitando a crear una caja nueva a quien ya tenía cajas | `frontend/src/pages/CajasPage.tsx` |
@@ -258,6 +264,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 | Hallazgo | Etapa que lo resuelve |
 | --- | --- |
+| La notificación de error del inicio de sesión depende del texto del backend ("Correo o contraseña incorrectos"). Si el backend devolviera algo distinto para un correo que no existe, revelaría qué cuentas están registradas. No se revisó el backend en T14 | Etapa 4 o 6 |
 | El avatar de la barra superior usa la inicial del correo ("C") y el de Perfil las iniciales del nombre ("AT"): la misma persona se ve con dos avatares distintos. La barra no carga el perfil; haría falta que `AuthContext` lo tenga | Sin asignar |
 | El backend de perfil no valida nada: `PUT /profiles/me` guarda cualquier nombre y teléfono, y acepta `foto_url` sin revisar que sea una URL. HU016 queda cumplida solo en el formulario | Etapa 4 o 6 (validación del backend) |
 | El backend acepta pagos, abonos de cuota y prepago en créditos `pendiente` (sin desembolsar) y `castigado`: `POST /pagos` solo rechaza `pagado`. La interfaz solo ofrece pagar créditos activos y en mora, pero una llamada directa pasa | Etapa 4 o 6 (validación del backend) |
@@ -272,16 +279,12 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | Con una cuota vencida, Créditos ofrece igual "Prepagar la última cuota" (lo decide el backend en `prepago_disponible`). Revisar si el prepago debería esperar a que se ponga al día | Sin asignar (regla de negocio) |
 | Cambiar el rol de un miembro en Configuración se aplica al elegirlo en la lista, sin confirmación. Promover a alguien a coordinador le da acceso total a la caja; se conservó el comportamiento de antes. Decidir si pide confirmación (al menos al subir a coordinador o al bajar a un coordinador) | Etapa 4 (flujos) |
 | Las páginas cargan datos con `useEffect` y funciones que llaman a `setState`; la regla `react-hooks/set-state-in-effect` lo marca. Al migrar cada página se pasa a `lib/useDatos.ts` | Etapa 3, al migrar cada página |
-| `frontend/index.html` declara `lang="en"`; la interfaz es solo en español | Etapa 3 |
 | `graphify-out/` no está en `.gitignore` | Sin asignar |
 | Los alias `--color-primary_y` y compañía se resuelven en `:root`, así que solo siguen el modo oscuro porque `ThemeContext` pone `.dark` en `<html>`. Si algún día `.dark` se aplica a un subárbol, los alias no cambiarían. Desaparece al borrar los alias | Etapa 3 |
-| 5 sitios fuera de `Button` ponen `text-white` sobre un relleno de color. En modo oscuro dan 2,4:1. Se corrige usando `text-sobre-accion`. Queda `ForgotPasswordPage` (ícono). El marco se corrigió en T4, la tarjeta de `AhorrosPage` en T8 y el avatar de `ProfilePage` en T12 | Etapa 3 (T14) |
 | Valores fuera de escala en las páginas: 57 usos de 20 px (`p-5`, `px-5`…), 12 de 40 px, 13 `borderRadius` y 12 `fontSize` en `style={{}}`, 6 `text-lg`. Inventario y reemplazos en `docs/SISTEMA_DE_DISENO.md` §5 | Etapa 3, página por página |
 | **Fechas un día atrasadas.** Las columnas `date` llegan como `"2026-11-11"` y las páginas hacen `new Date(f)`, que las toma como UTC: en Ecuador se ven como el día anterior (`fecha_apertura`, `fecha_ingreso`, `fecha_desembolso`, vencimientos). `fecha()` ya lo corrige; falta reemplazar las 6 funciones locales | Etapa 3, al migrar cada página |
-| `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
 | §3 dice que hay `<textarea>` sueltos en `SociosPage` y `CreditosPage`, pero en el código actual no hay ninguno. `TextareaField` se hizo igual; corregir la tabla de §3 o confirmar dónde hacen falta | Sin asignar (documento) |
 | 8 `<select>` sueltos con estilo propio y `style={{}}` se reemplazan por `SelectField`. Resueltos todos: Configuración (T5), Créditos y `AbonoModal` (T6), Reportes (T7), Ahorros (T8) | Etapa 3 ✅ |
-| `PageShell` cubre solo las páginas con barra lateral. `CajasPage` y las cuatro de autenticación no usan `AppLayout`. Cajas pasó a `PaginaSinMenu` en T13; falta decidir el contenedor de las de autenticación (tarjeta centrada) | Etapa 3 (T14) |
 | Las líneas que cita §4.1 (`ConfiguracionPage.tsx:235`, etc.) se corrieron con el formato de T1; hoy son `AhorrosPage.tsx:185`, `CreditosPage.tsx:260`, `ProfilePage.tsx:152` y `:202` | Etapa 3 (referencia; Configuración ya resuelta en T5) |
 | 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 3. `DonacionModal` se borró en la Etapa 2; el de `NotifContext` pasó a `ConfirmDialog` en T3; `AbonoModal`, `ConfirmarPagoModal` y `TablaAmortizacion` pasaron a `Modal` en T6. Los dos de `AhorrosPage` pasaron a `Modal` en T8. Resuelto |
 | 10 textos "Cargando…" sueltos (`App.tsx`, 7 páginas, `AbonoModal`, `TablaAmortizacion`) y 7 "Aún no hay…" (Ahorros ×2, Dashboard, Socios, Cajas, Créditos ×2) se reemplazan por `LoadingState` y `EmptyState` | Etapa 3, al migrar cada página |
@@ -312,6 +315,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T14 hecha (`bd7d70d`). Las cuatro páginas de acceso migradas, sin `style={{}}` ni alias de color viejos. Probadas en Chromium con la API simulada y sin sesión: login vacío, con contraseña incorrecta y correcto (va a /cajas); registro con correo y contraseña inválidos; recuperar con envío; restablecer sin token, con contraseñas distintas y con éxito (borra el token y salta a /login); en claro y oscuro. Quedan con estilos en línea solo los avisos de `NotifContext` (T15). Build OK; lint del frontend en 5 errores.
 - **12 nov 2026:** T13 hecha (`6525796`). Mis cajas migrada, sin `style={{}}` ni manejadores de ratón que cambiaban estilos. Probada en Chromium con la API simulada: tres cajas con los tres roles, sin cajas, error de carga; unirse con un código malo (error en el campo) y uno bueno (entra a la caja y avisa la vinculación); crear vacía y con nombre; en claro y oscuro. La prueba mostró "Caja Caja Nueva Norte creada" y la invitación a crear caja junto al error de carga; corregidos. Build OK; lint del frontend en 5 errores.
 - **12 nov 2026:** T12 hecha (`78be44d`). Perfil migrado, sin `style={{}}` ni `text-white`. Validaciones de HU016 probadas con 14 casos. Probado en Chromium con la API simulada: vista con teléfono sin registrar, edición con nombre y teléfono inválidos, guardado con espacios de más (se envían limpios) y aviso; en claro y oscuro. Build OK; lint del frontend en 5 errores.
 - **12 nov 2026:** T11 hecha (`5650cbe`). Pagos migrada, sin `style={{}}`. Probada en Chromium con la API simulada: cinco créditos (activo, mora, pendiente, pagado, activo con tilde), solo se listan tres con mora primero; búsqueda "alvarez"; elegir "Solo capital" con la flecha y Enter; desglose con cuota atrasada; pago y aviso con el saldo; Escape devuelve el foco al botón de la fila; en claro y oscuro. Repetida la prueba de Ahorros tras cambiar el orden de los botones. Build OK; lint del frontend en 5 errores y 0 avisos.
