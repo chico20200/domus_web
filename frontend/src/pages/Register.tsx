@@ -1,26 +1,26 @@
 // src/pages/RegisterPage.tsx
-import { useState }    from "react"
+import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Mail, Lock }  from "lucide-react"
-import { Field }       from "../components/Field"
-import { Button }      from "../components/Button"
-import { useAuth }     from "../context/AuthContext"
+import { Mail, Lock } from "lucide-react"
+import { Field } from "../components/Field"
+import { Button } from "../components/Button"
+import { useAuth } from "../context/AuthContext"
 import { authService } from "../api/auth.service"
 
 export default function Register() {
   const navigate = useNavigate()
   const { login } = useAuth()
 
-  const [email,    setEmail]    = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [confirm,  setConfirm]  = useState("")
-  const [loading,  setLoading]  = useState(false)
+  const [confirm, setConfirm] = useState("")
+  const [loading, setLoading] = useState(false)
 
   // Errores por campo — undefined cuando no hay error
-  const [errorEmail,    setErrorEmail]    = useState<string | undefined>(undefined)
+  const [errorEmail, setErrorEmail] = useState<string | undefined>(undefined)
   const [errorPassword, setErrorPassword] = useState<string | undefined>(undefined)
-  const [errorConfirm,  setErrorConfirm]  = useState<string | undefined>(undefined)
-  const [errorGeneral,  setErrorGeneral]  = useState<string | undefined>(undefined)
+  const [errorConfirm, setErrorConfirm] = useState<string | undefined>(undefined)
+  const [errorGeneral, setErrorGeneral] = useState<string | undefined>(undefined)
 
   // ── Validación local antes de llamar al backend ──────────────
   function validar(): boolean {
@@ -50,7 +50,7 @@ export default function Register() {
   }
 
   async function handleRegister() {
-    if (!validar()) return   // si hay errores locales no llama al backend
+    if (!validar()) return // si hay errores locales no llama al backend
 
     setLoading(true)
     try {
@@ -62,7 +62,6 @@ export default function Register() {
 
       // 3. Redirige al perfil
       navigate("/perfil", { replace: true })
-
     } catch (err) {
       setErrorGeneral(err instanceof Error ? err.message : "Error al crear la cuenta")
     } finally {
@@ -71,22 +70,28 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-base)' }}>
-        <div className = "flex flex-row items-center justify-center mt-8">
-            <img src="/logo_domus.png" alt="Logo de la caja" className="w-24"/>
-            <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Domus</h1>
-        </div>
-        <div className="mt-4 flex items-center justify-center ">
-        <div className="w-full max-w-sm flex flex-col gap-5 p-5 rounded-lg shadow-md" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-base)' }}>
-
-            <div>
-            <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Crear cuenta</h1>
-            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-base)" }}>
+      <div className="flex flex-row items-center justify-center mt-8">
+        <img src="/logo_domus.png" alt="Logo de la caja" className="w-24" />
+        <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
+          Domus
+        </h1>
+      </div>
+      <div className="mt-4 flex items-center justify-center ">
+        <div
+          className="w-full max-w-sm flex flex-col gap-5 p-5 rounded-lg shadow-md"
+          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-base)" }}
+        >
+          <div>
+            <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
+              Crear cuenta
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
               Ingresa tus datos para registrarte
             </p>
-            </div>
+          </div>
 
-            <Field
+          <Field
             label="Correo electrónico"
             type="email"
             value={email}
@@ -95,8 +100,8 @@ export default function Register() {
             icon={Mail}
             required
             error={errorEmail}
-            />
-            <Field
+          />
+          <Field
             label="Contraseña"
             type="password"
             value={password}
@@ -106,8 +111,8 @@ export default function Register() {
             required
             hint="Mínimo 6 caracteres"
             error={errorPassword}
-            />
-            <Field
+          />
+          <Field
             label="Confirmar contraseña"
             type="password"
             value={confirm}
@@ -116,28 +121,33 @@ export default function Register() {
             icon={Lock}
             required
             error={errorConfirm}
-            />
+          />
 
-            {errorGeneral && (
-            <p className="text-sm" style={{ color: 'var(--color-danger_r)' }}>{errorGeneral}</p>
-            )}
+          {errorGeneral && (
+            <p className="text-sm" style={{ color: "var(--color-danger_r)" }}>
+              {errorGeneral}
+            </p>
+          )}
 
-            <Button
+          <Button
             label="Crear cuenta"
             variant="primary"
             loading={loading}
             onClick={handleRegister}
-            />
+          />
 
-            <p className="text-sm text-center" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-sm text-center" style={{ color: "var(--text-secondary)" }}>
             ¿Ya tienes cuenta?{" "}
-            <Link to="/login" className="hover:underline" style={{ color: 'var(--color-primary_y)' }}>
+            <Link
+              to="/login"
+              className="hover:underline"
+              style={{ color: "var(--color-primary_y)" }}
+            >
               Inicia sesión
             </Link>
-            </p>
-
+          </p>
         </div>
-        </div>
+      </div>
     </div>
   )
 }

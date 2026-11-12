@@ -1,38 +1,45 @@
 // src/components/ConfirmarPagoModal.tsx
 import { useState, useEffect } from "react"
-import { Button }              from "./Button"
-import { pagosService }        from "../api/pagos.service"
+import { Button } from "./Button"
+import { pagosService } from "../api/pagos.service"
 import type { TipoPago, ProximaCuota } from "../api/pagos.types"
 
 function formatMonto(m: number) {
   return new Intl.NumberFormat("es-EC", {
-    style: "currency", currency: "USD", minimumFractionDigits: 2
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
   }).format(m)
 }
 
 const titulos: Record<TipoPago, string> = {
-  completo:     "Pago completo de cuota",
+  completo: "Pago completo de cuota",
   solo_capital: "Pago de solo capital",
   solo_interes: "Pago de solo interés",
 }
 
 interface Props {
-  cajaId:       string
-  creditoId:    string
-  tipo:         TipoPago
+  cajaId: string
+  creditoId: string
+  tipo: TipoPago
   nombreSocio?: string
-  onConfirmar:  () => void   // ejecuta el pago
-  onCancelar:   () => void
-  procesando?:  boolean
+  onConfirmar: () => void // ejecuta el pago
+  onCancelar: () => void
+  procesando?: boolean
 }
 
 export function ConfirmarPagoModal({
-  cajaId, creditoId, tipo, nombreSocio,
-  onConfirmar, onCancelar, procesando = false
+  cajaId,
+  creditoId,
+  tipo,
+  nombreSocio,
+  onConfirmar,
+  onCancelar,
+  procesando = false,
 }: Props) {
-  const [cuota,   setCuota]   = useState<ProximaCuota | null>(null)
+  const [cuota, setCuota] = useState<ProximaCuota | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | undefined>(undefined)
+  const [error, setError] = useState<string | undefined>(undefined)
 
   // El backend dice exactamente qué falta pagar
   useEffect(() => {
@@ -55,8 +62,8 @@ export function ConfirmarPagoModal({
     const capital = cuota.falta_capital ?? 0
     const interes = cuota.falta_interes ?? 0
 
-    if (tipo === "solo_capital") return { capital, interes: 0,  total: capital }
-    if (tipo === "solo_interes") return { capital: 0, interes,  total: interes }
+    if (tipo === "solo_capital") return { capital, interes: 0, total: capital }
+    if (tipo === "solo_interes") return { capital: 0, interes, total: interes }
     return { capital, interes, total: +(capital + interes).toFixed(2) }
   })()
 
@@ -83,7 +90,9 @@ export function ConfirmarPagoModal({
         )}
 
         {error && (
-          <p className="text-sm" style={{ color: "var(--color-danger_r)" }}>{error}</p>
+          <p className="text-sm" style={{ color: "var(--color-danger_r)" }}>
+            {error}
+          </p>
         )}
 
         {/* Crédito ya pagado */}
@@ -97,26 +106,27 @@ export function ConfirmarPagoModal({
         {!loading && sinNadaQuePagar && cuota?.pendiente && (
           <p className="text-sm" style={{ color: "var(--color-danger_r)" }}>
             {tipo === "solo_capital"
-                ? `El capital de la cuota #${cuota.numero_cuota} ya está pagado.`
-                : `El interés de la cuota #${cuota.numero_cuota} ya está pagado.`}
-                {/* Después del párrafo de "Cuota #X de Y" */}
-                {cuota.vencida && (
-                <div className="rounded-lg px-3 py-2 text-xs"
-                    style={{
-                    background: "rgba(217,97,70,0.1)",
-                    border:     "1px solid rgba(217,97,70,0.25)",
-                    color:      "var(--color-danger_r)",
-                    }}
-                >
-                    <strong>Cuota atrasada.</strong> Venció el {cuota.fecha_vencimiento}.
-                </div>
-                )}
+              ? `El capital de la cuota #${cuota.numero_cuota} ya está pagado.`
+              : `El interés de la cuota #${cuota.numero_cuota} ya está pagado.`}
+            {/* Después del párrafo de "Cuota #X de Y" */}
+            {cuota.vencida && (
+              <div
+                className="rounded-lg px-3 py-2 text-xs"
+                style={{
+                  background: "rgba(217,97,70,0.1)",
+                  border: "1px solid rgba(217,97,70,0.25)",
+                  color: "var(--color-danger_r)",
+                }}
+              >
+                <strong>Cuota atrasada.</strong> Venció el {cuota.fecha_vencimiento}.
+              </div>
+            )}
 
-                {cuota.cuotas_vencidas && cuota.cuotas_vencidas.length > 1 && (
-                <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>
-                    Hay {cuota.cuotas_vencidas.length} cuotas vencidas en total.
-                </p>
-                )}
+            {cuota.cuotas_vencidas && cuota.cuotas_vencidas.length > 1 && (
+              <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>
+                Hay {cuota.cuotas_vencidas.length} cuotas vencidas en total.
+              </p>
+            )}
           </p>
         )}
 
@@ -124,22 +134,33 @@ export function ConfirmarPagoModal({
         {!loading && cuota?.pendiente && desglose && !sinNadaQuePagar && (
           <>
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              {nombreSocio && <>Pago para <strong>{nombreSocio}</strong>. </>}
+              {nombreSocio && (
+                <>
+                  Pago para <strong>{nombreSocio}</strong>.{" "}
+                </>
+              )}
               Cuota <strong>#{cuota.numero_cuota}</strong> de {cuota.total_cuotas}
               {cuota.es_ultima && " (última)"}. Esta acción no se puede deshacer.
             </p>
 
-            <div className="rounded-lg p-3 flex flex-col gap-1" style={{ background: "var(--bg-base)" }}>
+            <div
+              className="rounded-lg p-3 flex flex-col gap-1"
+              style={{ background: "var(--bg-base)" }}
+            >
               {desglose.capital > 0 && (
                 <div className="flex justify-between text-sm">
                   <span style={{ color: "var(--text-secondary)" }}>Capital</span>
-                  <span style={{ color: "var(--text-primary)" }}>{formatMonto(desglose.capital)}</span>
+                  <span style={{ color: "var(--text-primary)" }}>
+                    {formatMonto(desglose.capital)}
+                  </span>
                 </div>
               )}
               {desglose.interes > 0 && (
                 <div className="flex justify-between text-sm">
                   <span style={{ color: "var(--text-secondary)" }}>Interés</span>
-                  <span style={{ color: "var(--color-primary_y)" }}>{formatMonto(desglose.interes)}</span>
+                  <span style={{ color: "var(--color-primary_y)" }}>
+                    {formatMonto(desglose.interes)}
+                  </span>
                 </div>
               )}
               <div

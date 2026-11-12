@@ -1,17 +1,17 @@
 // src/api/socios.types.ts
 export interface Socio {
-  id:            string
-  caja_id:       string
-  user_id:       string | null 
-  cedula:        string
-  nombre:        string
-  apellido:      string
-  telefono:      string
-  email:         string
-  direccion:     string
+  id: string
+  caja_id: string
+  user_id: string | null
+  cedula: string
+  nombre: string
+  apellido: string
+  telefono: string
+  email: string
+  direccion: string
   fecha_ingreso: string
-  activo:        boolean
-  created_at:    string
+  activo: boolean
+  created_at: string
 }
 
 export interface GetSociosResponse {
@@ -23,16 +23,16 @@ export interface GetSocioResponse {
 }
 
 export interface CreateSocioRequest {
-  nombre:         string
-  apellido:       string
-  cedula:         string
-  telefono?:      string
-  email?:         string
-  direccion?:     string
+  nombre: string
+  apellido: string
+  cedula: string
+  telefono?: string
+  email?: string
+  direccion?: string
   fecha_ingreso?: string
 }
 
 export interface SocioResponse {
   message: string
-  socio:   Socio
+  socio: Socio
 }

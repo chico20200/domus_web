@@ -1,6 +1,6 @@
 // src/pages/ReportesPage.tsx
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   Download,
   TrendingUp,
@@ -9,19 +9,16 @@ import {
   CheckCircle,
   AlertTriangle,
   PieChart,
-} from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { AppLayout } from "../components/layout/AppLayout";
-import { Button } from "../components/Button";
-import { Card } from "../components/UI/Card";
-import { useCaja } from "../context/CajaContext";
-import { useNotif } from "../context/NotifContext";
-import { reportesService } from "../api/reportes.service";
-import type {
-  DistribucionResponse,
-  EstadoCajaResponse,
-} from "../api/reportes.types";
+} from "lucide-react"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
+import { AppLayout } from "../components/layout/AppLayout"
+import { Button } from "../components/Button"
+import { Card } from "../components/UI/Card"
+import { useCaja } from "../context/CajaContext"
+import { useNotif } from "../context/NotifContext"
+import { reportesService } from "../api/reportes.service"
+import type { DistribucionResponse, EstadoCajaResponse } from "../api/reportes.types"
 // import { apiClient } from "../api/api.client";
 
 function fm(m: number) {
@@ -29,15 +26,15 @@ function fm(m: number) {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
-  }).format(m);
+  }).format(m)
 }
 
 function fpct(n: number) {
-  return `${n.toFixed(4)}%`;
+  return `${n.toFixed(4)}%`
 }
 
 function labelMes(mes: string) {
-  const [y, m] = mes.split("-");
+  const [y, m] = mes.split("-")
   const nombres = [
     "ene",
     "feb",
@@ -51,75 +48,68 @@ function labelMes(mes: string) {
     "oct",
     "nov",
     "dic",
-  ];
-  return `${nombres[parseInt(m) - 1]} ${y.slice(2)}`;
+  ]
+  return `${nombres[parseInt(m) - 1]} ${y.slice(2)}`
 }
 
-type Tab = "resumen" | "mensual" | "socios";
+type Tab = "resumen" | "mensual" | "socios"
 
 export default function ReportesPage() {
-  const navigate = useNavigate();
-  const { cajaActiva } = useCaja();
-  const { toast } = useNotif();
+  const navigate = useNavigate()
+  const { cajaActiva } = useCaja()
+  const { toast } = useNotif()
 
-  const [tab, setTab] = useState<Tab>("resumen");
-  const [dist, setDist] = useState<DistribucionResponse | null>(null);
-  const [estado, setEstado] = useState<EstadoCajaResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [cicloSel, setCicloSel] = useState<number | null>(null);
+  const [tab, setTab] = useState<Tab>("resumen")
+  const [dist, setDist] = useState<DistribucionResponse | null>(null)
+  const [estado, setEstado] = useState<EstadoCajaResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [cicloSel, setCicloSel] = useState<number | null>(null)
 
   useEffect(() => {
     if (!cajaActiva) {
-      navigate("/cajas", { replace: true });
-      return;
+      navigate("/cajas", { replace: true })
+      return
     }
-    cargar();
-  }, [cajaActiva]);
+    cargar()
+  }, [cajaActiva])
 
   async function cargar(numeroCiclo?: number) {
-    setLoading(true);
+    setLoading(true)
     try {
       const [d, e] = await Promise.all([
         reportesService.getDistribucion(cajaActiva!.id, numeroCiclo),
         reportesService.getEstadoCaja(cajaActiva!.id, numeroCiclo), // ← ahora pasa el ciclo
-      ]);
-      setDist(d);
-      setEstado(e);
-      setCicloSel(d.ciclo.numero);
+      ])
+      setDist(d)
+      setEstado(e)
+      setCicloSel(d.ciclo.numero)
     } catch (err) {
-      toast(
-        "error",
-        err instanceof Error ? err.message : "Error al cargar reportes",
-      );
+      toast("error", err instanceof Error ? err.message : "Error al cargar reportes")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   // ── PDF del reporte anual ────────────────────────────────────
   function descargarPDF() {
-    if (!dist || !estado) return;
+    if (!dist || !estado) return
 
-    const doc = new jsPDF({ orientation: "landscape" });
+    const doc = new jsPDF({ orientation: "landscape" })
 
-    doc.setFontSize(15);
-    doc.text("Reporte de Distribución de Intereses", 14, 16);
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text(
-      `${dist.caja.nombre} — Ciclo ${dist.ciclo.numero}: ${dist.ciclo.label}`,
-      14,
-      22,
-    );
+    doc.setFontSize(15)
+    doc.text("Reporte de Distribución de Intereses", 14, 16)
+    doc.setFontSize(9)
+    doc.setTextColor(100)
+    doc.text(`${dist.caja.nombre} — Ciclo ${dist.ciclo.numero}: ${dist.ciclo.label}`, 14, 22)
 
     // Resumen financiero
-    doc.setTextColor(0);
-    doc.setFontSize(9);
-    let y = 32;
-    doc.text(`Total ahorros: ${fm(estado.total_ahorros)}`, 14, y);
-    doc.text(`Interés recaudado: ${fm(estado.interes_recaudado)}`, 90, y);
-    doc.text(`Por cobrar: ${fm(estado.por_cobrar)}`, 170, y);
-    doc.text(`En caja: ${fm(estado.en_caja)}`, 240, y);
+    doc.setTextColor(0)
+    doc.setFontSize(9)
+    let y = 32
+    doc.text(`Total ahorros: ${fm(estado.total_ahorros)}`, 14, y)
+    doc.text(`Interés recaudado: ${fm(estado.interes_recaudado)}`, 90, y)
+    doc.text(`Por cobrar: ${fm(estado.por_cobrar)}`, 170, y)
+    doc.text(`En caja: ${fm(estado.en_caja)}`, 240, y)
 
     // Tabla mensual
     autoTable(doc, {
@@ -140,12 +130,12 @@ export default function ReportesPage() {
         fontSize: 8,
       },
       bodyStyles: { fontSize: 8 },
-    });
+    })
 
     // Tabla por socio
-    const y2 = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(11);
-    doc.text("Interés por socio", 14, y2);
+    const y2 = (doc as any).lastAutoTable.finalY + 10
+    doc.setFontSize(11)
+    doc.text("Interés por socio", 14, y2)
 
     autoTable(doc, {
       startY: y2 + 4,
@@ -171,30 +161,27 @@ export default function ReportesPage() {
       },
       bodyStyles: { fontSize: 7 },
       columnStyles: { 0: { cellWidth: 40 } },
-    });
+    })
 
-    doc.setFontSize(7);
-    doc.setTextColor(150);
+    doc.setFontSize(7)
+    doc.setTextColor(150)
     doc.text(
       `Generado el ${new Date().toLocaleDateString("es-EC")} — Domus`,
       14,
       doc.internal.pageSize.height - 8,
-    );
+    )
 
-    doc.save(`reporte-${dist.caja.nombre.replace(/\s+/g, "-")}.pdf`);
+    doc.save(`reporte-${dist.caja.nombre.replace(/\s+/g, "-")}.pdf`)
   }
 
   if (loading) {
     return (
       <AppLayout titulo="Reportes">
-        <p
-          className="text-sm text-center py-12"
-          style={{ color: "var(--text-secondary)" }}
-        >
+        <p className="text-sm text-center py-12" style={{ color: "var(--text-secondary)" }}>
           Calculando reporte...
         </p>
       </AppLayout>
-    );
+    )
   }
 
   return (
@@ -203,10 +190,7 @@ export default function ReportesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2
-              className="text-lg font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
+            <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
               Distribución de intereses
             </h2>
 
@@ -214,12 +198,7 @@ export default function ReportesPage() {
               Ciclo {dist?.ciclo.numero} · {dist?.ciclo.label}
             </p>
           </div>
-          <Button
-            label="Descargar PDF"
-            variant="primary"
-            icon={Download}
-            onClick={descargarPDF}
-          />
+          <Button label="Descargar PDF" variant="primary" icon={Download} onClick={descargarPDF} />
           {dist && dist.ciclos_disponibles.length > 1 && (
             <select
               value={cicloSel ?? ""}
@@ -245,38 +224,25 @@ export default function ReportesPage() {
           <div
             className="rounded-lg px-4 py-3 flex items-center gap-3"
             style={{
-              background: dist.validacion.cuadra
-                ? "rgba(106,178,62,0.08)"
-                : "rgba(217,97,70,0.08)",
+              background: dist.validacion.cuadra ? "rgba(106,178,62,0.08)" : "rgba(217,97,70,0.08)",
               border: `1px solid ${
-                dist.validacion.cuadra
-                  ? "rgba(106,178,62,0.25)"
-                  : "rgba(217,97,70,0.25)"
+                dist.validacion.cuadra ? "rgba(106,178,62,0.25)" : "rgba(217,97,70,0.25)"
               }`,
             }}
           >
             {dist.validacion.cuadra ? (
-              <CheckCircle
-                size={18}
-                style={{ color: "var(--color-secondary_g)" }}
-              />
+              <CheckCircle size={18} style={{ color: "var(--color-secondary_g)" }} />
             ) : (
-              <AlertTriangle
-                size={18}
-                style={{ color: "var(--color-danger_r)" }}
-              />
+              <AlertTriangle size={18} style={{ color: "var(--color-danger_r)" }} />
             )}
             <div className="flex-1 text-sm">
               <p style={{ color: "var(--text-primary)", fontWeight: 500 }}>
-                {dist.validacion.cuadra
-                  ? "El reparto cuadra"
-                  : "Diferencia detectada"}
+                {dist.validacion.cuadra ? "El reparto cuadra" : "Diferencia detectada"}
               </p>
               <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
                 Generado {fm(dist.validacion.interes_generado)} · Repartido{" "}
                 {fm(dist.validacion.interes_repartido)}
-                {!dist.validacion.cuadra &&
-                  ` · Diferencia ${fm(dist.validacion.diferencia)}`}
+                {!dist.validacion.cuadra && ` · Diferencia ${fm(dist.validacion.diferencia)}`}
               </p>
             </div>
           </div>
@@ -314,10 +280,7 @@ export default function ReportesPage() {
         )}
 
         {/* Tabs */}
-        <div
-          className="flex gap-1 border-b"
-          style={{ borderColor: "var(--border-base)" }}
-        >
+        <div className="flex gap-1 border-b" style={{ borderColor: "var(--border-base)" }}>
           {(
             [
               ["resumen", "Resumen mensual"],
@@ -329,14 +292,9 @@ export default function ReportesPage() {
               onClick={() => setTab(id)}
               className="px-4 py-2 text-sm"
               style={{
-                color:
-                  tab === id
-                    ? "var(--color-primary_y)"
-                    : "var(--text-secondary)",
+                color: tab === id ? "var(--color-primary_y)" : "var(--text-secondary)",
                 borderBottom:
-                  tab === id
-                    ? "2px solid var(--color-primary_y)"
-                    : "2px solid transparent",
+                  tab === id ? "2px solid var(--color-primary_y)" : "2px solid transparent",
                 fontWeight: tab === id ? 500 : 400,
               }}
             >
@@ -357,48 +315,27 @@ export default function ReportesPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr style={{ background: "var(--bg-base)" }}>
-                  <th
-                    className="px-4 py-2 text-left"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <th className="px-4 py-2 text-left" style={{ color: "var(--text-secondary)" }}>
                     Mes
                   </th>
-                  <th
-                    className="px-4 py-2 text-right"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <th className="px-4 py-2 text-right" style={{ color: "var(--text-secondary)" }}>
                     Capital de la caja
                   </th>
-                  <th
-                    className="px-4 py-2 text-right"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <th className="px-4 py-2 text-right" style={{ color: "var(--text-secondary)" }}>
                     Interés recaudado
                   </th>
-                  <th
-                    className="px-4 py-2 text-right"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <th className="px-4 py-2 text-right" style={{ color: "var(--text-secondary)" }}>
                     Rendimiento del mes
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {dist.meses.map((m) => (
-                  <tr
-                    key={m.mes}
-                    style={{ borderTop: "1px solid var(--border-base)" }}
-                  >
-                    <td
-                      className="px-4 py-2"
-                      style={{ color: "var(--text-primary)" }}
-                    >
+                  <tr key={m.mes} style={{ borderTop: "1px solid var(--border-base)" }}>
+                    <td className="px-4 py-2" style={{ color: "var(--text-primary)" }}>
                       {labelMes(m.mes)}
                     </td>
-                    <td
-                      className="px-4 py-2 text-right"
-                      style={{ color: "var(--text-primary)" }}
-                    >
+                    <td className="px-4 py-2 text-right" style={{ color: "var(--text-primary)" }}>
                       {fm(m.capital_total)}
                     </td>
                     <td
@@ -410,10 +347,7 @@ export default function ReportesPage() {
                     <td
                       className="px-4 py-2 text-right font-medium"
                       style={{
-                        color:
-                          m.tasa_mes > 0
-                            ? "var(--color-secondary_g)"
-                            : "var(--text-muted)",
+                        color: m.tasa_mes > 0 ? "var(--color-secondary_g)" : "var(--text-muted)",
                       }}
                     >
                       {fpct(m.tasa_mes)}
@@ -428,10 +362,7 @@ export default function ReportesPage() {
                     borderTop: "2px solid var(--border-base)",
                   }}
                 >
-                  <td
-                    className="px-4 py-2 font-medium"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <td className="px-4 py-2 font-medium" style={{ color: "var(--text-primary)" }}>
                     Total
                   </td>
                   <td></td>
@@ -474,10 +405,7 @@ export default function ReportesPage() {
                   >
                     Socio
                   </th>
-                  <th
-                    className="px-3 py-2 text-right"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <th className="px-3 py-2 text-right" style={{ color: "var(--text-secondary)" }}>
                     Ahorro final
                   </th>
                   {dist.meses.map((m) => (
@@ -489,20 +417,14 @@ export default function ReportesPage() {
                       {labelMes(m.mes)}
                     </th>
                   ))}
-                  <th
-                    className="px-3 py-2 text-right"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <th className="px-3 py-2 text-right" style={{ color: "var(--text-secondary)" }}>
                     Total
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {dist.por_socio.map((s) => (
-                  <tr
-                    key={s.socio_id}
-                    style={{ borderTop: "1px solid var(--border-base)" }}
-                  >
+                  <tr key={s.socio_id} style={{ borderTop: "1px solid var(--border-base)" }}>
                     <td
                       className="px-3 py-2 sticky left-0"
                       style={{
@@ -512,10 +434,7 @@ export default function ReportesPage() {
                     >
                       {s.nombre}
                     </td>
-                    <td
-                      className="px-3 py-2 text-right"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
+                    <td className="px-3 py-2 text-right" style={{ color: "var(--text-secondary)" }}>
                       {fm(s.saldo_final)}
                     </td>
                     {s.por_mes.map((p) => (
@@ -523,10 +442,7 @@ export default function ReportesPage() {
                         key={p.mes}
                         className="px-2 py-2 text-right"
                         style={{
-                          color:
-                            p.interes > 0
-                              ? "var(--text-primary)"
-                              : "var(--text-muted)",
+                          color: p.interes > 0 ? "var(--text-primary)" : "var(--text-muted)",
                         }}
                       >
                         {p.interes > 0 ? p.interes.toFixed(2) : "—"}
@@ -580,5 +496,5 @@ export default function ReportesPage() {
         )}
       </div>
     </AppLayout>
-  );
+  )
 }

@@ -1,8 +1,8 @@
 // src/components/DonacionModal.tsx
 import { useState, useEffect, useRef } from "react"
 import { Heart, X } from "lucide-react"
-import { Button }   from "./Button"
-import { Field }    from "./Field"
+import { Button } from "./Button"
+import { Field } from "./Field"
 
 interface DonacionModalProps {
   onCerrar: () => void
@@ -18,14 +18,13 @@ declare global {
 const BASE_URL = import.meta.env.VITE_API_URL
 
 export function DonacionModal({ onCerrar }: DonacionModalProps) {
-  const [monto,     setMonto]     = useState("5.00")
-  const [paso,      setPaso]      = useState<"monto" | "pago">("monto")
-  const [mensaje,   setMensaje]   = useState<string | undefined>(undefined)
-  const [error,     setError]     = useState<string | undefined>(undefined)
+  const [monto, setMonto] = useState("5.00")
+  const [paso, setPaso] = useState<"monto" | "pago">("monto")
+  const [mensaje, setMensaje] = useState<string | undefined>(undefined)
+  const [error, setError] = useState<string | undefined>(undefined)
   // const [sdkListo, setSdkListo] = useState(false)
   const paypalRef = useRef<HTMLDivElement>(null)
 
-  
   // Renderiza el botón de PayPal cuando pasamos al paso de pago
   useEffect(() => {
     if (paso !== "pago" || !window.paypal || !paypalRef.current) return
@@ -33,38 +32,40 @@ export function DonacionModal({ onCerrar }: DonacionModalProps) {
     // Limpia render anterior
     paypalRef.current.innerHTML = ""
 
-    window.paypal.Buttons({
-      // 1. Crea la orden llamando a NUESTRO backend
-      createOrder: async () => {
-        const res = await fetch(`${BASE_URL}/donaciones/crear-orden`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ monto: parseFloat(monto) }),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error)
-        return data.orderID
-      },
+    window.paypal
+      .Buttons({
+        // 1. Crea la orden llamando a NUESTRO backend
+        createOrder: async () => {
+          const res = await fetch(`${BASE_URL}/donaciones/crear-orden`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ monto: parseFloat(monto) }),
+          })
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error)
+          return data.orderID
+        },
 
-      // 2. Cuando el usuario aprueba, captura llamando a NUESTRO backend
-      onApprove: async (data: { orderID: string }) => {
-        const res = await fetch(`${BASE_URL}/donaciones/capturar-orden`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderID: data.orderID }),
-        })
-        const result = await res.json()
-        if (res.ok) {
-          setMensaje(result.message)
-        } else {
-          setError(result.error || "Error al procesar el pago")
-        }
-      },
+        // 2. Cuando el usuario aprueba, captura llamando a NUESTRO backend
+        onApprove: async (data: { orderID: string }) => {
+          const res = await fetch(`${BASE_URL}/donaciones/capturar-orden`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderID: data.orderID }),
+          })
+          const result = await res.json()
+          if (res.ok) {
+            setMensaje(result.message)
+          } else {
+            setError(result.error || "Error al procesar el pago")
+          }
+        },
 
-      onError: () => {
-        setError("Ocurrió un error con PayPal. Intenta de nuevo.")
-      },
-    }).render(paypalRef.current)
+        onError: () => {
+          setError("Ocurrió un error con PayPal. Intenta de nuevo.")
+        },
+      })
+      .render(paypalRef.current)
   }, [paso, monto])
 
   function continuarAPago() {
@@ -127,15 +128,15 @@ export function DonacionModal({ onCerrar }: DonacionModalProps) {
 
             {/* Montos rápidos */}
             <div className="flex gap-2">
-              {["5.00", "10.00", "20.00"].map(m => (
+              {["5.00", "10.00", "20.00"].map((m) => (
                 <button
                   key={m}
                   onClick={() => setMonto(m)}
                   className="flex-1 py-2 rounded-lg text-sm font-medium"
                   style={{
                     background: monto === m ? "var(--color-primary_y)" : "var(--bg-base)",
-                    color:      monto === m ? "white" : "var(--text-primary)",
-                    border:     "1px solid var(--border-base)",
+                    color: monto === m ? "white" : "var(--text-primary)",
+                    border: "1px solid var(--border-base)",
                   }}
                 >
                   ${m}
@@ -147,12 +148,14 @@ export function DonacionModal({ onCerrar }: DonacionModalProps) {
               label="Otro monto (USD)"
               type="number"
               value={monto}
-              onChange={e => setMonto(e.target.value)}
+              onChange={(e) => setMonto(e.target.value)}
               placeholder="0.00"
             />
 
             {error && (
-              <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>{error}</p>
+              <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>
+                {error}
+              </p>
             )}
 
             <Button label="Continuar" variant="primary" onClick={continuarAPago} />
@@ -167,7 +170,9 @@ export function DonacionModal({ onCerrar }: DonacionModalProps) {
             </p>
             <div ref={paypalRef}></div>
             {error && (
-              <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>{error}</p>
+              <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>
+                {error}
+              </p>
             )}
             <button
               onClick={() => setPaso("monto")}

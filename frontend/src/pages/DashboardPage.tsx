@@ -1,20 +1,17 @@
 // src/pages/DashboardPage.tsx
-import { useState, useEffect }   from "react"
-import { useNavigate }           from "react-router-dom"
-import {
-  Wallet, Users, CreditCard,
-  TrendingUp, ArrowDownCircle, ArrowUpCircle
-} from "lucide-react"
-import { AppLayout }             from "../components/layout/AppLayout"
-import { Card }                  from "../components/UI/Card"
-import { useCaja }               from "../context/CajaContext"
-import { resumenService }        from "../api/resumen.service"
-import type {ResumenCaja, TransaccionReciente} from "../api/resumen.types"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { Wallet, Users, CreditCard, TrendingUp, ArrowDownCircle, ArrowUpCircle } from "lucide-react"
+import { AppLayout } from "../components/layout/AppLayout"
+import { Card } from "../components/UI/Card"
+import { useCaja } from "../context/CajaContext"
+import { resumenService } from "../api/resumen.service"
+import type { ResumenCaja, TransaccionReciente } from "../api/resumen.types"
 
 // Formatea montos como $1,234.56
 function formatMonto(monto: number): string {
   return new Intl.NumberFormat("es-EC", {
-    style:    "currency",
+    style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
   }).format(monto)
@@ -22,8 +19,8 @@ function formatMonto(monto: number): string {
 
 // Formatea fecha relativa
 function formatFecha(fecha: string): string {
-  const d    = new Date(fecha)
-  const hoy  = new Date()
+  const d = new Date(fecha)
+  const hoy = new Date()
   const diff = Math.floor((hoy.getTime() - d.getTime()) / 86400000)
   if (diff === 0) return "Hoy"
   if (diff === 1) return "Ayer"
@@ -31,13 +28,13 @@ function formatFecha(fecha: string): string {
 }
 
 export default function DashboardPage() {
-  const navigate            = useNavigate()
-  const { cajaActiva }      = useCaja()
+  const navigate = useNavigate()
+  const { cajaActiva } = useCaja()
 
-  const [resumen,       setResumen]       = useState<ResumenCaja | null>(null)
+  const [resumen, setResumen] = useState<ResumenCaja | null>(null)
   const [transacciones, setTransacciones] = useState<TransaccionReciente[]>([])
-  const [loading,       setLoading]       = useState(true)
-  const [error,         setError]         = useState("")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     // Si no hay caja activa, redirige a selección
@@ -78,7 +75,9 @@ export default function DashboardPage() {
     return (
       <AppLayout titulo="Dashboard">
         <div className="flex items-center justify-center h-64">
-          <p className="text-sm" style={{ color: "var(--color-danger_r)" }}>{error}</p>
+          <p className="text-sm" style={{ color: "var(--color-danger_r)" }}>
+            {error}
+          </p>
         </div>
       </AppLayout>
     )
@@ -86,13 +85,9 @@ export default function DashboardPage() {
 
   return (
     <AppLayout titulo="Dashboard">
-
       {/* Saludo */}
       <div className="mb-6">
-        <h2
-          className="text-lg font-semibold"
-          style={{ color: "var(--text-primary)" }}
-        >
+        <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
           {cajaActiva?.nombre}
         </h2>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -133,7 +128,7 @@ export default function DashboardPage() {
         className="rounded-xl overflow-hidden"
         style={{
           background: "var(--bg-surface)",
-          border:     "1px solid var(--border-base)",
+          border: "1px solid var(--border-base)",
         }}
       >
         {/* Header de la tabla */}
@@ -141,10 +136,7 @@ export default function DashboardPage() {
           className="flex items-center justify-between px-5 py-4"
           style={{ borderBottom: "1px solid var(--border-base)" }}
         >
-          <h3
-            className="text-sm font-medium"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <h3 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
             Movimientos recientes
           </h3>
           <button
@@ -168,11 +160,9 @@ export default function DashboardPage() {
         {/* Lista de transacciones */}
         {transacciones.length > 0 && (
           <div>
-            {transacciones.map(t => {
-              const socio    = t.cuentas_ahorro?.socios
-              const nombre   = socio
-                ? `${socio.nombre} ${socio.apellido}`
-                : "Sin socio"
+            {transacciones.map((t) => {
+              const socio = t.cuentas_ahorro?.socios
+              const nombre = socio ? `${socio.nombre} ${socio.apellido}` : "Sin socio"
               const esDeposito = t.tipo === "deposito"
 
               return (
@@ -185,15 +175,14 @@ export default function DashboardPage() {
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                     style={{
-                      background: esDeposito
-                        ? "rgba(106,178,62,0.12)"
-                        : "rgba(217,97,70,0.12)"
+                      background: esDeposito ? "rgba(106,178,62,0.12)" : "rgba(217,97,70,0.12)",
                     }}
                   >
-                    {esDeposito
-                      ? <ArrowDownCircle size={16} style={{ color: "var(--color-secondary_g)" }} />
-                      : <ArrowUpCircle   size={16} style={{ color: "var(--color-danger_r)" }} />
-                    }
+                    {esDeposito ? (
+                      <ArrowDownCircle size={16} style={{ color: "var(--color-secondary_g)" }} />
+                    ) : (
+                      <ArrowUpCircle size={16} style={{ color: "var(--color-danger_r)" }} />
+                    )}
                   </div>
 
                   {/* Info */}
@@ -204,10 +193,7 @@ export default function DashboardPage() {
                     >
                       {nombre}
                     </p>
-                    <p
-                      className="text-xs"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
+                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
                       {esDeposito ? "Depósito" : "Retiro"} · {formatFecha(t.created_at)}
                     </p>
                   </div>
@@ -216,12 +202,11 @@ export default function DashboardPage() {
                   <span
                     className="text-sm font-medium flex-shrink-0"
                     style={{
-                      color: esDeposito
-                        ? "var(--color-secondary_g)"
-                        : "var(--color-danger_r)"
+                      color: esDeposito ? "var(--color-secondary_g)" : "var(--color-danger_r)",
                     }}
                   >
-                    {esDeposito ? "+" : "-"}{formatMonto(t.monto)}
+                    {esDeposito ? "+" : "-"}
+                    {formatMonto(t.monto)}
                   </span>
                 </div>
               )
@@ -229,7 +214,6 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
-
     </AppLayout>
   )
 }

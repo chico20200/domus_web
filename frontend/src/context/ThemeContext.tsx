@@ -4,21 +4,18 @@ import { createContext, useContext, useState, useEffect } from "react"
 type Theme = "light" | "dark"
 
 interface ThemeContextType {
-  theme:       Theme
+  theme: Theme
   toggleTheme: () => void
-  isDark:      boolean
+  isDark: boolean
 }
 
 const ThemeContext = createContext<ThemeContextType | null>(null)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-
   const [theme, setTheme] = useState<Theme>(() => {
     const guardado = localStorage.getItem("theme") as Theme | null
     if (guardado) return guardado
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light"
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
   })
 
   useEffect(() => {
@@ -32,7 +29,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme])
 
   function toggleTheme() {
-    setTheme(prev => prev === "light" ? "dark" : "light")
+    setTheme((prev) => (prev === "light" ? "dark" : "light"))
   }
 
   return (

@@ -1,5 +1,5 @@
 // src/api/socios.service.ts
-import { apiClient }             from "./api.client"
+import { apiClient } from "./api.client"
 import type {
   GetSociosResponse,
   GetSocioResponse,
@@ -20,7 +20,11 @@ export const sociosService = {
     return apiClient.post<SocioResponse>(`/cajas/${cajaId}/socios`, data)
   },
 
-  async actualizar(cajaId: string, socioId: string, data: Partial<CreateSocioRequest>): Promise<SocioResponse> {
+  async actualizar(
+    cajaId: string,
+    socioId: string,
+    data: Partial<CreateSocioRequest>,
+  ): Promise<SocioResponse> {
     return apiClient.put<SocioResponse>(`/cajas/${cajaId}/socios/${socioId}`, data)
   },
 

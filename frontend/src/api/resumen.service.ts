@@ -1,5 +1,5 @@
 // src/api/resumen.service.ts
-import { apiClient }          from "./api.client"
+import { apiClient } from "./api.client"
 import type { GetResumenResponse } from "./resumen.types"
 
 export const resumenService = {

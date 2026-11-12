@@ -4,16 +4,16 @@ import type { AuthUser } from "../api/auth.types"
 import { authService } from "../api/auth.service"
 
 interface AuthContextType {
-  user:      AuthUser | null
-  login:     (email: string, password: string) => Promise<void>
-  logout:    () => void
+  user: AuthUser | null
+  login: (email: string, password: string) => Promise<void>
+  logout: () => void
   isLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user,      setUser]      = useState<AuthUser | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -24,15 +24,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // ── Verifica si el token ya expiró ──────────────────
         // payload.exp es la fecha de expiración en segundos Unix
-        const ahora      = Math.floor(Date.now() / 1000)
-        const expiro     = payload.exp && payload.exp < ahora
+        const ahora = Math.floor(Date.now() / 1000)
+        const expiro = payload.exp && payload.exp < ahora
 
         if (expiro) {
           // Token expirado — limpia y manda al login
           authService.logout()
         } else {
           setUser({
-            id:    payload.sub,
+            id: payload.sub,
             email: payload.email,
             token,
           })
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function login(email: string, password: string) {
     const response = await authService.login({ email, password })
     setUser({
-      id:    response.user.id,
+      id: response.user.id,
       email: response.user.email,
       token: response.token,
     })

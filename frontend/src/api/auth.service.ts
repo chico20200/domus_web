@@ -9,7 +9,6 @@ import type {
 } from "./auth.types"
 
 export const authService = {
-
   // POST /api/auth/login
   async login(data: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>("/auth/login", data)

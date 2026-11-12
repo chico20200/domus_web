@@ -1,6 +1,6 @@
 // backend/routes/chatbot.routes.js
-const express = require('express');
-const router  = express.Router();
+const express = require("express")
+const router = express.Router()
 
 // El "system prompt" define de qué puede hablar el bot y de qué no
 const CONTEXTO = `Eres el asistente virtual de Domus, una plataforma web de gestión de tesorería para cajas de ahorro comunitarias. Ayudas a los usuarios con dos tipos de temas:
@@ -31,56 +31,52 @@ REGLAS DE RESPUESTA:
 - Si te preguntan cómo hacer algo en Domus, explica los pasos concretos según lo anterior.
 - Si te preguntan por un permiso, aclara qué rol puede hacerlo.
 - Si la pregunta no es sobre finanzas ni sobre el uso de Domus, responde amablemente que solo puedes ayudar con educación financiera y con el uso de la plataforma.
-- Nunca inventes datos específicos de ninguna caja, socio, saldo o usuario. No tienes acceso a información real de las cajas, solo explicas cómo funciona el sistema en general.`;
+- Nunca inventes datos específicos de ninguna caja, socio, saldo o usuario. No tienes acceso a información real de las cajas, solo explicas cómo funciona el sistema en general.`
 // POST /api/chatbot/preguntar
-router.post('/preguntar', async (req, res) => {
-  const { mensaje } = req.body;
+router.post("/preguntar", async (req, res) => {
+  const { mensaje } = req.body
 
   if (!mensaje || !mensaje.trim()) {
-    return res.status(400).json({ error: 'El mensaje es requerido' });
+    return res.status(400).json({ error: "El mensaje es requerido" })
   }
 
   // Límite de longitud para evitar abuso
   if (mensaje.length > 500) {
-    return res.status(400).json({ error: 'El mensaje es demasiado largo' });
+    return res.status(400).json({ error: "El mensaje es demasiado largo" })
   }
 
   try {
-    const response = await fetch(
-      'https://router.huggingface.co/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/Llama-3.1-8B-Instruct',
-          messages: [
-            { role: 'system', content: CONTEXTO },
-            { role: 'user',   content: mensaje },
-          ],
-          max_tokens: 300,
-          temperature: 0.7,
-        }),
-      }
-    );
+    const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "meta-llama/Llama-3.1-8B-Instruct",
+        messages: [
+          { role: "system", content: CONTEXTO },
+          { role: "user", content: mensaje },
+        ],
+        max_tokens: 300,
+        temperature: 0.7,
+      }),
+    })
 
-    const data = await response.json();
+    const data = await response.json()
 
     if (!response.ok) {
-      console.error('Error HuggingFace:', data);
-      return res.status(500).json({ error: 'El asistente no está disponible ahora' });
+      console.error("Error HuggingFace:", data)
+      return res.status(500).json({ error: "El asistente no está disponible ahora" })
     }
 
-    const respuesta = data.choices?.[0]?.message?.content ?? 'No pude generar una respuesta.';
+    const respuesta = data.choices?.[0]?.message?.content ?? "No pude generar una respuesta."
 
-    return res.json({ respuesta });
-
+    return res.json({ respuesta })
   } catch (err) {
-    console.error('Error chatbot:', err.message);
-    return res.status(500).json({ error: 'Error al procesar tu pregunta' });
+    console.error("Error chatbot:", err.message)
+    return res.status(500).json({ error: "Error al procesar tu pregunta" })
   }
-});
+})
 
-module.exports = router;
+module.exports = router

@@ -1,31 +1,31 @@
 // src/App.tsx
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ThemeProvider } from "./context/ThemeContext";
-import Login from "./pages/Login";
-import ProfilePage from "./pages/ProfilePage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import Register from "./pages/Register";
-import { CajaProvider } from "./context/CajaContext";
-import CajasPage from "./pages/CajasPage";
-import DashboardPage from "./pages/DashboardPage";
-import SociosPage from "./pages/SociosPage";
-import AhorrosPage from "./pages/AhorrosPage";
-import ConfiguracionPage from "./pages/ConfiguracionPage";
-import CreditosPage from "./pages/CreditosPage";
-import PagosPage from "./pages/PagosPage";
-import { RolRoute } from "./components/RolRoute";
-import { NotifProvider } from "./context/NotifContext";
-import ReportesPage from "./pages/ReportesPage";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { AuthProvider, useAuth } from "./context/AuthContext"
+import { ThemeProvider } from "./context/ThemeContext"
+import Login from "./pages/Login"
+import ProfilePage from "./pages/ProfilePage"
+import ForgotPasswordPage from "./pages/ForgotPasswordPage"
+import ResetPasswordPage from "./pages/ResetPasswordPage"
+import Register from "./pages/Register"
+import { CajaProvider } from "./context/CajaContext"
+import CajasPage from "./pages/CajasPage"
+import DashboardPage from "./pages/DashboardPage"
+import SociosPage from "./pages/SociosPage"
+import AhorrosPage from "./pages/AhorrosPage"
+import ConfiguracionPage from "./pages/ConfiguracionPage"
+import CreditosPage from "./pages/CreditosPage"
+import PagosPage from "./pages/PagosPage"
+import { RolRoute } from "./components/RolRoute"
+import { NotifProvider } from "./context/NotifContext"
+import ReportesPage from "./pages/ReportesPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth()
 
-  if (isLoading) return <p>Cargando...</p>; // espera la verificación
-  if (!user) return <Navigate to="/login" replace />; // sin sesión → login
+  if (isLoading) return <p>Cargando...</p> // espera la verificación
+  if (!user) return <Navigate to="/login" replace /> // sin sesión → login
 
-  return children;
+  return children
 }
 
 export default function App() {
@@ -41,10 +41,7 @@ export default function App() {
                 {/* Rutas públicas */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route
-                  path="/forgot-password"
-                  element={<ForgotPasswordPage />}
-                />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                 {/* Selección de caja — protegida pero sin layout */}
@@ -140,5 +137,5 @@ export default function App() {
         </CajaProvider>
       </AuthProvider>
     </ThemeProvider>
-  );
+  )
 }

@@ -3,13 +3,13 @@
 // ─── REQUESTS — lo que el frontend envía ──────────────────────
 
 interface LoginRequest {
-  email:    string
+  email: string
   password: string
   // Tu backend: const { email, password } = req.body
 }
 
 interface RegisterRequest {
-  email:    string
+  email: string
   password: string
   // Tu backend: const { email, password } = req.body
   // Mismo shape que Login — pero son interfaces separadas
@@ -29,18 +29,18 @@ interface UpdatePasswordRequest {
 // ─── RESPONSES — lo que el backend devuelve ───────────────────
 
 interface LoginResponse {
-  message: string           // "Login exitoso"
-  token:   string           // el JWT de Supabase
+  message: string // "Login exitoso"
+  token: string // el JWT de Supabase
   user: {
-    id:    string
+    id: string
     email: string
   }
 }
 
 interface RegisterResponse {
-  message: string           // "Usuario creado exitosamente"
+  message: string // "Usuario creado exitosamente"
   user: {
-    id:    string
+    id: string
     email: string
   }
   // Sin token — Supabase requiere confirmar el email primero
@@ -57,9 +57,9 @@ interface MessageResponse {
 // Este NO viene del backend directamente
 // Es lo que guardas en AuthContext después del login
 interface AuthUser {
-  id:    string
+  id: string
   email: string
-  token: string             // lo necesitas para hacer requests autenticados
+  token: string // lo necesitas para hacer requests autenticados
 }
 
 // ─── EXPORTS ──────────────────────────────────────────────────

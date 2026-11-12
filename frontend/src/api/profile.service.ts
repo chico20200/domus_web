@@ -7,7 +7,6 @@ import type {
 } from "./profile.types"
 
 export const profileService = {
-
   // GET /api/profiles/me
   async getMe(): Promise<GetProfileResponse> {
     return apiClient.get<GetProfileResponse>("/profiles/me")

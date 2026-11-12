@@ -1,68 +1,58 @@
 // src/components/TablaAmortizacion.tsx
-import { useState, useEffect, Fragment } from "react";
-import { Download, X, CheckCircle, Circle } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { Button } from "./Button";
-import { creditosService } from "../api/creditos.service";
-import type { GetAmortizacionResponse } from "../api/amortizacion.types";
-import { HandCoins } from "lucide-react";
-
+import { useState, useEffect, Fragment } from "react"
+import { Download, X, CheckCircle, Circle } from "lucide-react"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
+import { Button } from "./Button"
+import { creditosService } from "../api/creditos.service"
+import type { GetAmortizacionResponse } from "../api/amortizacion.types"
+import { HandCoins } from "lucide-react"
 
 function formatMonto(m: number) {
   return new Intl.NumberFormat("es-EC", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
-  }).format(m);
+  }).format(m)
 }
 
 interface Props {
-  cajaId: string;
-  creditoId: string;
-  nombreCaja: string;
-  onCerrar: () => void;
+  cajaId: string
+  creditoId: string
+  nombreCaja: string
+  onCerrar: () => void
 }
 
-export function TablaAmortizacion({
-  cajaId,
-  creditoId,
-  nombreCaja,
-  onCerrar,
-}: Props) {
-  const [data, setData] = useState<GetAmortizacionResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+export function TablaAmortizacion({ cajaId, creditoId, nombreCaja, onCerrar }: Props) {
+  const [data, setData] = useState<GetAmortizacionResponse | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function cargar() {
       try {
-        const res = await creditosService.getAmortizacion(cajaId, creditoId);
-        setData(res);
+        const res = await creditosService.getAmortizacion(cajaId, creditoId)
+        setData(res)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
-    cargar();
-  }, [cajaId, creditoId]);
+    cargar()
+  }, [cajaId, creditoId])
 
   function descargarPDF() {
-    if (!data) return;
-    const { credito, tabla, resumen } = data;
-    const socio = credito.socio;
-    const nombreSocio = socio
-      ? `${socio.nombre} ${socio.apellido}`
-      : "Sin socio";
+    if (!data) return
+    const { credito, tabla, resumen } = data
+    const socio = credito.socio
+    const nombreSocio = socio ? `${socio.nombre} ${socio.apellido}` : "Sin socio"
 
-    const doc = new jsPDF();
-    const bodyRows: any[] = [];
+    const doc = new jsPDF()
+    const bodyRows: any[] = []
     tabla.forEach((f) => {
       bodyRows.push([
         f.numero_cuota,
         f.fecha_vencimiento ?? "—",
         formatMonto(f.capital),
-        f.es_prepago
-          ? `${formatMonto(f.interes_condonado)} (condonado)`
-          : formatMonto(f.interes),
+        f.es_prepago ? `${formatMonto(f.interes_condonado)} (condonado)` : formatMonto(f.interes),
         formatMonto(f.cuota),
         formatMonto(f.saldo_restante),
         f.es_prepago
@@ -74,18 +64,20 @@ export function TablaAmortizacion({
               : f.parcial
                 ? "Parcial"
                 : "Pendiente",
-      ]);
+      ])
 
       // Fila de detalle por cada abono
       if (f.es_fraccionada) {
-        f.movimientos.forEach(m => {
+        f.movimientos.forEach((m) => {
           const desc = [
             `${m.es_abono ? "Abono" : "Pago"} ${formatMonto(m.monto)}`,
             m.capital > 0 ? `capital ${formatMonto(m.capital)}` : null,
             m.interes > 0 ? `interés ${formatMonto(m.interes)}` : null,
             m.motivo,
             m.fecha_pago,
-          ].filter(Boolean).join(" — ")
+          ]
+            .filter(Boolean)
+            .join(" — ")
 
           bodyRows.push([
             "",
@@ -101,35 +93,27 @@ export function TablaAmortizacion({
           ])
         })
       }
-    });
+    })
     // Encabezado
-    doc.setFontSize(16);
-    doc.text("Tabla de Amortización", 14, 18);
+    doc.setFontSize(16)
+    doc.text("Tabla de Amortización", 14, 18)
 
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(nombreCaja, 14, 25);
+    doc.setFontSize(10)
+    doc.setTextColor(100)
+    doc.text(nombreCaja, 14, 25)
 
     // Datos del crédito
-    doc.setFontSize(9);
-    doc.setTextColor(0);
-    const inicioY = 34;
-    doc.text(`Socio: ${nombreSocio}`, 14, inicioY);
-    if (socio?.cedula) doc.text(`Cédula: ${socio.cedula}`, 14, inicioY + 5);
-    doc.text(
-      `Monto prestado: ${formatMonto(credito.monto_solicitado)}`,
-      110,
-      inicioY,
-    );
-    doc.text(`Tasa: ${credito.tasa_interes}% anual`, 110, inicioY + 5);
-    doc.text(`Plazo: ${credito.plazo_meses} meses`, 110, inicioY + 10);
-    doc.text(
-      `Total a pagar: ${formatMonto(credito.monto_total)}`,
-      14,
-      inicioY + 10,
-    );
+    doc.setFontSize(9)
+    doc.setTextColor(0)
+    const inicioY = 34
+    doc.text(`Socio: ${nombreSocio}`, 14, inicioY)
+    if (socio?.cedula) doc.text(`Cédula: ${socio.cedula}`, 14, inicioY + 5)
+    doc.text(`Monto prestado: ${formatMonto(credito.monto_solicitado)}`, 110, inicioY)
+    doc.text(`Tasa: ${credito.tasa_interes}% anual`, 110, inicioY + 5)
+    doc.text(`Plazo: ${credito.plazo_meses} meses`, 110, inicioY + 10)
+    doc.text(`Total a pagar: ${formatMonto(credito.monto_total)}`, 14, inicioY + 10)
     if (credito.fecha_desembolso) {
-      doc.text(`Desembolso: ${credito.fecha_desembolso}`, 14, inicioY + 15);
+      doc.text(`Desembolso: ${credito.fecha_desembolso}`, 14, inicioY + 15)
     }
 
     // Tabla
@@ -158,41 +142,25 @@ export function TablaAmortizacion({
       },
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: [250, 250, 248] },
-    });
+    })
 
     // Pie con resumen
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(9);
-    doc.text(
-      `Cuotas pagadas: ${resumen.cuotas_pagadas} de ${resumen.cuotas_totales}`,
-      14,
-      finalY,
-    );
-    doc.text(
-      `Capital pagado: ${formatMonto(resumen.capital_pagado)}`,
-      14,
-      finalY + 5,
-    );
-    doc.text(
-      `Interés pagado: ${formatMonto(resumen.interes_pagado)}`,
-      14,
-      finalY + 10,
-    );
-    doc.text(
-      `Saldo pendiente: ${formatMonto(credito.saldo_pendiente)}`,
-      14,
-      finalY + 15,
-    );
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+    doc.setFontSize(9)
+    doc.text(`Cuotas pagadas: ${resumen.cuotas_pagadas} de ${resumen.cuotas_totales}`, 14, finalY)
+    doc.text(`Capital pagado: ${formatMonto(resumen.capital_pagado)}`, 14, finalY + 5)
+    doc.text(`Interés pagado: ${formatMonto(resumen.interes_pagado)}`, 14, finalY + 10)
+    doc.text(`Saldo pendiente: ${formatMonto(credito.saldo_pendiente)}`, 14, finalY + 15)
 
-    doc.setFontSize(7);
-    doc.setTextColor(150);
+    doc.setFontSize(7)
+    doc.setTextColor(150)
     doc.text(
       `Generado el ${new Date().toLocaleDateString("es-EC")} — Domus`,
       14,
       doc.internal.pageSize.height - 10,
-    );
+    )
 
-    doc.save(`amortizacion-${nombreSocio.replace(/\s+/g, "-")}.pdf`);
+    doc.save(`amortizacion-${nombreSocio.replace(/\s+/g, "-")}.pdf`)
   }
 
   return (
@@ -210,10 +178,7 @@ export function TablaAmortizacion({
           style={{ borderBottom: "1px solid var(--border-base)" }}
         >
           <div>
-            <h3
-              className="font-medium"
-              style={{ color: "var(--text-primary)" }}
-            >
+            <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>
               Tabla de amortización
             </h3>
             {data?.credito.socio && (
@@ -230,10 +195,7 @@ export function TablaAmortizacion({
         {/* Contenido */}
         <div className="flex-1 overflow-y-auto p-5">
           {loading && (
-            <p
-              className="text-sm text-center py-8"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <p className="text-sm text-center py-8" style={{ color: "var(--text-secondary)" }}>
               Cargando tabla...
             </p>
           )}
@@ -242,61 +204,36 @@ export function TablaAmortizacion({
             <>
               {/* Resumen */}
               <div className="grid grid-cols-4 gap-3 mb-5">
-                <div
-                  className="rounded-lg p-3"
-                  style={{ background: "var(--bg-base)" }}
-                >
+                <div className="rounded-lg p-3" style={{ background: "var(--bg-base)" }}>
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                     Prestado
                   </p>
-                  <p
-                    className="text-sm font-medium"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                     {formatMonto(data.credito.monto_solicitado)}
                   </p>
                 </div>
-                <div
-                  className="rounded-lg p-3"
-                  style={{ background: "var(--bg-base)" }}
-                >
+                <div className="rounded-lg p-3" style={{ background: "var(--bg-base)" }}>
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                     Interés total
                   </p>
-                  <p
-                    className="text-sm font-medium"
-                    style={{ color: "var(--color-primary_y)" }}
-                  >
+                  <p className="text-sm font-medium" style={{ color: "var(--color-primary_y)" }}>
                     {formatMonto(data.credito.interes_total)}
                   </p>
                 </div>
-                <div
-                  className="rounded-lg p-3"
-                  style={{ background: "var(--bg-base)" }}
-                >
+                <div className="rounded-lg p-3" style={{ background: "var(--bg-base)" }}>
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                     Total a pagar
                   </p>
-                  <p
-                    className="text-sm font-medium"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                     {formatMonto(data.credito.monto_total)}
                   </p>
                 </div>
-                <div
-                  className="rounded-lg p-3"
-                  style={{ background: "var(--bg-base)" }}
-                >
+                <div className="rounded-lg p-3" style={{ background: "var(--bg-base)" }}>
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                     Cuotas
                   </p>
-                  <p
-                    className="text-sm font-medium"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {data.resumen.cuotas_pagadas} /{" "}
-                    {data.resumen.cuotas_totales}
+                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                    {data.resumen.cuotas_pagadas} / {data.resumen.cuotas_totales}
                   </p>
                 </div>
               </div>
@@ -329,8 +266,7 @@ export function TablaAmortizacion({
                   }}
                 >
                   <strong>
-                    Interés condonado por prepago:{" "}
-                    {formatMonto(data.resumen.interes_condonado)}
+                    Interés condonado por prepago: {formatMonto(data.resumen.interes_condonado)}
                   </strong>
                 </div>
               )}
@@ -402,18 +338,13 @@ export function TablaAmortizacion({
                                 : "transparent",
                           }}
                         >
-                          <td
-                            className="px-3 py-2"
-                            style={{ color: "var(--text-primary)" }}
-                          >
+                          <td className="px-3 py-2" style={{ color: "var(--text-primary)" }}>
                             {f.numero_cuota}
                           </td>
                           <td
                             className="px-3 py-2"
                             style={{
-                              color: f.vencida
-                                ? "var(--color-danger_r)"
-                                : "var(--text-secondary)",
+                              color: f.vencida ? "var(--color-danger_r)" : "var(--text-secondary)",
                             }}
                           >
                             {f.fecha_vencimiento ?? "—"}
@@ -454,9 +385,7 @@ export function TablaAmortizacion({
                           </td>
                           <td className="px-3 py-2 text-center">
                             {f.es_prepago ? (
-                              <span style={{ color: "var(--color-secondary_g)" }}>
-                                Prepagada
-                              </span>
+                              <span style={{ color: "var(--color-secondary_g)" }}>Prepagada</span>
                             ) : f.pagada ? (
                               <CheckCircle
                                 size={14}
@@ -464,13 +393,9 @@ export function TablaAmortizacion({
                                 style={{ color: "var(--color-secondary_g)" }}
                               />
                             ) : f.vencida ? (
-                              <span style={{ color: "var(--color-danger_r)" }}>
-                                Vencida
-                              </span>
+                              <span style={{ color: "var(--color-danger_r)" }}>Vencida</span>
                             ) : f.parcial ? (
-                              <span style={{ color: "var(--color-primary_y)" }}>
-                                Parcial
-                              </span>
+                              <span style={{ color: "var(--color-primary_y)" }}>Parcial</span>
                             ) : (
                               <Circle
                                 size={14}
@@ -513,13 +438,10 @@ export function TablaAmortizacion({
                                           : "var(--text-secondary)",
                                       }}
                                     >
-                                      {m.es_abono ? "Abono" : "Pago"}{" "}
-                                      {formatMonto(m.monto)}
+                                      {m.es_abono ? "Abono" : "Pago"} {formatMonto(m.monto)}
                                     </strong>
-                                    {m.capital > 0 &&
-                                      ` · capital ${formatMonto(m.capital)}`}
-                                    {m.interes > 0 &&
-                                      ` · interés ${formatMonto(m.interes)}`}
+                                    {m.capital > 0 && ` · capital ${formatMonto(m.capital)}`}
+                                    {m.interes > 0 && ` · interés ${formatMonto(m.interes)}`}
                                     {m.motivo && ` · ${m.motivo}`}
                                     {" · "}
                                     {m.fecha_pago}
@@ -573,19 +495,11 @@ export function TablaAmortizacion({
         </div>
 
         {/* Footer */}
-        <div
-          className="px-5 py-4 flex gap-3"
-          style={{ borderTop: "1px solid var(--border-base)" }}
-        >
-          <Button
-            label="Descargar PDF"
-            variant="primary"
-            icon={Download}
-            onClick={descargarPDF}
-          />
+        <div className="px-5 py-4 flex gap-3" style={{ borderTop: "1px solid var(--border-base)" }}>
+          <Button label="Descargar PDF" variant="primary" icon={Download} onClick={descargarPDF} />
           <Button label="Cerrar" variant="secondary" onClick={onCerrar} />
         </div>
       </div>
     </div>
-  );
+  )
 }

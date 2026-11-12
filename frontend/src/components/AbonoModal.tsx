@@ -1,14 +1,16 @@
 // src/components/AbonoModal.tsx
 import { useState, useEffect } from "react"
 import { HandCoins, AlertTriangle } from "lucide-react"
-import { Button }       from "./Button"
-import { Field }        from "./Field"
+import { Button } from "./Button"
+import { Field } from "./Field"
 import { pagosService } from "../api/pagos.service"
 import type { ProximaCuota } from "../api/pagos.types"
 
 function formatMonto(m: number) {
   return new Intl.NumberFormat("es-EC", {
-    style: "currency", currency: "USD", minimumFractionDigits: 2
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
   }).format(m)
 }
 
@@ -22,24 +24,28 @@ const MOTIVOS = [
 ]
 
 interface Props {
-  cajaId:      string
-  creditoId:   string
+  cajaId: string
+  creditoId: string
   nombreSocio?: string
   procesando?: boolean
   onConfirmar: (monto: number, motivo: string) => void
-  onCancelar:  () => void
+  onCancelar: () => void
 }
 
 export function AbonoModal({
-  cajaId, creditoId, nombreSocio, procesando = false,
-  onConfirmar, onCancelar
+  cajaId,
+  creditoId,
+  nombreSocio,
+  procesando = false,
+  onConfirmar,
+  onCancelar,
 }: Props) {
-  const [cuota,       setCuota]       = useState<ProximaCuota | null>(null)
-  const [loading,     setLoading]     = useState(true)
-  const [monto,       setMonto]       = useState("")
-  const [motivoSel,   setMotivoSel]   = useState("")
-  const [motivoOtro,  setMotivoOtro]  = useState("")
-  const [error,       setError]       = useState<string | undefined>(undefined)
+  const [cuota, setCuota] = useState<ProximaCuota | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [monto, setMonto] = useState("")
+  const [motivoSel, setMotivoSel] = useState("")
+  const [motivoOtro, setMotivoOtro] = useState("")
+  const [error, setError] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     async function cargar() {
@@ -76,7 +82,9 @@ export function AbonoModal({
       return
     }
     if (m > pendienteCuota + 0.001) {
-      setError(`El abono no puede superar lo pendiente de la cuota (${formatMonto(pendienteCuota)})`)
+      setError(
+        `El abono no puede superar lo pendiente de la cuota (${formatMonto(pendienteCuota)})`,
+      )
       return
     }
     const motivo = motivoSel === "Otro (especificar)" ? motivoOtro.trim() : motivoSel
@@ -89,15 +97,18 @@ export function AbonoModal({
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
       style={{ background: "rgba(0,0,0,0.45)" }}
     >
-      <div className="w-full max-w-sm rounded-xl p-5 flex flex-col gap-4"
+      <div
+        className="w-full max-w-sm rounded-xl p-5 flex flex-col gap-4"
         style={{ background: "var(--bg-surface)", maxHeight: "90vh", overflowY: "auto" }}
       >
         {/* Encabezado */}
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
             style={{ background: "rgba(221,154,76,0.12)" }}
           >
             <HandCoins size={18} style={{ color: "var(--color-primary_y)" }} />
@@ -107,7 +118,9 @@ export function AbonoModal({
               Abono parcial
             </h3>
             {nombreSocio && (
-              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{nombreSocio}</p>
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                {nombreSocio}
+              </p>
             )}
           </div>
         </div>
@@ -121,16 +134,15 @@ export function AbonoModal({
         {!loading && cuota?.pendiente && (
           <>
             {/* Contexto de la cuota */}
-            <div className="rounded-lg p-3 text-xs flex flex-col gap-1"
+            <div
+              className="rounded-lg p-3 text-xs flex flex-col gap-1"
               style={{ background: "var(--bg-base)" }}
             >
               <div className="flex justify-between">
                 <span style={{ color: "var(--text-secondary)" }}>
                   Cuota #{cuota.numero_cuota} de {cuota.total_cuotas}
                 </span>
-                {cuota.vencida && (
-                  <span style={{ color: "var(--color-danger_r)" }}>Vencida</span>
-                )}
+                {cuota.vencida && <span style={{ color: "var(--color-danger_r)" }}>Vencida</span>}
               </div>
               <div className="flex justify-between">
                 <span style={{ color: "var(--text-secondary)" }}>Pendiente de la cuota</span>
@@ -145,15 +157,19 @@ export function AbonoModal({
               label="Monto a abonar ($)"
               type="number"
               value={monto}
-              onChange={e => setMonto(e.target.value)}
+              onChange={(e) => setMonto(e.target.value)}
               placeholder="0.00"
               required
             />
 
             {/* Simulación de cómo se aplica */}
             {simulacion && (
-              <div className="rounded-lg p-3 text-xs flex flex-col gap-1"
-                style={{ background: "rgba(106,178,62,0.08)", border: "1px solid var(--border-base)" }}
+              <div
+                className="rounded-lg p-3 text-xs flex flex-col gap-1"
+                style={{
+                  background: "rgba(106,178,62,0.08)",
+                  border: "1px solid var(--border-base)",
+                }}
               >
                 <p className="font-medium mb-1" style={{ color: "var(--text-primary)" }}>
                   Se aplicará así:
@@ -173,7 +189,8 @@ export function AbonoModal({
                   </div>
                 )}
                 {simulacion.restante > 0.001 && (
-                  <div className="flex justify-between pt-1 mt-1"
+                  <div
+                    className="flex justify-between pt-1 mt-1"
                     style={{ borderTop: "1px solid var(--border-base)" }}
                   >
                     <span style={{ color: "var(--text-secondary)" }}>Quedará pendiente</span>
@@ -192,16 +209,20 @@ export function AbonoModal({
               </label>
               <select
                 value={motivoSel}
-                onChange={e => setMotivoSel(e.target.value)}
+                onChange={(e) => setMotivoSel(e.target.value)}
                 className="w-full mt-1 px-3 py-2 text-sm rounded-lg outline-none"
                 style={{
                   background: "var(--bg-base)",
-                  border:     "1px solid var(--border-base)",
-                  color:      "var(--text-primary)",
+                  border: "1px solid var(--border-base)",
+                  color: "var(--text-primary)",
                 }}
               >
                 <option value="">Selecciona un motivo...</option>
-                {MOTIVOS.map(m => <option key={m} value={m}>{m}</option>)}
+                {MOTIVOS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -210,27 +231,34 @@ export function AbonoModal({
                 label="Describe el motivo"
                 type="text"
                 value={motivoOtro}
-                onChange={e => setMotivoOtro(e.target.value)}
+                onChange={(e) => setMotivoOtro(e.target.value)}
                 placeholder="Ej: Retraso en el pago de su empleador"
                 required
               />
             )}
 
             {/* Advertencia */}
-            <div className="rounded-lg px-3 py-2 text-xs flex gap-2"
+            <div
+              className="rounded-lg px-3 py-2 text-xs flex gap-2"
               style={{
                 background: "rgba(221,154,76,0.1)",
-                border:     "1px solid rgba(221,154,76,0.25)",
+                border: "1px solid rgba(221,154,76,0.25)",
               }}
             >
-              <AlertTriangle size={14} style={{ color: "var(--color-primary_y)", flexShrink: 0, marginTop: 1 }} />
+              <AlertTriangle
+                size={14}
+                style={{ color: "var(--color-primary_y)", flexShrink: 0, marginTop: 1 }}
+              />
               <p style={{ color: "var(--text-secondary)", margin: 0 }}>
-                El abono se aplica primero al capital. La cuota seguirá pendiente hasta cubrirla completa.
+                El abono se aplica primero al capital. La cuota seguirá pendiente hasta cubrirla
+                completa.
               </p>
             </div>
 
             {error && (
-              <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>{error}</p>
+              <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>
+                {error}
+              </p>
             )}
           </>
         )}

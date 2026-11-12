@@ -1,13 +1,13 @@
 import type { LucideIcon } from "lucide-react"
 type ButtonVariant = "primary" | "secondary" | "danger"
 interface ButtonProps {
-  label:     string                  // obligatorio — el texto del botón
-  variant?:  ButtonVariant           // opcional — por defecto será "primary"
-  disabled?: boolean                 // opcional — por defecto false
-  loading?:  boolean                 // opcional — por defecto false
-  onClick?:  () => void    
-  onEnter?:  () => void              // opcional — lo que pasa al presionar Enter
-  icon?:     LucideIcon              // opcional — el ícono del botón
+  label: string // obligatorio — el texto del botón
+  variant?: ButtonVariant // opcional — por defecto será "primary"
+  disabled?: boolean // opcional — por defecto false
+  loading?: boolean // opcional — por defecto false
+  onClick?: () => void
+  onEnter?: () => void // opcional — lo que pasa al presionar Enter
+  icon?: LucideIcon // opcional — el ícono del botón
 }
 
 export function Button({
@@ -17,14 +17,14 @@ export function Button({
   loading = false,
   onClick,
   onEnter,
-  icon: Icon
+  icon: Icon,
 }: ButtonProps) {
   const isBlocked = disabled || loading
 
   const variantClasses = {
     primary: "bg-primary_y hover:bg-primary_yh text-white",
     secondary: "bg-secondary_g hover:bg-secondary_gh text-white",
-    danger: "bg-danger_r hover:bg-danger_rh text-white"
+    danger: "bg-danger_r hover:bg-danger_rh text-white",
   }
 
   const buttonClasses = [
@@ -38,10 +38,7 @@ export function Button({
     variantClasses[variant],
 
     // Varía según si está bloqueado
-    isBlocked
-      ? "opacity-50 cursor-not-allowed"
-      : "cursor-pointer",
-
+    isBlocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
   ].join(" ")
 
   return (
@@ -56,5 +53,4 @@ export function Button({
       {Icon && !loading && <Icon size={16} />}
     </button>
   )
-
 }
