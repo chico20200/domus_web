@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones, **terminada** (15 de 15). Falta decidir si se fusiona `etapa-1` en `main` antes de empezar la Etapa 2.
-- **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
+- **Etapa actual:** Etapa 1, Fundaciones, **terminada** (15 de 15) y fusionada en `main` (`9a22d71`). Siguiente: Etapa 2, Limpieza.
+- **Rama de trabajo:** `main`. La Etapa 1 se trabajó en `etapa-1` y se fusionó con `--no-ff`; la Etapa 2 abrirá su propia rama `etapa-2`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `1b11cb2`
+- **Último commit de referencia:** `9a22d71`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | Hecha: 15/15 |
+| 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -171,6 +171,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** `etapa-1` fusionada en `main` con `--no-ff` (`9a22d71`). Build OK en `main`. Sin subir a GitHub todavía.
 - **11 nov 2026:** Naranja de modo claro aclarado a `#b26000` y nuevo token `--color-accion-texto` para su uso como texto. Contraste medido de nuevo: todo AA, mínimo 4,60:1. Revisado en `/dev/componentes` y en login. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** **Etapa 1 terminada.** T15 hecha: página de muestra en `/dev/componentes` (solo desarrollo) con todos los primitivos. Revisada en claro y oscuro, y su formulario probado con teclado real. Al revisarla apareció un error de T6: el `Button` `secondary` no mostraba el contorno y se veía como `ghost`, también en las páginas reales. Corregido en `69d389d`. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T14 hecha. `Badge` con cuatro tonos y ícono opcional. Se midió el patrón de fondo teñido y no cumple AA con la paleta de T3, así que el badge es de contorno; la regla se anota para la migración. Revisado sobre las tres superficies en claro y oscuro. Build OK; lint con los mismos 11 errores previos.
