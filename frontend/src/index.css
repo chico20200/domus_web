@@ -50,6 +50,12 @@
   --color-secondary_wt: #e3e3e3;
 }
 
+/* Anchos de página (especificaciones §4.1). Clases: max-w-formulario, max-w-completo. Los usa PageShell */
+@theme {
+  --container-formulario: 40rem; /* 640 px */
+  --container-completo: 75rem; /* 1200 px */
+}
+
 @theme inline {
   --background-color-base: var(--bg-base);
   --background-color-surface: var(--bg-surface);
