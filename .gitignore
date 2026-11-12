@@ -1,8 +1,21 @@
-.mcp.json
-.prettierignore
-.prettierrc.json
-CLAUDE.md
-.claude
-/.impeccable
-/docs
-/graphyfy-out
+# Lista blanca: el repositorio solo publica frontend/, backend/ y README.md.
+# Todo lo demás de la raíz (CLAUDE.md, ESTADO.md, PRODUCT.md, docs/,
+# graphify-out/, .claude/, .impeccable/, .mcp.json, configuración de Prettier…)
+# queda solo en la máquina local.
+
+# 1. Ignorar todo lo que está en la raíz
+/*
+
+# 2. Excepciones: lo que sí se sube
+!/.gitignore
+!/README.md
+!/frontend/
+!/backend/
+
+# 3. Basura común aunque aparezca dentro de frontend/ o backend/
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
