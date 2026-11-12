@@ -1,31 +1,31 @@
 // src/pages/ResetPasswordPage.tsx
 import { useState, useEffect } from "react"
-import { useNavigate }         from "react-router-dom"
-import { Lock }                from "lucide-react"
-import { Field }               from "../components/Field"
-import { Button }              from "../components/Button"
-import { authService }         from "../api/auth.service"
+import { useNavigate } from "react-router-dom"
+import { Lock } from "lucide-react"
+import { Field } from "../components/Field"
+import { Button } from "../components/Button"
+import { authService } from "../api/auth.service"
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
 
-  const [password,  setPassword]  = useState("")
-  const [confirm,   setConfirm]   = useState("")
-  const [loading,   setLoading]   = useState(false)
-  const [success,   setSuccess]   = useState(false)
-  const [error,     setError]     = useState<string | undefined>(() => {
-    const hash   = window.location.hash
+  const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | undefined>(() => {
+    const hash = window.location.hash
     const params = new URLSearchParams(hash.replace("#", ""))
-    const token  = params.get("access_token")
-    const type   = params.get("type")
+    const token = params.get("access_token")
+    const type = params.get("type")
 
     return token && type === "recovery" ? undefined : "El enlace no es válido o ya expiró."
   })
   const [tokenValido] = useState<boolean>(() => {
-    const hash   = window.location.hash
+    const hash = window.location.hash
     const params = new URLSearchParams(hash.replace("#", ""))
-    const token  = params.get("access_token")
-    const type   = params.get("type")
+    const token = params.get("access_token")
+    const type = params.get("type")
 
     return Boolean(token && type === "recovery")
   })
@@ -33,10 +33,10 @@ export default function ResetPasswordPage() {
   // Supabase pone el token en el hash de la URL:
   // /reset-password#access_token=eyJ...&type=recovery
   useEffect(() => {
-    const hash   = window.location.hash
+    const hash = window.location.hash
     const params = new URLSearchParams(hash.replace("#", ""))
-    const token  = params.get("access_token")
-    const type   = params.get("type")
+    const token = params.get("access_token")
+    const type = params.get("type")
 
     if (token && type === "recovery") {
       // Guarda el token para que api.client lo use en el request
@@ -102,50 +102,46 @@ export default function ResetPasswordPage() {
   // ── Formulario ───────────────────────────────────────────────
   return (
     <div>
-      <div className = "flex flex-row items-center justify-center mt-8">
-            <img src="/logo_domus.png" alt="Logo de la caja" className="w-24"/>
-            <h1 className="text-2xl font-semibold text-text_primary">Domus</h1>
-        </div>
-    <div className="mt-4 bg-bg_base flex items-center justify-center p-6">
-      <div className="bg-secondary_wt w-full max-w-sm flex flex-col gap-5 p-5 rounded-lg shadow-md">
-
-        <div>
-          <h1 className="text-2xl font-semibold text-text_primary">Nueva contraseña</h1>
-          <p className="text-sm text-text_secondary mt-1">
-            Ingresa tu nueva contraseña.
-          </p>
-        </div>
-
-        <Field
-          label="Nueva contraseña"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-          icon={Lock}
-          required
-          hint="Mínimo 6 caracteres"
-        />
-        <Field
-          label="Confirmar contraseña"
-          type="password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          placeholder="••••••••"
-          icon={Lock}
-          required
-          error={error}
-        />
-
-        <Button
-          label="Cambiar contraseña"
-          variant="primary"
-          loading={loading}
-          onClick={handleReset}
-        />
-
+      <div className="flex flex-row items-center justify-center mt-8">
+        <img src="/logo_domus.png" alt="Logo de la caja" className="w-24" />
+        <h1 className="text-2xl font-semibold text-text_primary">Domus</h1>
       </div>
-    </div>
+      <div className="mt-4 bg-bg_base flex items-center justify-center p-6">
+        <div className="bg-secondary_wt w-full max-w-sm flex flex-col gap-5 p-5 rounded-lg shadow-md">
+          <div>
+            <h1 className="text-2xl font-semibold text-text_primary">Nueva contraseña</h1>
+            <p className="text-sm text-text_secondary mt-1">Ingresa tu nueva contraseña.</p>
+          </div>
+
+          <Field
+            label="Nueva contraseña"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            icon={Lock}
+            required
+            hint="Mínimo 6 caracteres"
+          />
+          <Field
+            label="Confirmar contraseña"
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="••••••••"
+            icon={Lock}
+            required
+            error={error}
+          />
+
+          <Button
+            label="Cambiar contraseña"
+            variant="primary"
+            loading={loading}
+            onClick={handleReset}
+          />
+        </div>
+      </div>
     </div>
   )
 }

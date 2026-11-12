@@ -1,10 +1,6 @@
 // src/api/ciclos.service.ts
 import { apiClient } from "./api.client"
-import type {
-  GetCiclosResponse,
-  ConfigCiclo,
-  GuardarCicloResponse,
-} from "./ciclos.types"
+import type { GetCiclosResponse, ConfigCiclo, GuardarCicloResponse } from "./ciclos.types"
 
 export const ciclosService = {
   async getCiclos(cajaId: string): Promise<GetCiclosResponse> {
@@ -12,9 +8,6 @@ export const ciclosService = {
   },
 
   async guardarConfig(cajaId: string, config: ConfigCiclo): Promise<GuardarCicloResponse> {
-    return apiClient.put<GuardarCicloResponse>(
-      `/cajas/${cajaId}/configuracion-ciclo`,
-      config
-    )
+    return apiClient.put<GuardarCicloResponse>(`/cajas/${cajaId}/configuracion-ciclo`, config)
   },
 }

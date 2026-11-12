@@ -5,17 +5,17 @@ import { createContext, useContext, useState, useCallback } from "react"
 export type ToastTipo = "exito" | "error" | "info" | "advertencia"
 
 interface Toast {
-  id:      string
-  tipo:    ToastTipo
+  id: string
+  tipo: ToastTipo
   mensaje: string
 }
 
 interface ConfirmOpts {
-  titulo:       string
-  mensaje?:     string
-  labelOk?:     string
+  titulo: string
+  mensaje?: string
+  labelOk?: string
   labelCancel?: string
-  peligroso?:   boolean   // ← botón rojo para acciones destructivas
+  peligroso?: boolean // ← botón rojo para acciones destructivas
 }
 
 interface ConfirmState extends ConfirmOpts {
@@ -23,10 +23,10 @@ interface ConfirmState extends ConfirmOpts {
 }
 
 interface NotifContextType {
-  toast:   (tipo: ToastTipo, mensaje: string) => void
+  toast: (tipo: ToastTipo, mensaje: string) => void
   confirm: (opts: ConfirmOpts) => Promise<boolean>
   // Estado interno — lo consume el renderer
-  _toasts:  Toast[]
+  _toasts: Toast[]
   _confirm: ConfirmState | null
   _quitarToast: (id: string) => void
 }
@@ -34,23 +34,26 @@ interface NotifContextType {
 const NotifContext = createContext<NotifContextType | null>(null)
 
 export function NotifProvider({ children }: { children: React.ReactNode }) {
-  const [toasts,      setToasts]      = useState<Toast[]>([])
+  const [toasts, setToasts] = useState<Toast[]>([])
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
 
   const quitarToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id))
+    setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
-  const toast = useCallback((tipo: ToastTipo, mensaje: string) => {
-    const id = crypto.randomUUID()
-    setToasts(prev => [...prev, { id, tipo, mensaje }])
-    // Se cierra solo a los 4 segundos
-    setTimeout(() => quitarToast(id), 4000)
-  }, [quitarToast])
+  const toast = useCallback(
+    (tipo: ToastTipo, mensaje: string) => {
+      const id = crypto.randomUUID()
+      setToasts((prev) => [...prev, { id, tipo, mensaje }])
+      // Se cierra solo a los 4 segundos
+      setTimeout(() => quitarToast(id), 4000)
+    },
+    [quitarToast],
+  )
 
   // Devuelve una promesa que se resuelve cuando el usuario elige
   const confirm = useCallback((opts: ConfirmOpts): Promise<boolean> => {
-    return new Promise(resolver => {
+    return new Promise((resolver) => {
       setConfirmState({ ...opts, resolver })
     })
   }, [])
@@ -60,7 +63,7 @@ export function NotifProvider({ children }: { children: React.ReactNode }) {
       value={{
         toast,
         confirm,
-        _toasts:  toasts,
+        _toasts: toasts,
         _confirm: confirmState,
         _quitarToast: quitarToast,
       }}
@@ -88,10 +91,14 @@ function useNotifInterno() {
 import { CheckCircle, XCircle, Info, AlertTriangle, X } from "lucide-react"
 
 const toastConfig: Record<ToastTipo, { icon: typeof CheckCircle; color: string; bg: string }> = {
-  exito:       { icon: CheckCircle,   color: "var(--color-secondary_g)", bg: "rgba(106,178,62,0.12)" },
-  error:       { icon: XCircle,       color: "var(--color-danger_r)",    bg: "rgba(217,97,70,0.12)"  },
-  info:        { icon: Info,          color: "var(--color-primary_y)",   bg: "rgba(221,154,76,0.12)" },
-  advertencia: { icon: AlertTriangle, color: "var(--color-primary_y)",   bg: "rgba(221,154,76,0.12)" },
+  exito: { icon: CheckCircle, color: "var(--color-secondary_g)", bg: "rgba(106,178,62,0.12)" },
+  error: { icon: XCircle, color: "var(--color-danger_r)", bg: "rgba(217,97,70,0.12)" },
+  info: { icon: Info, color: "var(--color-primary_y)", bg: "rgba(221,154,76,0.12)" },
+  advertencia: {
+    icon: AlertTriangle,
+    color: "var(--color-primary_y)",
+    bg: "rgba(221,154,76,0.12)",
+  },
 }
 
 function NotifRenderer({ onCerrarConfirm }: { onCerrarConfirm: () => void }) {
@@ -107,56 +114,73 @@ function NotifRenderer({ onCerrarConfirm }: { onCerrarConfirm: () => void }) {
       {/* ── Toasts (esquina inferior derecha) ─────────────── */}
       <div
         style={{
-          position:      "fixed",
-          bottom:        "90px",   // arriba del botón del chatbot
-          right:         "24px",
-          zIndex:        60,
-          display:       "flex",
+          position: "fixed",
+          bottom: "90px", // arriba del botón del chatbot
+          right: "24px",
+          zIndex: 60,
+          display: "flex",
           flexDirection: "column",
-          gap:           "8px",
+          gap: "8px",
           pointerEvents: "none",
         }}
       >
-        {_toasts.map(t => {
+        {_toasts.map((t) => {
           const cfg = toastConfig[t.tipo]
           const Icon = cfg.icon
           return (
             <div
               key={t.id}
               style={{
-                minWidth:      "280px",
-                maxWidth:      "380px",
-                display:       "flex",
-                alignItems:    "flex-start",
-                gap:           "10px",
-                padding:       "12px 14px",
-                borderRadius:  "10px",
-                background:    "var(--bg-surface)",
-                border:        "1px solid var(--border-base)",
-                borderLeft:    `3px solid ${cfg.color}`,
-                boxShadow:     "0 4px 16px rgba(0,0,0,0.12)",
+                minWidth: "280px",
+                maxWidth: "380px",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "10px",
+                padding: "12px 14px",
+                borderRadius: "10px",
+                background: "var(--bg-surface)",
+                border: "1px solid var(--border-base)",
+                borderLeft: `3px solid ${cfg.color}`,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
                 pointerEvents: "auto",
-                animation:     "notifIn .2s ease-out",
+                animation: "notifIn .2s ease-out",
               }}
             >
               <div
                 style={{
-                  width: "22px", height: "22px", borderRadius: "50%",
-                  background: cfg.bg, flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: "22px",
+                  height: "22px",
+                  borderRadius: "50%",
+                  background: cfg.bg,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 <Icon size={13} style={{ color: cfg.color }} />
               </div>
-              <p style={{ flex: 1, fontSize: "13px", lineHeight: 1.4, color: "var(--text-primary)", margin: 0 }}>
+              <p
+                style={{
+                  flex: 1,
+                  fontSize: "13px",
+                  lineHeight: 1.4,
+                  color: "var(--text-primary)",
+                  margin: 0,
+                }}
+              >
                 {t.mensaje}
               </p>
               <button
                 onClick={() => _quitarToast(t.id)}
                 aria-label="Cerrar"
                 style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  color: "var(--text-muted)", padding: 0, flexShrink: 0,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--text-muted)",
+                  padding: 0,
+                  flexShrink: 0,
                 }}
               >
                 <X size={14} />
@@ -176,24 +200,25 @@ function NotifRenderer({ onCerrarConfirm }: { onCerrarConfirm: () => void }) {
           <div
             className="w-full max-w-sm rounded-xl p-5 flex flex-col gap-4"
             style={{ background: "var(--bg-surface)", animation: "notifIn .15s ease-out" }}
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3">
               <div
                 style={{
-                  width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
-                  background: _confirm.peligroso
-                    ? "rgba(217,97,70,0.12)"
-                    : "rgba(221,154,76,0.12)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  flexShrink: 0,
+                  background: _confirm.peligroso ? "rgba(217,97,70,0.12)" : "rgba(221,154,76,0.12)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 <AlertTriangle
                   size={18}
                   style={{
-                    color: _confirm.peligroso
-                      ? "var(--color-danger_r)"
-                      : "var(--color-primary_y)",
+                    color: _confirm.peligroso ? "var(--color-danger_r)" : "var(--color-primary_y)",
                   }}
                 />
               </div>
@@ -215,9 +240,9 @@ function NotifRenderer({ onCerrarConfirm }: { onCerrarConfirm: () => void }) {
                 className="px-4 py-2 rounded-lg text-sm font-medium"
                 style={{
                   background: "transparent",
-                  border:     "1px solid var(--border-base)",
-                  color:      "var(--text-secondary)",
-                  cursor:     "pointer",
+                  border: "1px solid var(--border-base)",
+                  color: "var(--text-secondary)",
+                  cursor: "pointer",
                 }}
               >
                 {_confirm.labelCancel ?? "Cancelar"}
@@ -230,7 +255,7 @@ function NotifRenderer({ onCerrarConfirm }: { onCerrarConfirm: () => void }) {
                     ? "var(--color-danger_r)"
                     : "var(--color-primary_y)",
                   border: "none",
-                  color:  "white",
+                  color: "white",
                   cursor: "pointer",
                 }}
               >

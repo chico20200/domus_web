@@ -1,10 +1,6 @@
 // src/api/cajas.service.ts
-import { apiClient }           from "./api.client"
-import type {
-  GetMisCajasResponse,
-  CreateCajaRequest,
-  CreateCajaResponse,
-} from "./cajas.types"
+import { apiClient } from "./api.client"
+import type { GetMisCajasResponse, CreateCajaRequest, CreateCajaResponse } from "./cajas.types"
 
 export const cajasService = {
   async getMisCajas(): Promise<GetMisCajasResponse> {

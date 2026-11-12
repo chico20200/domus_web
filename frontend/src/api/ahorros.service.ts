@@ -24,17 +24,27 @@ export const ahorrosService = {
     return apiClient.post<CuentaCreatedResponse>(`/cajas/${cajaId}/cuentas`, { socio_id: socioId })
   },
 
-  async depositar(cajaId: string, cuentaId: string, monto: number, descripcion?: string): Promise<TransaccionResponse> {
-    return apiClient.post<TransaccionResponse>(
-      `/cajas/${cajaId}/cuentas/${cuentaId}/deposito`,
-      { monto, descripcion }
-    )
+  async depositar(
+    cajaId: string,
+    cuentaId: string,
+    monto: number,
+    descripcion?: string,
+  ): Promise<TransaccionResponse> {
+    return apiClient.post<TransaccionResponse>(`/cajas/${cajaId}/cuentas/${cuentaId}/deposito`, {
+      monto,
+      descripcion,
+    })
   },
 
-  async retirar(cajaId: string, cuentaId: string, monto: number, descripcion?: string): Promise<TransaccionResponse> {
-    return apiClient.post<TransaccionResponse>(
-      `/cajas/${cajaId}/cuentas/${cuentaId}/retiro`,
-      { monto, descripcion }
-    )
+  async retirar(
+    cajaId: string,
+    cuentaId: string,
+    monto: number,
+    descripcion?: string,
+  ): Promise<TransaccionResponse> {
+    return apiClient.post<TransaccionResponse>(`/cajas/${cajaId}/cuentas/${cuentaId}/retiro`, {
+      monto,
+      descripcion,
+    })
   },
 }

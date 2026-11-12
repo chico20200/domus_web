@@ -1,32 +1,39 @@
 // src/pages/AhorrosPage.tsx
-import { useState, useEffect }        from "react"
-import { useNavigate }                from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import {
-  ArrowDownCircle, ArrowUpCircle,
-  PiggyBank, ChevronRight, ChevronLeft, Plus
+  ArrowDownCircle,
+  ArrowUpCircle,
+  PiggyBank,
+  ChevronRight,
+  ChevronLeft,
+  Plus,
 } from "lucide-react"
 
-import { AppLayout }                  from "../components/layout/AppLayout"
-import { Button }                     from "../components/Button"
-import { Field }                      from "../components/Field"
-import { useCaja }                    from "../context/CajaContext"
-import { ahorrosService }             from "../api/ahorros.service"
-import { sociosService }              from "../api/socios.service"
+import { AppLayout } from "../components/layout/AppLayout"
+import { Button } from "../components/Button"
+import { Field } from "../components/Field"
+import { useCaja } from "../context/CajaContext"
+import { ahorrosService } from "../api/ahorros.service"
+import { sociosService } from "../api/socios.service"
 import type { CuentaAhorro, Transaccion } from "../api/ahorros.types"
-import type { Socio }                 from "../api/socios.types"
+import type { Socio } from "../api/socios.types"
 import { useAuth } from "../context/AuthContext"
 import { useNotif } from "../context/NotifContext"
 
-
 function formatMonto(m: number) {
   return new Intl.NumberFormat("es-EC", {
-    style: "currency", currency: "USD", minimumFractionDigits: 2
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
   }).format(m)
 }
 
 function formatFecha(f: string) {
   return new Date(f).toLocaleDateString("es-EC", {
-    day: "numeric", month: "short", year: "numeric"
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   })
 }
 
@@ -34,69 +41,71 @@ type Vista = "lista" | "detalle"
 type ModalTipo = "deposito" | "retiro" | "nueva" | null
 
 export default function AhorrosPage() {
-  const navigate       = useNavigate()
+  const navigate = useNavigate()
   const { cajaActiva } = useCaja()
-  const { user }       = useAuth()
+  const { user } = useAuth()
 
   // ── Estado principal ─────────────────────────────────────────
-  const [vista,         setVista]         = useState<Vista>("lista")
-  const [cuentas,       setCuentas]       = useState<CuentaAhorro[]>([])
-  const [cuentaActiva,  setCuentaActiva]  = useState<CuentaAhorro | null>(null)
+  const [vista, setVista] = useState<Vista>("lista")
+  const [cuentas, setCuentas] = useState<CuentaAhorro[]>([])
+  const [cuentaActiva, setCuentaActiva] = useState<CuentaAhorro | null>(null)
   const [transacciones, setTransacciones] = useState<Transaccion[]>([])
-  const [socios,        setSocios]        = useState<Socio[]>([])
-  const [loading,       setLoading]       = useState(true)
-  const [procesando,    setProcesando]    = useState(false)
+  const [socios, setSocios] = useState<Socio[]>([])
+  const [loading, setLoading] = useState(true)
+  const [procesando, setProcesando] = useState(false)
 
   // ── Modal ────────────────────────────────────────────────────
-  const [modal,       setModal]       = useState<ModalTipo>(null)
-  const [monto,       setMonto]       = useState("")
+  const [modal, setModal] = useState<ModalTipo>(null)
+  const [monto, setMonto] = useState("")
   const [descripcion, setDescripcion] = useState("")
-  const [socioSel,    setSocioSel]    = useState("")
-  const [errorModal,  setErrorModal]  = useState<string | undefined>(undefined)
+  const [socioSel, setSocioSel] = useState("")
+  const [errorModal, setErrorModal] = useState<string | undefined>(undefined)
   const { toast } = useNotif()
 
-
   useEffect(() => {
-    if (!cajaActiva) { navigate("/cajas", { replace: true }); return }
+    if (!cajaActiva) {
+      navigate("/cajas", { replace: true })
+      return
+    }
     cargarDatos()
-    
   }, [cajaActiva])
 
   async function cargarDatos() {
-  setLoading(true)
-  try {
-    const esSocio = cajaActiva?.rol === "socio"
+    setLoading(true)
+    try {
+      const esSocio = cajaActiva?.rol === "socio"
 
-    if (esSocio) {
-      // El socio solo ve sus propias cuentas
-      const resSocios = await sociosService.getSocios(cajaActiva!.id)
+      if (esSocio) {
+        // El socio solo ve sus propias cuentas
+        const resSocios = await sociosService.getSocios(cajaActiva!.id)
 
-      // Busca el socio asociado al user actual.
-      // Si el socio fue invitado y aún no tiene user_id, usamos el email.
-      const miSocio = resSocios.socios.find(s =>
-        s.user_id === user?.id ||
-        (user?.email && s.email?.toLowerCase() === user.email.toLowerCase())
-      )
+        // Busca el socio asociado al user actual.
+        // Si el socio fue invitado y aún no tiene user_id, usamos el email.
+        const miSocio = resSocios.socios.find(
+          (s) =>
+            s.user_id === user?.id ||
+            (user?.email && s.email?.toLowerCase() === user.email.toLowerCase()),
+        )
 
-      if (miSocio) {
-        const resCuentas = await ahorrosService.getCuentasSocio(cajaActiva!.id, miSocio.id)
-        setCuentas(resCuentas.cuentas)
+        if (miSocio) {
+          const resCuentas = await ahorrosService.getCuentasSocio(cajaActiva!.id, miSocio.id)
+          setCuentas(resCuentas.cuentas)
+        } else {
+          setCuentas([])
+        }
       } else {
-        setCuentas([])
+        // Tesorero y admin ven todas las cuentas
+        const [resCuentas, resSocios] = await Promise.all([
+          ahorrosService.getCuentas(cajaActiva!.id),
+          sociosService.getSocios(cajaActiva!.id),
+        ])
+        setCuentas(resCuentas.cuentas)
+        setSocios(resSocios.socios.filter((s) => s.activo))
       }
-    } else {
-      // Tesorero y admin ven todas las cuentas
-      const [resCuentas, resSocios] = await Promise.all([
-        ahorrosService.getCuentas(cajaActiva!.id),
-        sociosService.getSocios(cajaActiva!.id),
-      ])
-      setCuentas(resCuentas.cuentas)
-      setSocios(resSocios.socios.filter(s => s.activo))
+    } finally {
+      setLoading(false)
     }
-  } finally {
-    setLoading(false)
   }
-}
 
   async function verDetalle(cuenta: CuentaAhorro) {
     setCuentaActiva(cuenta)
@@ -128,7 +137,10 @@ export default function AhorrosPage() {
   }
 
   async function handleNuevaCuenta() {
-    if (!socioSel) { setErrorModal("Selecciona un socio"); return }
+    if (!socioSel) {
+      setErrorModal("Selecciona un socio")
+      return
+    }
     setProcesando(true)
     setErrorModal(undefined)
     try {
@@ -143,27 +155,27 @@ export default function AhorrosPage() {
   }
 
   async function handleOperacion(tipo: "deposito" | "retiro") {
-  const montoNum = parseFloat(monto)
-  if (!monto || isNaN(montoNum) || montoNum <= 0) {
-    setErrorModal("Ingresa un monto válido mayor a 0")
-    return
+    const montoNum = parseFloat(monto)
+    if (!monto || isNaN(montoNum) || montoNum <= 0) {
+      setErrorModal("Ingresa un monto válido mayor a 0")
+      return
+    }
+    setProcesando(true)
+    try {
+      const fn = tipo === "deposito" ? ahorrosService.depositar : ahorrosService.retirar
+      await fn(cajaActiva!.id, cuentaActiva!.id, montoNum, descripcion)
+      const res = await ahorrosService.getCuenta(cajaActiva!.id, cuentaActiva!.id)
+      setCuentaActiva(res.cuenta)
+      setTransacciones(res.transacciones)
+      await cargarDatos()
+      cerrarModal()
+      toast("exito", tipo === "deposito" ? "Depósito registrado" : "Retiro registrado")
+    } catch (err) {
+      setErrorModal(err instanceof Error ? err.message : "Error al procesar operación")
+    } finally {
+      setProcesando(false)
+    }
   }
-  setProcesando(true)
-  try {
-    const fn = tipo === "deposito" ? ahorrosService.depositar : ahorrosService.retirar
-    await fn(cajaActiva!.id, cuentaActiva!.id, montoNum, descripcion)
-    const res = await ahorrosService.getCuenta(cajaActiva!.id, cuentaActiva!.id)
-    setCuentaActiva(res.cuenta)
-    setTransacciones(res.transacciones)
-    await cargarDatos()
-    cerrarModal()
-    toast("exito", tipo === "deposito" ? "Depósito registrado" : "Retiro registrado")
-  } catch (err) {
-    setErrorModal(err instanceof Error ? err.message : "Error al procesar operación")
-  } finally {
-    setProcesando(false)
-  }
-}
 
   // ── VISTA DETALLE ────────────────────────────────────────────
   if (vista === "detalle" && cuentaActiva) {
@@ -171,7 +183,6 @@ export default function AhorrosPage() {
     return (
       <AppLayout titulo="Ahorros">
         <div className="flex flex-col gap-4 max-w-2xl">
-
           {/* Botón volver */}
           <button
             className="flex items-center gap-1 text-sm w-fit"
@@ -182,19 +193,15 @@ export default function AhorrosPage() {
           </button>
 
           {/* Card de la cuenta */}
-          <div
-            className="rounded-xl p-5"
-            style={{ background: "var(--color-primary_y)" }}
-          >
-            <p className="text-xs text-white opacity-80 mb-1">
-              {cuentaActiva.numero_cuenta}
-            </p>
+          <div className="rounded-xl p-5" style={{ background: "var(--color-primary_y)" }}>
+            <p className="text-xs text-white opacity-80 mb-1">{cuentaActiva.numero_cuenta}</p>
             <p className="text-2xl font-semibold text-white mb-1">
               {formatMonto(cuentaActiva.saldo)}
             </p>
             <p className="text-sm text-white opacity-80">
               {socio ? `${socio.nombre} ${socio.apellido}` : ""}
-              {" · "}{cuentaActiva.estado}
+              {" · "}
+              {cuentaActiva.estado}
             </p>
           </div>
 
@@ -209,7 +216,7 @@ export default function AhorrosPage() {
               />
               <Button
                 label="Retiro"
-                variant="danger"
+                variant="destructive"
                 icon={ArrowUpCircle}
                 onClick={() => abrirModal("retiro")}
               />
@@ -221,13 +228,10 @@ export default function AhorrosPage() {
             className="rounded-xl overflow-hidden"
             style={{
               background: "var(--bg-surface)",
-              border:     "1px solid var(--border-base)",
+              border: "1px solid var(--border-base)",
             }}
           >
-            <div
-              className="px-5 py-3"
-              style={{ borderBottom: "1px solid var(--border-base)" }}
-            >
+            <div className="px-5 py-3" style={{ borderBottom: "1px solid var(--border-base)" }}>
               <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                 Historial de movimientos
               </p>
@@ -241,7 +245,7 @@ export default function AhorrosPage() {
               </div>
             )}
 
-            {transacciones.map(tx => {
+            {transacciones.map((tx) => {
               const esDeposito = tx.tipo === "deposito"
               return (
                 <div
@@ -252,15 +256,14 @@ export default function AhorrosPage() {
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                     style={{
-                      background: esDeposito
-                        ? "rgba(106,178,62,0.12)"
-                        : "rgba(217,97,70,0.12)"
+                      background: esDeposito ? "rgba(106,178,62,0.12)" : "rgba(217,97,70,0.12)",
                     }}
                   >
-                    {esDeposito
-                      ? <ArrowDownCircle size={15} style={{ color: "var(--color-secondary_g)" }} />
-                      : <ArrowUpCircle   size={15} style={{ color: "var(--color-danger_r)" }} />
-                    }
+                    {esDeposito ? (
+                      <ArrowDownCircle size={15} style={{ color: "var(--color-secondary_g)" }} />
+                    ) : (
+                      <ArrowUpCircle size={15} style={{ color: "var(--color-danger_r)" }} />
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm" style={{ color: "var(--text-primary)" }}>
@@ -273,15 +276,17 @@ export default function AhorrosPage() {
                   </div>
                   <span
                     className="text-sm font-medium"
-                    style={{ color: esDeposito ? "var(--color-secondary_g)" : "var(--color-danger_r)" }}
+                    style={{
+                      color: esDeposito ? "var(--color-secondary_g)" : "var(--color-danger_r)",
+                    }}
                   >
-                    {esDeposito ? "+" : "-"}{formatMonto(tx.monto)}
+                    {esDeposito ? "+" : "-"}
+                    {formatMonto(tx.monto)}
                   </span>
                 </div>
               )
             })}
           </div>
-
         </div>
 
         {/* Modal depósito/retiro */}
@@ -306,7 +311,6 @@ export default function AhorrosPage() {
   return (
     <AppLayout titulo="Ahorros">
       <div className="flex flex-col gap-4">
-
         {/* Header */}
         <div className="flex items-center justify-between">
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -327,7 +331,7 @@ export default function AhorrosPage() {
           className="rounded-xl overflow-hidden"
           style={{
             background: "var(--bg-surface)",
-            border:     "1px solid var(--border-base)",
+            border: "1px solid var(--border-base)",
           }}
         >
           {loading && (
@@ -340,58 +344,67 @@ export default function AhorrosPage() {
 
           {!loading && cuentas.length === 0 && (
             <div className="px-5 py-10 text-center">
-              <PiggyBank size={32} className="mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
+              <PiggyBank
+                size={32}
+                className="mx-auto mb-2"
+                style={{ color: "var(--text-muted)" }}
+              />
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                 Aún no hay cuentas de ahorro registradas
               </p>
             </div>
           )}
 
-          {!loading && cuentas.map(cuenta => {
-            const esSocio = cajaActiva?.rol === "socio"
-            const socio = cuenta.socios
-            const avatarText = esSocio
-              ? cuenta.numero_cuenta.slice(0, 2)
-              : socio
-                ? `${socio.nombre[0]}${socio.apellido[0]}`
-                : "?"
-            return (
-              <button
-                key={cuenta.id}
-                onClick={() => verDetalle(cuenta)}
-                className="w-full flex items-center gap-4 px-5 py-3 text-left"
-                style={{ borderBottom: "1px solid var(--border-base)" }}
-              >
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-medium"
-                  style={{ background: "rgba(221,154,76,0.12)", color: "var(--color-primary_y)" }}
+          {!loading &&
+            cuentas.map((cuenta) => {
+              const esSocio = cajaActiva?.rol === "socio"
+              const socio = cuenta.socios
+              const avatarText = esSocio
+                ? cuenta.numero_cuenta.slice(0, 2)
+                : socio
+                  ? `${socio.nombre[0]}${socio.apellido[0]}`
+                  : "?"
+              return (
+                <button
+                  key={cuenta.id}
+                  onClick={() => verDetalle(cuenta)}
+                  className="w-full flex items-center gap-4 px-5 py-3 text-left"
+                  style={{ borderBottom: "1px solid var(--border-base)" }}
                 >
-                  {avatarText}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    {esSocio ? cuenta.numero_cuenta : socio ? `${socio.nombre} ${socio.apellido}` : "Sin socio"}
-                  </p>
-                  <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                    {esSocio ? cuenta.estado : `${cuenta.numero_cuenta} · ${cuenta.estado}`}
-                  </p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    {formatMonto(cuenta.saldo)}
-                  </p>
-                </div>
-                <ChevronRight size={14} style={{ color: "var(--text-muted)" }} />
-              </button>
-            )
-          })}
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-medium"
+                    style={{ background: "rgba(221,154,76,0.12)", color: "var(--color-primary_y)" }}
+                  >
+                    {avatarText}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                      {esSocio
+                        ? cuenta.numero_cuenta
+                        : socio
+                          ? `${socio.nombre} ${socio.apellido}`
+                          : "Sin socio"}
+                    </p>
+                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                      {esSocio ? cuenta.estado : `${cuenta.numero_cuenta} · ${cuenta.estado}`}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                      {formatMonto(cuenta.saldo)}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} style={{ color: "var(--text-muted)" }} />
+                </button>
+              )
+            })}
         </div>
-
       </div>
 
       {/* Modal nueva cuenta */}
       {modal === "nueva" && (
-        <div className="fixed inset-0 flex items-center justify-center z-50"
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
           style={{ background: "rgba(0,0,0,0.4)" }}
         >
           <div
@@ -407,16 +420,16 @@ export default function AhorrosPage() {
               </label>
               <select
                 value={socioSel}
-                onChange={e => setSocioSel(e.target.value)}
+                onChange={(e) => setSocioSel(e.target.value)}
                 className="w-full mt-1 px-3 py-2 text-sm rounded-lg outline-none"
                 style={{
                   background: "var(--bg-base)",
-                  border:     "1px solid var(--border-base)",
-                  color:      "var(--text-primary)",
+                  border: "1px solid var(--border-base)",
+                  color: "var(--text-primary)",
                 }}
               >
                 <option value="">Selecciona un socio...</option>
-                {socios.map(s => (
+                {socios.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.nombre} {s.apellido} · {s.cedula}
                   </option>
@@ -424,10 +437,17 @@ export default function AhorrosPage() {
               </select>
             </div>
             {errorModal && (
-              <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>{errorModal}</p>
+              <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>
+                {errorModal}
+              </p>
             )}
             <div className="flex gap-3">
-              <Button label="Abrir cuenta" variant="primary" loading={procesando} onClick={handleNuevaCuenta} />
+              <Button
+                label="Abrir cuenta"
+                variant="primary"
+                loading={procesando}
+                onClick={handleNuevaCuenta}
+              />
               <Button label="Cancelar" variant="secondary" onClick={cerrarModal} />
             </div>
           </div>
@@ -439,21 +459,32 @@ export default function AhorrosPage() {
 
 // ── Componente modal de depósito/retiro ───────────────────────
 interface ModalProps {
-  tipo:         "deposito" | "retiro"
-  monto:        string
-  descripcion:  string
-  error?:       string
-  procesando:   boolean
-  onMonto:      (v: string) => void
-  onDescripcion:(v: string) => void
-  onConfirmar:  () => void
-  onCerrar:     () => void
+  tipo: "deposito" | "retiro"
+  monto: string
+  descripcion: string
+  error?: string
+  procesando: boolean
+  onMonto: (v: string) => void
+  onDescripcion: (v: string) => void
+  onConfirmar: () => void
+  onCerrar: () => void
 }
 
-function ModalOperacion({ tipo, monto, descripcion, error, procesando, onMonto, onDescripcion, onConfirmar, onCerrar }: ModalProps) {
+function ModalOperacion({
+  tipo,
+  monto,
+  descripcion,
+  error,
+  procesando,
+  onMonto,
+  onDescripcion,
+  onConfirmar,
+  onCerrar,
+}: ModalProps) {
   const esDeposito = tipo === "deposito"
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50"
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50"
       style={{ background: "rgba(0,0,0,0.4)" }}
     >
       <div
@@ -467,7 +498,7 @@ function ModalOperacion({ tipo, monto, descripcion, error, procesando, onMonto, 
           label="Monto ($)"
           type="number"
           value={monto}
-          onChange={e => onMonto(e.target.value)}
+          onChange={(e) => onMonto(e.target.value)}
           placeholder="0.00"
           required
           icon={esDeposito ? ArrowDownCircle : ArrowUpCircle}
@@ -476,16 +507,18 @@ function ModalOperacion({ tipo, monto, descripcion, error, procesando, onMonto, 
           label="Descripción (opcional)"
           type="text"
           value={descripcion}
-          onChange={e => onDescripcion(e.target.value)}
+          onChange={(e) => onDescripcion(e.target.value)}
           placeholder="Ej: Aporte mensual"
         />
         {error && (
-          <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>{error}</p>
+          <p className="text-xs" style={{ color: "var(--color-danger_r)" }}>
+            {error}
+          </p>
         )}
         <div className="flex gap-3">
           <Button
             label={esDeposito ? "Depositar" : "Retirar"}
-            variant={esDeposito ? "secondary" : "danger"}
+            variant={esDeposito ? "secondary" : "destructive"}
             loading={procesando}
             onClick={onConfirmar}
           />

@@ -2,11 +2,11 @@
 import type { LucideIcon } from "lucide-react"
 
 interface CardProps {
-  label:     string
-  value:     string | number
-  subtext?:  string
-  icon?:     LucideIcon
-  acento?:   boolean   // ← resalta la card principal
+  label: string
+  value: string | number
+  subtext?: string
+  icon?: LucideIcon
+  acento?: boolean // ← resalta la card principal
 }
 
 export function Card({ label, value, subtext, icon: Icon, acento = false }: CardProps) {
@@ -15,7 +15,7 @@ export function Card({ label, value, subtext, icon: Icon, acento = false }: Card
       className="rounded-xl p-4 flex flex-col gap-2"
       style={{
         background: acento ? "var(--color-primary_y)" : "var(--bg-surface)",
-        border:     acento ? "none" : "1px solid var(--border-base)",
+        border: acento ? "none" : "1px solid var(--border-base)",
       }}
     >
       <div className="flex items-center justify-between">

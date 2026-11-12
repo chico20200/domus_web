@@ -2,16 +2,16 @@
 import { createContext, useContext, useState } from "react"
 
 interface Caja {
-  id:          string
-  nombre:      string
+  id: string
+  nombre: string
   descripcion: string
-  rol:         "admin" | "tesorero" | "socio"
+  rol: "admin" | "tesorero" | "socio"
 }
 
 interface CajaContextType {
-  cajaActiva:    Caja | null
+  cajaActiva: Caja | null
   setCajaActiva: (caja: Caja) => void
-  salirDeCaja:   () => void
+  salirDeCaja: () => void
 }
 
 const CajaContext = createContext<CajaContextType | null>(null)
