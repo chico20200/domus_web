@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones. 14 de 15 tareas hechas (T1–T14).
+- **Etapa actual:** Etapa 1, Fundaciones, **terminada** (15 de 15). Falta decidir si se fusiona `etapa-1` en `main` antes de empezar la Etapa 2.
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `60ff35d`
+- **Último commit de referencia:** `efb5891`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | En curso: 14/15 |
+| 1 | Fundaciones | Hecha: 15/15 |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -43,7 +43,7 @@ Leyenda: ⬜ pendiente · 🔄 en curso · ✅ hecha (con commit)
 | T12 | `Modal`: Escape, clic afuera, foco atrapado, `aria-modal` | T2 | ✅ | `1394d95` |
 | T13 | `LoadingState` y `EmptyState` | T2 | ✅ | `01c40a6` |
 | T14 | `Badge`: tonos `ok`, `alerta`, `destructivo`, `neutral` | T2 | ✅ | `60ff35d` |
-| T15 | Página de muestra solo para desarrollo (`/dev/componentes`), en modo claro y oscuro | T6–T14 | ⬜ | |
+| T15 | Página de muestra solo para desarrollo (`/dev/componentes`), en modo claro y oscuro | T6–T14 | ✅ | `efb5891` |
 
 Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 
@@ -106,6 +106,9 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | `Badge` es de contorno, sin relleno. El patrón de hoy (texto sobre su propio color al 12 %) deja el texto en 3,9:1 sobre `bg-surface-2`, y con la paleta de T3 ningún tinte cumple: el destructivo sobre `surface-2` ya está en 4,62:1 sin fondo. Se descartó el relleno sólido porque una columna de estados se vería muy cargada | `frontend/src/components/Badge.tsx` |
 | 11 nov 2026 | Tonos de `Badge` por significado: `ok` al día o activo; `alerta` pendiente o por vencer; `destructivo` mora, castigado o bloqueado; `neutral` roles y estados sin carga. `neutral` usa `text-secondary` | `frontend/src/components/Badge.tsx` |
 | 11 nov 2026 | Consecuencia general: los fondos teñidos detrás de texto de color (`rgba(…, 0.06–0.12)`, como los avisos de prepago en Créditos) tampoco cumplen AA con esta paleta. Al migrar se usan superficies (`bg-surface-2`) con texto normal, o un borde del color del estado | Este documento, Hallazgos |
+| 11 nov 2026 | La página de muestra se registra solo con `import.meta.env.DEV` y se carga con `lazy()`: no llega al build de producción (comprobado buscando su texto en `dist`) | `frontend/src/App.tsx` |
+| 11 nov 2026 | Un modal con formulario lleva el `Form` dentro del cuerpo, con sus botones en `actions` del `Form`, no en `acciones` del `Modal`: el botón de envío tiene que quedar dentro del `<form>` para que Enter funcione. `acciones` del `Modal` es para modales sin formulario (confirmaciones, tablas) | `frontend/src/pages/dev/ComponentesPage.tsx` |
+| 11 nov 2026 | Regla de clases: un componente no pone en su base una clase que una variante necesita sobrescribir (`border-transparent` contra `border-accion-primaria`). Dos utilidades de la misma propiedad empatan en especificidad y gana la que Tailwind escriba después, no la última del `className` | `frontend/src/components/Button.tsx` |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -167,6 +170,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** **Etapa 1 terminada.** T15 hecha: página de muestra en `/dev/componentes` (solo desarrollo) con todos los primitivos. Revisada en claro y oscuro, y su formulario probado con teclado real. Al revisarla apareció un error de T6: el `Button` `secondary` no mostraba el contorno y se veía como `ghost`, también en las páginas reales. Corregido en `69d389d`. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T14 hecha. `Badge` con cuatro tonos y ícono opcional. Se midió el patrón de fondo teñido y no cumple AA con la paleta de T3, así que el badge es de contorno; la regla se anota para la migración. Revisado sobre las tres superficies en claro y oscuro. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T13 hecha. `LoadingState` y `EmptyState`, revisados en claro y oscuro dentro de una tarjeta, sobre una página temporal ya borrada. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T12 hecha. `Modal` sobre `<dialog>`: Escape, clic afuera (sin cerrar por arrastre), foco atrapado, foco inicial y de regreso, `aria-modal`. 11 casos probados en Chromium con teclado y mouse reales, en claro y oscuro, sobre una página temporal ya borrada. Build OK; lint con los mismos 11 errores previos.
