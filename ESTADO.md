@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones. 10 de 15 tareas hechas (T1–T10).
+- **Etapa actual:** Etapa 1, Fundaciones. 11 de 15 tareas hechas (T1–T11).
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `30b5c23`
+- **Último commit de referencia:** `e7f9730`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | En curso: 10/15 |
+| 1 | Fundaciones | En curso: 11/15 |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -39,7 +39,7 @@ Leyenda: ⬜ pendiente · 🔄 en curso · ✅ hecha (con commit)
 | T8 | `TextField` (incluye date y number); `Field` queda como alias | T7 | ✅ | `29bb919` |
 | T9 | `SelectField` y `TextareaField` | T7 | ✅ | `118967e` |
 | T10 | `Form`: `preventDefault`, envío con Enter, error general | T6 | ✅ | `30b5c23` |
-| T11 | `PageShell`: anchos `formulario` (640 px) y `completo` (1200 px), siempre centrado | T2 | ⬜ | |
+| T11 | `PageShell`: anchos `formulario` (640 px) y `completo` (1200 px), siempre centrado | T2 | ✅ | `e7f9730` |
 | T12 | `Modal`: Escape, clic afuera, foco atrapado, `aria-modal` | T2 | ⬜ | |
 | T13 | `LoadingState` y `EmptyState` | T2 | ⬜ | |
 | T14 | `Badge`: tonos `ok`, `alerta`, `destructivo`, `neutral` | T2 | ⬜ | |
@@ -95,6 +95,8 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | `Form` usa `noValidate`, en línea con `aria-required` de T7: valida la aplicación, no el navegador | `frontend/src/components/Form.tsx` |
 | 11 nov 2026 | `Form` ignora un segundo envío mientras el primero no termina (si `onSubmit` devuelve una promesa). Evita depósitos o pagos duplicados por pulsar Enter dos veces | `frontend/src/components/Form.tsx` |
 | 11 nov 2026 | El error general se pinta dentro de un contenedor `role="alert"` que siempre está montado, para que el lector de pantalla lo anuncie al aparecer | `frontend/src/components/Form.tsx` |
+| 11 nov 2026 | Los anchos de página son tokens de Tailwind: `--container-formulario` (40rem, 640 px) y `--container-completo` (75rem, 1200 px), con clases `max-w-formulario` y `max-w-completo`. Solo los usa `PageShell` | `frontend/src/index.css` |
+| 11 nov 2026 | `PageShell` exige `ancho`, sin valor por defecto: cada página decide el suyo. No pinta encabezado propio porque `TopBar` ya muestra el título como `<h1>`. Las secciones de la página van separadas 32 px (`gap-8`) | `frontend/src/components/layout/PageShell.tsx` |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -127,6 +129,8 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
 | §3 dice que hay `<textarea>` sueltos en `SociosPage` y `CreditosPage`, pero en el código actual no hay ninguno. `TextareaField` se hizo igual; corregir la tabla de §3 o confirmar dónde hacen falta | Sin asignar (documento) |
 | 8 `<select>` sueltos con estilo propio y `style={{}}` (Créditos, Ahorros, Reportes, Configuración ×4, AbonoModal) se reemplazan por `SelectField` | Etapa 3, al migrar cada página |
+| `PageShell` cubre solo las páginas con barra lateral. `CajasPage` y las cuatro de autenticación no usan `AppLayout` y centran con su propio `max-w-*` (`max-w-2xl`, `max-w-sm`). Decidir al migrarlas si tienen su propio contenedor o un tercer ancho | Etapa 3 |
+| Las líneas que cita §4.1 (`ConfiguracionPage.tsx:235`, etc.) se corrieron con el formato de T1; hoy son `ConfiguracionPage.tsx:241`, `AhorrosPage.tsx:185`, `CreditosPage.tsx:260`, `ProfilePage.tsx:152` y `:202` | Etapa 3 (referencia) |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan; hay más de un `primary` por pantalla en Pagos ("Pago completo" en cada fila) y en Créditos ("Nueva solicitud" y "Crear solicitud" a la vez con el formulario abierto) | Etapa 3, al migrar cada página |
 | Lint del frontend: 11 errores que ya existían. 2 en `ChatbotFlotante` y `DonacionModal`; 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 2 (chatbot y donaciones); Etapa 3 (el resto) |
 | Lint del backend: 6 errores, todos variables sin usar, en `cajas.routes.js`, `pagos.routes.js` y `reportes.routes.js` | Etapa 2 |
@@ -151,6 +155,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T11 hecha. `PageShell` con `ancho="formulario"` (640 px) y `"completo"` (1200 px), siempre centrado. Revisado con los providers reales a 1600 y 900 px de ancho, sobre una página temporal ya borrada. Las páginas todavía no lo usan (Etapa 3). Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T10 hecha. `Form` con `preventDefault`, envío con Enter, protección contra doble envío y error general accesible. Probado en Chromium con pulsaciones reales de teclado sobre una página temporal (ya borrada): Enter envía, dos Enter dan un envío, no recarga, Cancelar no envía. Las páginas todavía no lo usan (Etapa 3). Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T9 hecha. `SelectField` (opciones, placeholder atenuado, chevron propio) y `TextareaField` (filas, contador). Revisados en claro y oscuro con el CSS compilado. No hay `<textarea>` en el código pese a lo que dice §3; queda en Hallazgos. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T8 hecha. `TextField` con `name`, `autoComplete`, `onBlur`, `maxLength`, `inputMode` y `min`/`max`/`step`; `Field` pasa a ser su alias. Se agregó `color-scheme` para los controles nativos. Fecha, número, error y deshabilitado revisados en claro y oscuro con el CSS compilado. Build OK; lint con los mismos 11 errores previos.
