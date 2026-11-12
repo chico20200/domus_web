@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones. 8 de 15 tareas hechas (T1–T8).
+- **Etapa actual:** Etapa 1, Fundaciones. 9 de 15 tareas hechas (T1–T9).
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `29bb919`
+- **Último commit de referencia:** `118967e`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | En curso: 8/15 |
+| 1 | Fundaciones | En curso: 9/15 |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -37,7 +37,7 @@ Leyenda: ⬜ pendiente · 🔄 en curso · ✅ hecha (con commit)
 | T6 | `Button`: variantes `primary`, `secondary`, `ghost`, `destructive`; `type`, `fullWidth`; sin `onEnter` ni `m-1` | T2 | ✅ | `e702fa9` |
 | T7 | `FieldBase`: label asociado con `useId`, colores por token, sin la prop `variant` | T2 | ✅ | `c515aaf` |
 | T8 | `TextField` (incluye date y number); `Field` queda como alias | T7 | ✅ | `29bb919` |
-| T9 | `SelectField` y `TextareaField` | T7 | ⬜ | |
+| T9 | `SelectField` y `TextareaField` | T7 | ✅ | `118967e` |
 | T10 | `Form`: `preventDefault`, envío con Enter, error general | T6 | ⬜ | |
 | T11 | `PageShell`: anchos `formulario` (640 px) y `completo` (1200 px), siempre centrado | T2 | ⬜ | |
 | T12 | `Modal`: Escape, clic afuera, foco atrapado, `aria-modal` | T2 | ⬜ | |
@@ -88,6 +88,9 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | Para cédula y teléfono se usará `type="text"` con `inputMode="numeric"` y `maxLength`, no `type="number"`: así sale el teclado numérico y no se pierden los ceros a la izquierda | `frontend/src/components/TextField.tsx` |
 | 11 nov 2026 | `color-scheme: light` en `:root` y `dark` en `.dark`, para que el calendario, las flechas de número y las barras de scroll nativas sigan el modo | `frontend/src/index.css` |
 | 11 nov 2026 | `Field.tsx` queda como una reexportación de `TextField`. Se borra cuando la Etapa 3 termine de migrar las páginas | `frontend/src/components/Field.tsx` |
+| 11 nov 2026 | `SelectField` recibe `options` como arreglo `{ value, label }` con valores de texto; la página convierte a número si lo necesita. `placeholder` crea una primera opción vacía, deshabilitada y atenuada. Una opción "Todos" de un filtro va en `options`, no como placeholder | `frontend/src/components/SelectField.tsx` |
+| 11 nov 2026 | `SelectField` reemplaza la flecha nativa por un chevron en el lugar del ícono de `FieldBase`, para que se vea igual en todos los navegadores | `frontend/src/components/SelectField.tsx` |
+| 11 nov 2026 | `TextareaField`: 3 líneas por defecto, solo se agranda hacia abajo, y con `maxLength` muestra un contador "n / máximo" (sin anunciarlo en cada tecla al lector de pantalla) | `frontend/src/components/TextareaField.tsx` |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -118,6 +121,8 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | **Fechas un día adelantadas en el backend.** `new Date().toISOString().split("T")[0]` (en `ahorros.routes.js:140`, `socios.routes.js:104` y `creditos.routes.js:177`) toma la fecha UTC: lo que se registra después de las 19:00 de Ecuador queda con fecha del día siguiente | Etapa 2 |
 | `DashboardPage` muestra fechas relativas ("Hoy", "Ayer") que `format.ts` no cubre. Al migrar, decidir si se agrega `fechaRelativa()` o se usa `fecha()` | Etapa 3 (Dashboard) |
 | `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
+| §3 dice que hay `<textarea>` sueltos en `SociosPage` y `CreditosPage`, pero en el código actual no hay ninguno. `TextareaField` se hizo igual; corregir la tabla de §3 o confirmar dónde hacen falta | Sin asignar (documento) |
+| 8 `<select>` sueltos con estilo propio y `style={{}}` (Créditos, Ahorros, Reportes, Configuración ×4, AbonoModal) se reemplazan por `SelectField` | Etapa 3, al migrar cada página |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan; hay más de un `primary` por pantalla en Pagos ("Pago completo" en cada fila) y en Créditos ("Nueva solicitud" y "Crear solicitud" a la vez con el formulario abierto) | Etapa 3, al migrar cada página |
 | Lint del frontend: 11 errores que ya existían. 2 en `ChatbotFlotante` y `DonacionModal`; 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 2 (chatbot y donaciones); Etapa 3 (el resto) |
 | Lint del backend: 6 errores, todos variables sin usar, en `cajas.routes.js`, `pagos.routes.js` y `reportes.routes.js` | Etapa 2 |
@@ -142,6 +147,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T9 hecha. `SelectField` (opciones, placeholder atenuado, chevron propio) y `TextareaField` (filas, contador). Revisados en claro y oscuro con el CSS compilado. No hay `<textarea>` en el código pese a lo que dice §3; queda en Hallazgos. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T8 hecha. `TextField` con `name`, `autoComplete`, `onBlur`, `maxLength`, `inputMode` y `min`/`max`/`step`; `Field` pasa a ser su alias. Se agregó `color-scheme` para los controles nativos. Fecha, número, error y deshabilitado revisados en claro y oscuro con el CSS compilado. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T7 hecha. `FieldBase` con etiqueta asociada por `useId`, ayuda y error enlazados con `aria-describedby`, `aria-invalid` y colores por token. `Field` se apoya en él y pierde `variant`. Se resuelve el hallazgo del borde de los campos con `--border-control`. Revisado en el navegador (registro, claro y oscuro) y en el DOM. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T6 hecha. `Button` con las cuatro variantes por prioridad sobre tokens, `type` y `fullWidth`, sin `onEnter` ni `m-1`. Se revisó en el navegador la pantalla de login en claro y oscuro. En las páginas solo se cambiaron 3 `danger`, el `onEnter` de Login y un `gap`. Build OK; lint con los mismos 11 errores previos.
