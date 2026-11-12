@@ -1,4 +1,3 @@
-// src/components/layout/Sidebar.tsx
 import { NavLink, useNavigate } from "react-router-dom"
 import {
   LayoutDashboard,
@@ -21,6 +20,14 @@ interface SidebarProps {
   onToggle: () => void
 }
 
+/**
+ * Barra lateral: caja activa con el rol, navegación según el rol, cambiar de caja y
+ * contraer. Contraída mide 56 px y solo muestra íconos; entonces cada enlace lleva su
+ * nombre en aria-label y title.
+ *
+ * El enlace activo se marca con fondo surface-2, texto en accion-texto y una barra de
+ * 3 px a la izquierda (no con un fondo teñido, que no cumple AA con esta paleta).
+ */
 export function Sidebar({ abierto, onToggle }: SidebarProps) {
   const navigate = useNavigate()
   const { cajaActiva, salirDeCaja } = useCaja()
@@ -28,216 +35,93 @@ export function Sidebar({ abierto, onToggle }: SidebarProps) {
   const rol = cajaActiva?.rol ?? "socio"
   const esTesorero = tieneRol(rol, "tesorero")
 
-  // Cada item define quién puede verlo
   const navItems = [
-    {
-      to: "/dashboard",
-      icon: LayoutDashboard,
-      label: "Dashboard",
-      visible: esTesorero, // ← socio no ve dashboard
-    },
-    {
-      to: "/socios",
-      icon: Users,
-      label: "Socios",
-      visible: esTesorero, // ← socio no ve socios
-    },
-    {
-      to: "/ahorros",
-      icon: PiggyBank,
-      label: "Ahorros",
-      visible: true, // ← todos ven ahorros
-    },
-    {
-      to: "/creditos",
-      icon: CreditCard,
-      label: "Créditos",
-      visible: esTesorero, // ← socio no ve créditos
-    },
-    {
-      to: "/pagos",
-      icon: Receipt,
-      label: "Pagos",
-      visible: esTesorero,
-    },
-    {
-      to: "/reportes",
-      icon: PieChart,
-      label: "Reportes",
-      visible: esTesorero,
-    },
-    {
-      to: "/configuracion",
-      icon: Settings,
-      label: "Configuración",
-      visible: true, // ← todos ven configuración (contenido varía)
-    },
+    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", visible: esTesorero },
+    { to: "/socios", icon: Users, label: "Socios", visible: esTesorero },
+    { to: "/ahorros", icon: PiggyBank, label: "Ahorros", visible: true },
+    { to: "/creditos", icon: CreditCard, label: "Créditos", visible: esTesorero },
+    { to: "/pagos", icon: Receipt, label: "Pagos", visible: esTesorero },
+    { to: "/reportes", icon: PieChart, label: "Reportes", visible: esTesorero },
+    // Visible para todos por ahora; la protección de rol de las rutas es de la Etapa 4
+    { to: "/configuracion", icon: Settings, label: "Configuración", visible: true },
   ].filter((item) => item.visible)
+
+  const botonPie =
+    "flex w-full items-center gap-2 rounded-lg border border-base p-2 text-secondary transition-colors hover:bg-surface-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-focus"
 
   return (
     <aside
-      style={{
-        width: abierto ? "220px" : "56px",
-        background: "var(--sidebar-bg)",
-        borderRight: "1px solid var(--border-base)",
-        transition: "width .2s ease",
-        display: "flex",
-        flexDirection: "column",
-        flexShrink: 0,
-        overflow: "hidden",
-      }}
+      className={[
+        "flex shrink-0 flex-col overflow-hidden border-r border-base bg-surface",
+        "transition-[width] duration-200 motion-reduce:transition-none",
+        abierto ? "w-56" : "w-14",
+      ].join(" ")}
     >
-      {/* Logo / nombre de caja */}
-      <div
-        style={{
-          height: "56px",
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          padding: "0 14px",
-          borderBottom: "1px solid var(--border-base)",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            width: "28px",
-            height: "28px",
-            borderRadius: "6px",
-            background: "var(--color-primary_y)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <Building2 size={16} color="white" />
-        </div>
+      {/* Caja activa */}
+      <div className="flex h-14 shrink-0 items-center gap-3 border-b border-base px-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accion-primaria text-sobre-accion">
+          <Building2 size={16} aria-hidden="true" />
+        </span>
         {abierto && (
-          <div style={{ overflow: "hidden" }}>
-            <p
-              style={{
-                fontSize: "13px",
-                fontWeight: 500,
-                color: "var(--text-primary)",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-primary" title={cajaActiva?.nombre}>
               {cajaActiva?.nombre ?? "Sin caja"}
             </p>
-            <p
-              style={{
-                fontSize: "10px",
-                color: "var(--text-muted)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {ETIQUETA_ROL[rol]}
-            </p>
+            <p className="truncate text-xs text-muted">{ETIQUETA_ROL[rol]}</p>
           </div>
         )}
       </div>
 
-      {/* Navegación */}
-      <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
+      <nav aria-label="Secciones de la caja" className="flex-1 overflow-y-auto py-2">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
-            style={({ isActive }) => ({
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              padding: "9px 14px",
-              textDecoration: "none",
-              background: isActive ? "rgba(221,154,76,0.12)" : "transparent",
-              borderLeft: isActive ? "3px solid var(--color-primary_y)" : "3px solid transparent",
-              transition: "background .15s",
-            })}
+            aria-label={abierto ? undefined : label}
+            title={abierto ? undefined : label}
+            className={({ isActive }) =>
+              [
+                "flex items-center gap-3 border-l-[3px] py-2 pr-3 pl-[15px] text-sm whitespace-nowrap transition-colors",
+                "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
+                isActive
+                  ? "border-accion-texto bg-surface-2 font-medium text-accion-texto"
+                  : "border-transparent text-secondary hover:bg-surface-2 hover:text-primary",
+              ].join(" ")
+            }
           >
-            {({ isActive }) => (
-              <>
-                <Icon
-                  size={18}
-                  style={{
-                    color: isActive ? "var(--color-primary_y)" : "var(--text-secondary)",
-                    flexShrink: 0,
-                  }}
-                />
-                {abierto && (
-                  <span
-                    style={{
-                      fontSize: "13px",
-                      color: isActive ? "var(--color-primary_y)" : "var(--sidebar-text)",
-                      whiteSpace: "nowrap",
-                      fontWeight: isActive ? 500 : 400,
-                    }}
-                  >
-                    {label}
-                  </span>
-                )}
-              </>
-            )}
+            <Icon size={18} className="shrink-0" aria-hidden="true" />
+            {abierto && <span>{label}</span>}
           </NavLink>
         ))}
       </nav>
 
-      {/* Cambiar de caja */}
-      <div
-        style={{
-          padding: "8px",
-          borderTop: "1px solid var(--border-base)",
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: "4px",
-        }}
-      >
-        {/* Botón cambiar caja */}
+      <div className="flex shrink-0 flex-col gap-1 border-t border-base p-2">
         <button
+          type="button"
           onClick={() => {
             salirDeCaja()
             navigate("/cajas")
           }}
+          aria-label={abierto ? undefined : "Cambiar caja"}
           title="Cambiar de caja"
-          style={{
-            width: "100%",
-            padding: "6px",
-            border: "1px solid var(--border-base)",
-            borderRadius: "8px",
-            background: "transparent",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: abierto ? "flex-start" : "center",
-            gap: "8px",
-            color: "var(--text-secondary)",
-          }}
+          className={`${botonPie} ${abierto ? "justify-start" : "justify-center"}`}
         >
-          <ArrowLeftRight size={14} />
-          {abierto && <span style={{ fontSize: "12px" }}>Cambiar caja</span>}
+          <ArrowLeftRight size={14} className="shrink-0" aria-hidden="true" />
+          {abierto && <span className="text-xs">Cambiar caja</span>}
         </button>
 
-        {/* Botón colapsar */}
         <button
+          type="button"
           onClick={onToggle}
-          aria-label={abierto ? "Colapsar sidebar" : "Expandir sidebar"}
-          style={{
-            width: "100%",
-            padding: "6px",
-            border: "1px solid var(--border-base)",
-            borderRadius: "8px",
-            background: "transparent",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--text-secondary)",
-          }}
+          aria-label={abierto ? "Contraer menú lateral" : "Expandir menú lateral"}
+          aria-expanded={abierto}
+          className={`${botonPie} justify-center`}
         >
-          {abierto ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+          {abierto ? (
+            <ChevronLeft size={16} aria-hidden="true" />
+          ) : (
+            <ChevronRight size={16} aria-hidden="true" />
+          )}
         </button>
       </div>
     </aside>

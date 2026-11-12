@@ -1,11 +1,33 @@
-// src/components/layout/TopBar.tsx
-import { Sun, Moon, Bell, LogOut } from "lucide-react"
+import { Sun, Moon, Bell, LogOut, type LucideIcon } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { useTheme } from "../../context/ThemeContext"
 import { useAuth } from "../../context/AuthContext"
-import { useNavigate } from "react-router-dom"
 
 interface TopBarProps {
   titulo: string
+}
+
+/** Botón cuadrado de 32 px con solo un ícono. El texto va en aria-label */
+function BotonIcono({
+  icono: Icono,
+  etiqueta,
+  onClick,
+}: {
+  icono: LucideIcon
+  etiqueta: string
+  onClick?: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={etiqueta}
+      title={etiqueta}
+      className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-base text-secondary transition-colors hover:bg-surface-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-focus"
+    >
+      <Icono size={16} aria-hidden="true" />
+    </button>
+  )
 }
 
 export function TopBar({ titulo }: TopBarProps) {
@@ -13,94 +35,34 @@ export function TopBar({ titulo }: TopBarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
-  // Iniciales del usuario para el avatar
   const iniciales = user?.email?.[0].toUpperCase() ?? "U"
 
   return (
-    <header
-      style={{
-        height: "56px",
-        background: "var(--bg-surface)",
-        borderBottom: "1px solid var(--border-base)",
-        display: "flex",
-        alignItems: "center",
-        padding: "0 20px",
-        gap: "12px",
-        flexShrink: 0,
-      }}
-    >
-      {/* Título de la página */}
-      <h1
-        style={{
-          flex: 1,
-          fontSize: "15px",
-          fontWeight: 500,
-          color: "var(--text-primary)",
-          margin: 0,
-        }}
-      >
-        {titulo}
-      </h1>
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-base bg-surface px-6">
+      <h1 className="min-w-0 flex-1 truncate text-xl font-semibold text-primary">{titulo}</h1>
 
-      {/* Acciones */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        {/* Toggle tema */}
-        <button
+      <div className="flex items-center gap-2">
+        <BotonIcono
+          icono={isDark ? Sun : Moon}
+          etiqueta={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
           onClick={toggleTheme}
-          aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-          style={iconBtnStyle}
-        >
-          {isDark ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
+        />
 
-        {/* Notificaciones */}
-        <button aria-label="Notificaciones" style={iconBtnStyle}>
-          <Bell size={16} />
-        </button>
+        {/* Sin función todavía: implementarlo o quitarlo es una decisión pendiente (§13.4) */}
+        <BotonIcono icono={Bell} etiqueta="Notificaciones" />
 
-        {/* Avatar: clic para ir a perfil */}
         <button
+          type="button"
           onClick={() => navigate("/perfil")}
-          title={user?.email}
           aria-label="Ir al perfil"
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "50%",
-            background: "var(--color-primary_y)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "13px",
-            fontWeight: 500,
-            color: "white",
-            flexShrink: 0,
-            border: "none",
-            cursor: "pointer",
-          }}
+          title={user?.email}
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accion-primaria text-sm font-medium text-sobre-accion transition-colors hover:bg-accion-primaria-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           {iniciales}
         </button>
 
-        {/* Cerrar sesión */}
-        <button onClick={logout} aria-label="Cerrar sesión" style={iconBtnStyle}>
-          <LogOut size={16} />
-        </button>
+        <BotonIcono icono={LogOut} etiqueta="Cerrar sesión" onClick={logout} />
       </div>
     </header>
   )
-}
-
-// Estilo base de los botones de ícono
-const iconBtnStyle: React.CSSProperties = {
-  width: "32px",
-  height: "32px",
-  border: "1px solid var(--border-base)",
-  borderRadius: "8px",
-  background: "transparent",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "var(--text-secondary)",
 }
