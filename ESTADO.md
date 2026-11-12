@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 2, Limpieza, en curso (7 de 10). La Etapa 1 está terminada y fusionada en `main` (`9a22d71`).
+- **Etapa actual:** Etapa 2, Limpieza, en curso (9 de 10). Falta T10, que necesita acceso a la base de datos. La Etapa 1 está terminada y fusionada en `main` (`9a22d71`).
 - **Rama de trabajo:** `etapa-2`, abierta desde `main` (`c954fb2`). La Etapa 1 se trabajó en `etapa-1` y se fusionó con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `55f114a`
+- **Último commit de referencia:** `74c7323`
 
 ---
 
@@ -15,7 +15,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
-| 2 | Limpieza | En curso: 7/10 |
+| 2 | Limpieza | En curso: 9/10 |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
@@ -62,9 +62,9 @@ Rama `etapa-2`. Alcance de §12: quitar donaciones, PayPal y chatbot; borrar el 
 | T5 | Borrar el código comentado de las rutas del backend | T4 | ✅ | `bac67b4` |
 | T6 | Ruta `/resumen` duplicada y variables sin usar (lint del backend en cero); revisar `montoCapital` en pagos | T5 | ✅ | `6f51f35` |
 | T7 | Fecha local de Ecuador en el backend en lugar de `toISOString()` | T5 | ✅ | `55f114a` |
-| T8 | Middleware único `requierePermiso` con la tabla de permisos; se borran las seis copias de `verificarRol` | T5 | ⬜ | |
-| T9 | `.eq('caja_id', cajaId)` en toda escritura | T8 | ⬜ | |
-| T10 | Migración de `admin` a `coordinador`: base de datos, backend y frontend | T8 | ⬜ | |
+| T8 | Middleware único `requierePermiso` con la tabla de permisos; se borran las copias de `verificarRol` | T5 | ✅ | `dd80830` |
+| T9 | `.eq('caja_id', cajaId)` en toda escritura | T8 | ✅ | `74c7323` |
+| T10 | Migración de `admin` a `coordinador`: base de datos, backend y frontend | T8 | ⬜ Esperando acceso a la base | |
 
 ---
 
@@ -81,6 +81,11 @@ Rama `etapa-2`. Alcance de §12: quitar donaciones, PayPal y chatbot; borrar el 
 | 11 nov 2026 | Zona horaria: `server.js` fija `process.env.TZ = "America/Guayaquil"` antes de todo, y `utils/fechas.js` da `fechaLocal()` y `leerFecha()`. Se eligió fijar la zona del proceso porque `amortizacion.js` y `ciclos.js` ya calculan con los métodos locales de `Date`, que en Render daban la hora UTC | `backend/utils/fechas.js` |
 | 11 nov 2026 | La distribución de intereses asigna cada depósito o retiro al mes de Ecuador, no al mes UTC: un depósito del 31 a las 21:00 contaba en el mes siguiente | `backend/utils/reportes.js` |
 | 11 nov 2026 | `calcularCiclos` compara fechas `YYYY-MM-DD` en lugar de instantes. Antes comparaba la medianoche del último día con la hora actual y daba el ciclo por cerrado durante todo su último día | `backend/utils/ciclos.js` |
+| 11 nov 2026 | Tabla de permisos (T8). La Tabla 1.1 completa no está en el repositorio, así que la tabla se armó con el rol mínimo que ya exigía cada ruta, como pide §6.2 (la escalera se conserva). Permisos: `caja.ver` (socio); `socios.gestionar`, `movimientos.registrar`, `creditos.aprobar`, `reportes.generar` (tesorero); `caja.configurar`, `miembros.gestionar`, `socios.eliminar`, `cuentas.cambiar_estado`, `creditos.cambiar_estado` (admin). Comprobado: las 35 rutas dejan pasar exactamente los mismos roles que antes (175 casos con un Supabase simulado) | `backend/middlewares/permisos.middleware.js` |
+| 11 nov 2026 | Había siete copias de `verificarRol`, no seis (§6.1 no cuenta la de `cajas.routes.js`), más dos chequeos escritos a mano en el resumen y la edición de la caja. Todo pasa al middleware | `backend/middlewares/permisos.middleware.js` |
+| 11 nov 2026 | **Un rol desconocido ahora se rechaza.** La comparación vieja `jerarquia[rol] < jerarquia[minimo]` da `undefined < 3`, que es `false`, así que un rol fuera de la tabla pasaba todas las verificaciones. Importa para T10: si la base pasa a `coordinador` antes que el código, con la versión vieja cualquier rol raro tenía acceso total; con la nueva queda sin acceso. `RolRoute` del frontend tiene el mismo patrón (se corrige en T10) | `backend/middlewares/permisos.middleware.js` |
+| 11 nov 2026 | Mensajes de 403 unificados: "Sin acceso a esta caja" (no es miembro) y "Tu rol no permite esta acción". El frontend no dependía de los textos viejos | `backend/API.md` |
+| 11 nov 2026 | T9: ocho `update` sin `caja_id` (depósito, retiro, aprobar crédito, pago, prepago, abono, y socio e invitación en `/unirse`). Los `insert` ya lo llevaban. Los `update` sobre la tabla `cajas` filtran por su `id`, que es la caja misma | `backend/routes/` |
 | 11 nov 2026 | Los toasts bajan a 24 px del borde: estaban a 90 px para no tapar el botón del chatbot | `frontend/src/context/NotifContext.tsx` |
 | 11 nov 2026 | El coordinador sí registra movimientos; se conserva la escalera `socio < tesorero < admin` | Especificaciones §6.2 y §13 |
 | 11 nov 2026 | Naranja de marca más oscuro con texto blanco, para cumplir AA (hoy blanco sobre `#DD9A4C` da 2,4:1) | Este documento, tarea T3 |
@@ -198,6 +203,9 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T10 en espera: la migración de rol necesita ver el esquema de Supabase (tipo de la columna `rol`, restricciones, políticas y funciones que mencionen `'admin'`). Inventario del código hecho: 6 archivos del frontend y 6 del backend.
+- **11 nov 2026:** T9 hecha. `caja_id` en las ocho escrituras que no lo tenían. Prueba de permisos repetida: 175 de 175. Lint del backend en cero.
+- **11 nov 2026:** T8 hecha. Middleware `requierePermiso` con tabla única; borradas siete copias de `verificarRol`. Probado con las rutas reales y un Supabase simulado: 35 rutas × 5 roles, sin diferencias con antes. Los roles desconocidos ya no pasan. `API.md` actualizado.
 - **11 nov 2026:** T7 hecha. Fechas del backend en la zona de Ecuador. 12 casos probados con el proceso en UTC (registro a las 20:00, ciclos en su último día, depósito del 31 a las 21:00). La prueba destapó que los ciclos se cerraban un día antes; corregido. Lint del backend en cero.
 - **11 nov 2026:** T6 hecha. Borrada la segunda ruta `/resumen` y el código muerto de reportes; `montoCapital` revisado y no era un error. **Lint del backend en cero.**
 - **11 nov 2026:** T5 hecha. Borrado el endpoint de pago comentado y otros restos; los comentarios explicativos se quedan. Build OK.
