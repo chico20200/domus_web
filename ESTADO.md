@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (12 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (13 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración `001` ejecutada |
-| 3 | Migración de pantallas | En curso: 12/15 |
+| 3 | Migración de pantallas | En curso: 13/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -86,7 +86,7 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 | T10 | Dashboard | T1–T4 | ✅ | `dc9dca2` |
 | T11 | Pagos (`ConfirmarPagoModal` ya quedó sobre `Modal` en T6) | T1–T4 | ✅ | `5650cbe` |
 | T12 | Perfil | T1–T4 | ✅ | `78be44d` |
-| T13 | Cajas (solo la migración visual; el asistente de creación es Etapa 4) | T1–T4 | ⬜ | |
+| T13 | Cajas (solo la migración visual; el asistente de creación es Etapa 4) | T1–T4 | ✅ | `6525796` |
 | T14 | Las cuatro de autenticación, y `lang="es"` en `index.html` | T1–T4 | ⬜ | |
 | T15 | Cierre: borrar los alias de color, `Field.tsx` y `Card.tsx`; lint del frontend en cero | T5–T14 | ⬜ | |
 
@@ -96,6 +96,11 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | `PaginaSinMenu`: contenedor de las páginas con sesión pero sin caja elegida (hoy "Mis cajas"). Barra superior con logo, acciones y cambio de tema; contenido centrado con `max-w-formulario` y el título como `<h1>`. Así la página no escribe `max-w-*` (§4.1). `BotonIcono` sale de `TopBar` a su propio archivo y lo usan los dos | `frontend/src/components/layout/PaginaSinMenu.tsx`, `BotonIcono.tsx` |
+| 12 nov 2026 | Mis cajas (T13): cada caja es un botón con nombre, descripción y el rol en un `Badge` neutro con su ícono (antes el rol iba en color propio: naranja, verde o gris). "Crear una caja" y "Unirse con un código" son los dos `secondary` y van juntos, con el mismo peso (HU004); antes unirse era un enlace de texto. Los dos abren un `Modal` con `Form` | `frontend/src/pages/CajasPage.tsx`, `pages/cajas/` |
+| 12 nov 2026 | Mis cajas muestra el error de carga con "Reintentar". Antes lo tragaba y mostraba "Aún no perteneces a ninguna caja", invitando a crear una caja nueva a quien ya tenía cajas | `frontend/src/pages/CajasPage.tsx` |
+| 12 nov 2026 | Al unirse con un código, el aviso dice a qué caja se entró y, si el correo coincidió con una ficha, que la cuenta quedó vinculada. Antes eso iba a `console.log`. La llamada pasa a `cajasService.unirse` | `frontend/src/pages/cajas/UnirseModal.tsx`, `frontend/src/api/cajas.service.ts` |
+| 12 nov 2026 | Crear una caja sigue pidiendo solo nombre y descripción opcional: es la migración visual. El modal ya dice qué es una caja y que quien la crea queda como coordinador, pero el asistente de cinco pasos de §5.1 (políticas, ciclo, confirmación, siguientes pasos) es Etapa 4 | `frontend/src/pages/cajas/NuevaCajaModal.tsx` |
 | 12 nov 2026 | Perfil (T12): `PageShell` de 640 px con tres `Panel`: cabecera (avatar, nombre, correo), datos personales y sesión. Se edita en el mismo panel, que pasa a un `Form` con "Guardar cambios" y "Cancelar" `ghost`; el aviso de guardado es un toast. Antes la edición cambiaba toda la página y el título | `frontend/src/pages/ProfilePage.tsx` |
 | 12 nov 2026 | HU016 en el formulario: nombre de al menos 6 caracteres, solo letras (con tildes, ñ, espacios, apóstrofo y guion) y teléfono opcional de exactamente 10 dígitos. Las filas "Por verificar en `ProfilePage`" de §11 pasan a cumplidas en la interfaz (el backend no valida) | `frontend/src/lib/validacion.ts` |
 | 12 nov 2026 | Se quitó "Cambiar foto": era un botón sin acción. Si el perfil tiene `foto_url` se muestra; subir una foto no está en las especificaciones | `frontend/src/pages/ProfilePage.tsx` |
@@ -276,11 +281,11 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
 | §3 dice que hay `<textarea>` sueltos en `SociosPage` y `CreditosPage`, pero en el código actual no hay ninguno. `TextareaField` se hizo igual; corregir la tabla de §3 o confirmar dónde hacen falta | Sin asignar (documento) |
 | 8 `<select>` sueltos con estilo propio y `style={{}}` se reemplazan por `SelectField`. Resueltos todos: Configuración (T5), Créditos y `AbonoModal` (T6), Reportes (T7), Ahorros (T8) | Etapa 3 ✅ |
-| `PageShell` cubre solo las páginas con barra lateral. `CajasPage` y las cuatro de autenticación no usan `AppLayout` y centran con su propio `max-w-*` (`max-w-2xl`, `max-w-sm`). Decidir al migrarlas si tienen su propio contenedor o un tercer ancho | Etapa 3 |
+| `PageShell` cubre solo las páginas con barra lateral. `CajasPage` y las cuatro de autenticación no usan `AppLayout`. Cajas pasó a `PaginaSinMenu` en T13; falta decidir el contenedor de las de autenticación (tarjeta centrada) | Etapa 3 (T14) |
 | Las líneas que cita §4.1 (`ConfiguracionPage.tsx:235`, etc.) se corrieron con el formato de T1; hoy son `AhorrosPage.tsx:185`, `CreditosPage.tsx:260`, `ProfilePage.tsx:152` y `:202` | Etapa 3 (referencia; Configuración ya resuelta en T5) |
 | 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 3. `DonacionModal` se borró en la Etapa 2; el de `NotifContext` pasó a `ConfirmDialog` en T3; `AbonoModal`, `ConfirmarPagoModal` y `TablaAmortizacion` pasaron a `Modal` en T6. Los dos de `AhorrosPage` pasaron a `Modal` en T8. Resuelto |
 | 10 textos "Cargando…" sueltos (`App.tsx`, 7 páginas, `AbonoModal`, `TablaAmortizacion`) y 7 "Aún no hay…" (Ahorros ×2, Dashboard, Socios, Cajas, Créditos ×2) se reemplazan por `LoadingState` y `EmptyState` | Etapa 3, al migrar cada página |
-| Etiquetas de estado escritas a mano con `rgba` fijo se pasan a `Badge`. Queda `CajasPage` (T13); Configuración, Créditos, Socios y Pagos se resolvieron en T5, T6, T9 y T11 | Etapa 3 (T13) |
+| Etiquetas de estado escritas a mano con `rgba` fijo se pasan a `Badge`. Resueltas todas: Configuración, Créditos, Socios, Pagos y Cajas (T5, T6, T9, T11, T13) | Etapa 3 ✅ |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" (en Perfil) y "Retiro" usaban `destructive` pero no borran ni desactivan; corregidos en T12 y T8 (Créditos y Pagos se resolvieron en T6 y T11; "Retiro" en T8) | Etapa 3, al migrar cada página |
 | Lint del frontend: 5 errores que ya existían (eran 11; se fueron los de `ChatbotFlotante` y `DonacionModal` en la Etapa 2, los 2 `any` de `TablaAmortizacion` en T6 y el `any` y el `let` de `ReportesPage` en T7). 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34` | Etapa 3 (T15) |
 | El vencimiento del crédito (`creditos.fecha_vencimiento`, desembolso + plazo, mismo día del mes) no coincide con el de su última cuota (último día del mes). Con un desembolso el 31, `setMonth` además salta al mes siguiente. Es la lógica de antes; no se cambió | Sin asignar (decisión de negocio) |
@@ -307,6 +312,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T13 hecha (`6525796`). Mis cajas migrada, sin `style={{}}` ni manejadores de ratón que cambiaban estilos. Probada en Chromium con la API simulada: tres cajas con los tres roles, sin cajas, error de carga; unirse con un código malo (error en el campo) y uno bueno (entra a la caja y avisa la vinculación); crear vacía y con nombre; en claro y oscuro. La prueba mostró "Caja Caja Nueva Norte creada" y la invitación a crear caja junto al error de carga; corregidos. Build OK; lint del frontend en 5 errores.
 - **12 nov 2026:** T12 hecha (`78be44d`). Perfil migrado, sin `style={{}}` ni `text-white`. Validaciones de HU016 probadas con 14 casos. Probado en Chromium con la API simulada: vista con teléfono sin registrar, edición con nombre y teléfono inválidos, guardado con espacios de más (se envían limpios) y aviso; en claro y oscuro. Build OK; lint del frontend en 5 errores.
 - **12 nov 2026:** T11 hecha (`5650cbe`). Pagos migrada, sin `style={{}}`. Probada en Chromium con la API simulada: cinco créditos (activo, mora, pendiente, pagado, activo con tilde), solo se listan tres con mora primero; búsqueda "alvarez"; elegir "Solo capital" con la flecha y Enter; desglose con cuota atrasada; pago y aviso con el saldo; Escape devuelve el foco al botón de la fila; en claro y oscuro. Repetida la prueba de Ahorros tras cambiar el orden de los botones. Build OK; lint del frontend en 5 errores y 0 avisos.
 - **12 nov 2026:** T10 hecha (`dc9dca2`). Dashboard migrado, sin `style={{}}`; `Card.tsx` ya no la usa ninguna página (se borra en T15). Probado en Chromium con la API simulada: con movimientos (uno sin socio), caja vacía y error del servidor; en claro y oscuro. La prueba mostró el borde doble de la tabla dentro del panel, también en Ahorros; corregido con `sinMarco`. Build OK; lint del frontend sigue en 5 errores.
