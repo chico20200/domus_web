@@ -1,7 +1,7 @@
 // backend/routes/profile.routes.js
 const express = require("express")
 const router = express.Router()
-const supabase = require("../config/supabase")
+const supabase = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 
 router.use(verifyToken)

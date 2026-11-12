@@ -121,15 +121,13 @@ router.get("/:cajaId/resumen", async (req, res) => {
 
   try {
     // Verifica membresía
-    const { data: miembro, error: errorMiembro } = await supabaseAdmin
+    const { data: miembro } = await supabaseAdmin
       .from("miembros_caja")
       .select("rol")
       .eq("caja_id", cajaId)
       .eq("user_id", userId)
       .eq("activo", true)
       .single()
-
-    console.log("miembro:", miembro, "error:", errorMiembro?.message)
 
     if (!miembro) {
       return res.status(403).json({ error: "No perteneces a esta caja" })
@@ -141,15 +139,11 @@ router.get("/:cajaId/resumen", async (req, res) => {
       .eq("id", cajaId)
       .single()
 
-    console.log("caja:", caja?.nombre, "error:", errorCaja?.message)
-
     const { count: totalMiembros, error: errorMiembros } = await supabaseAdmin
       .from("miembros_caja")
       .select("*", { count: "exact", head: true })
       .eq("caja_id", cajaId)
       .eq("activo", true)
-
-    console.log("totalMiembros:", totalMiembros, "error:", errorMiembros?.message)
 
     const { count: totalSocios, error: errorSocios } = await supabaseAdmin
       .from("socios")
@@ -157,23 +151,17 @@ router.get("/:cajaId/resumen", async (req, res) => {
       .eq("caja_id", cajaId)
       .eq("activo", true)
 
-    console.log("totalSocios:", totalSocios, "error:", errorSocios?.message)
-
     const { data: cuentas, error: errorCuentas } = await supabaseAdmin
       .from("cuentas_ahorro")
       .select("saldo")
       .eq("caja_id", cajaId)
       .eq("estado", "activa")
 
-    console.log("cuentas:", cuentas?.length, "error:", errorCuentas?.message)
-
     const { data: creditos, error: errorCreditos } = await supabaseAdmin
       .from("creditos")
       .select("saldo_pendiente")
       .eq("caja_id", cajaId)
       .eq("estado", "activo")
-
-    console.log("creditos:", creditos?.length, "error:", errorCreditos?.message)
 
     const { data: transacciones, error: errorTx } = await supabaseAdmin
       .from("transacciones")
@@ -193,7 +181,9 @@ router.get("/:cajaId/resumen", async (req, res) => {
       .order("created_at", { ascending: false })
       .limit(5)
 
-    console.log("transacciones:", transacciones?.length, "error:", errorTx?.message)
+    const errorConsulta =
+      errorCaja || errorMiembros || errorSocios || errorCuentas || errorCreditos || errorTx
+    if (errorConsulta) throw errorConsulta
 
     const saldoTotal = (cuentas ?? []).reduce((sum, c) => sum + parseFloat(c.saldo ?? 0), 0)
     const saldoPendiente = (creditos ?? []).reduce(
@@ -430,9 +420,6 @@ router.post("/unirse", async (req, res) => {
           .eq("id", socioExistente.id)
 
         socioVinculado = true
-        console.log(
-          `Socio ${socioExistente.nombre} ${socioExistente.apellido} vinculado a user ${userId}`,
-        )
       }
     }
   } catch (err) {

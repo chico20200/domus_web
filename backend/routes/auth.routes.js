@@ -1,7 +1,7 @@
 // backend/routes/auth.routes.js
 const express = require("express")
 const router = express.Router()
-const supabase = require("../config/supabase")
+const supabaseAuth = require("../config/supabaseAuth")
 const verifyToken = require("../middlewares/auth.middleware")
 
 // POST /api/auth/register
@@ -12,14 +12,13 @@ router.post("/register", async (req, res) => {
     return res.status(400).json({ error: "Email y contraseña son requeridos" })
   }
 
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await supabaseAuth.auth.signUp({
     email,
     password,
   })
 
   if (error) {
-    console.log("SUPABASE ERROR FULL:", error)
-    return res.status(400).json({ error: error.message, full: error })
+    return res.status(400).json({ error: error.message })
   }
 
   return res.status(201).json({
@@ -36,7 +35,7 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Email y contraseña son requeridos" })
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabaseAuth.auth.signInWithPassword({
     email,
     password,
   })
@@ -61,7 +60,7 @@ router.post("/resend-confirmation", async (req, res) => {
     return res.status(400).json({ error: "Email es requerido" })
   }
 
-  const { error } = await supabase.auth.resend({
+  const { error } = await supabaseAuth.auth.resend({
     type: "signup",
     email,
   })
@@ -82,7 +81,7 @@ router.post("/forgot-password", async (req, res) => {
     return res.status(400).json({ error: "Email es requerido" })
   }
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await supabaseAuth.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.FRONTEND_URL}/reset-password`,
     // ↑ Supabase redirige aquí después de que el usuario haga clic en el correo.
     // Tu frontend en esa ruta debe leer el token de la URL y llamar al siguiente endpoint.
@@ -128,31 +127,6 @@ router.post("/update-password", verifyToken, async (req, res) => {
   }
 
   return res.json({ message: "Contraseña actualizada correctamente" })
-})
-
-// POST /api/auth/test-email
-// Solo para verificar que el SMTP está funcionando
-router.post("/test-email", async (req, res) => {
-  const { email } = req.body
-
-  if (!email) {
-    return res.status(400).json({ error: "Email es requerido" })
-  }
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.FRONTEND_URL}/reset-password`,
-  })
-
-  if (error) {
-    return res.status(500).json({
-      error: "Falló el envío",
-      detalle: error.message, // así ves exactamente qué falló
-    })
-  }
-
-  return res.json({
-    message: "✅ Correo enviado correctamente, revisa tu Gmail",
-  })
 })
 
 module.exports = router

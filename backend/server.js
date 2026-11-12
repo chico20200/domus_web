@@ -3,11 +3,6 @@ const express = require("express")
 const cors = require("cors")
 require("dotenv").config()
 
-console.log("SUPABASE_URL:", process.env.SUPABASE_URL)
-console.log("SERVICE_KEY existe:", !!process.env.SUPABASE_SERVICE_KEY)
-console.log("ANON_KEY existe:", !!process.env.SUPABASE_ANON_KEY)
-console.log("FRONTEND_URL:", process.env.FRONTEND_URL) // ← agrega esto para verificar
-
 const authRoutes = require("./routes/auth.routes")
 const profileRoutes = require("./routes/profile.routes")
 const sociosRoutes = require("./routes/socios.routes")
