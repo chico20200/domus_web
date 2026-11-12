@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 2, Limpieza, en curso (4 de 10). La Etapa 1 está terminada y fusionada en `main` (`9a22d71`).
+- **Etapa actual:** Etapa 2, Limpieza, en curso (7 de 10). La Etapa 1 está terminada y fusionada en `main` (`9a22d71`).
 - **Rama de trabajo:** `etapa-2`, abierta desde `main` (`c954fb2`). La Etapa 1 se trabajó en `etapa-1` y se fusionó con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `e6c9b65`
+- **Último commit de referencia:** `55f114a`
 
 ---
 
@@ -15,7 +15,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
-| 2 | Limpieza | En curso: 4/10 |
+| 2 | Limpieza | En curso: 7/10 |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
@@ -59,9 +59,9 @@ Rama `etapa-2`. Alcance de §12: quitar donaciones, PayPal y chatbot; borrar el 
 | T2 | Quitar el chatbot: ruta, montaje, `ChatbotFlotante`, `chatbot.service.ts`, render en `AppLayout`, variable del README | — | ✅ | `c65a8dc` |
 | T3 | Quitar los archivos de la plantilla de Vite (`favicon.svg`, `icons.svg`, `hero.png`, `react.svg`, `vite.svg`, `frontend/README.md`) | — | ✅ | `bc5cbc7` |
 | T4 | Quitar los `console.log` de claves y de depuración; reemplazar `config/supabase.js` y borrarlo | — | ✅ | `e6c9b65` |
-| T5 | Borrar el código comentado de las rutas del backend | T4 | ⬜ | |
-| T6 | Ruta `/resumen` duplicada y variables sin usar (lint del backend en cero); revisar `montoCapital` en pagos | T5 | ⬜ | |
-| T7 | Fecha local de Ecuador en el backend en lugar de `toISOString()` | T5 | ⬜ | |
+| T5 | Borrar el código comentado de las rutas del backend | T4 | ✅ | `bac67b4` |
+| T6 | Ruta `/resumen` duplicada y variables sin usar (lint del backend en cero); revisar `montoCapital` en pagos | T5 | ✅ | `6f51f35` |
+| T7 | Fecha local de Ecuador en el backend en lugar de `toISOString()` | T5 | ✅ | `55f114a` |
 | T8 | Middleware único `requierePermiso` con la tabla de permisos; se borran las seis copias de `verificarRol` | T5 | ⬜ | |
 | T9 | `.eq('caja_id', cajaId)` en toda escritura | T8 | ⬜ | |
 | T10 | Migración de `admin` a `coordinador`: base de datos, backend y frontend | T8 | ⬜ | |
@@ -76,6 +76,11 @@ Rama `etapa-2`. Alcance de §12: quitar donaciones, PayPal y chatbot; borrar el 
 | 11 nov 2026 | `config/supabase.js` no estaba sin usar, como dice §6.4: lo importaban `auth.routes.js` y `profile.routes.js`. Auth pasa a `config/supabaseAuth.js` (clave anon, sin sesión persistente) y perfiles a `supabaseAdmin`. Un cliente que hace `signInWithPassword` guarda esa sesión en memoria y sus consultas siguientes salen con el token de ese usuario, así que el cliente de auth nunca se usa para tablas | `backend/config/supabaseAuth.js` |
 | 11 nov 2026 | Se quita `POST /api/auth/test-email`: era de prueba, no pedía sesión y permitía mandar correos de recuperación a cualquier dirección. El frontend no lo usaba | `backend/routes/auth.routes.js` |
 | 11 nov 2026 | El resumen de caja devuelve 500 si alguna consulta falla, en vez de mostrar ceros. Antes el error solo se imprimía en consola | `backend/routes/cajas.routes.js` |
+| 11 nov 2026 | Las "316 líneas comentadas" de §6.4 eran casi todas comentarios que explican el código y se conservan. Código comentado de verdad solo había uno: el endpoint de pago de `creditos.routes.js` (58 líneas), más su método y tipo en el frontend y restos en `Sidebar` y `ReportesPage` | Este documento |
+| 11 nov 2026 | `montoCapital` en `/abono` no era un error de cálculo: el `0` inicial se sobrescribía en las dos ramas del `if`. Se reescribió sin cambiar el resultado (comprobado con 5 casos). Se cierra el hallazgo | `backend/routes/pagos.routes.js` |
+| 11 nov 2026 | Zona horaria: `server.js` fija `process.env.TZ = "America/Guayaquil"` antes de todo, y `utils/fechas.js` da `fechaLocal()` y `leerFecha()`. Se eligió fijar la zona del proceso porque `amortizacion.js` y `ciclos.js` ya calculan con los métodos locales de `Date`, que en Render daban la hora UTC | `backend/utils/fechas.js` |
+| 11 nov 2026 | La distribución de intereses asigna cada depósito o retiro al mes de Ecuador, no al mes UTC: un depósito del 31 a las 21:00 contaba en el mes siguiente | `backend/utils/reportes.js` |
+| 11 nov 2026 | `calcularCiclos` compara fechas `YYYY-MM-DD` en lugar de instantes. Antes comparaba la medianoche del último día con la hora actual y daba el ciclo por cerrado durante todo su último día | `backend/utils/ciclos.js` |
 | 11 nov 2026 | Los toasts bajan a 24 px del borde: estaban a 90 px para no tapar el botón del chatbot | `frontend/src/context/NotifContext.tsx` |
 | 11 nov 2026 | El coordinador sí registra movimientos; se conserva la escalera `socio < tesorero < admin` | Especificaciones §6.2 y §13 |
 | 11 nov 2026 | Naranja de marca más oscuro con texto blanco, para cumplir AA (hoy blanco sobre `#DD9A4C` da 2,4:1) | Este documento, tarea T3 |
@@ -151,7 +156,6 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 | Hallazgo | Etapa que lo resuelve |
 | --- | --- |
-| `GET /api/cajas/:cajaId/resumen` está definido dos veces en `cajas.routes.js` (líneas 102 y 249); Express solo usa el primero | Etapa 2 |
 | `frontend/index.html` declara `lang="en"`; la interfaz es solo en español | Etapa 3 |
 | `graphify-out/` no está en `.gitignore` | Sin asignar |
 | Los alias `--color-primary_y` y compañía se resuelven en `:root`, así que solo siguen el modo oscuro porque `ThemeContext` pone `.dark` en `<html>`. Si algún día `.dark` se aplica a un subárbol, los alias no cambiarían. Desaparece al borrar los alias | Etapa 3 |
@@ -159,7 +163,6 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | Valores fuera de escala en las páginas: 57 usos de 20 px (`p-5`, `px-5`…), 12 de 40 px, 13 `borderRadius` y 12 `fontSize` en `style={{}}`, 6 `text-lg`. Inventario y reemplazos en `docs/SISTEMA_DE_DISENO.md` §5 | Etapa 3, página por página |
 | Los PDF de `ReportesPage` pintan la cabecera con el naranja viejo `[221, 154, 76]` y texto blanco (2,4:1) | Etapa 3 (Reportes) |
 | **Fechas un día atrasadas.** Las columnas `date` llegan como `"2026-11-11"` y las páginas hacen `new Date(f)`, que las toma como UTC: en Ecuador se ven como el día anterior (`fecha_apertura`, `fecha_ingreso`, `fecha_desembolso`, vencimientos). `fecha()` ya lo corrige; falta reemplazar las 6 funciones locales | Etapa 3, al migrar cada página |
-| **Fechas un día adelantadas en el backend.** `new Date().toISOString().split("T")[0]` (en `ahorros.routes.js:140`, `socios.routes.js:104` y `creditos.routes.js:177`) toma la fecha UTC: lo que se registra después de las 19:00 de Ecuador queda con fecha del día siguiente | Etapa 2 |
 | `DashboardPage` muestra fechas relativas ("Hoy", "Ayer") que `format.ts` no cubre. Al migrar, decidir si se agrega `fechaRelativa()` o se usa `fecha()` | Etapa 3 (Dashboard) |
 | `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
 | §3 dice que hay `<textarea>` sueltos en `SociosPage` y `CreditosPage`, pero en el código actual no hay ninguno. `TextareaField` se hizo igual; corregir la tabla de §3 o confirmar dónde hacen falta | Sin asignar (documento) |
@@ -171,9 +174,10 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | Etiquetas de estado escritas a mano con `rgba` fijo (`ESTADO_CONFIG` en `CreditosPage`, roles en `SociosPage`, más `CajasPage`, `ConfiguracionPage` y `PagosPage`) se pasan a `Badge`. Los bloques con fondo teñido de Créditos (líneas 389, 416, 430) no cumplen AA y se rediseñan | Etapa 3 |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan; hay más de un `primary` por pantalla en Pagos ("Pago completo" en cada fila) y en Créditos ("Nueva solicitud" y "Crear solicitud" a la vez con el formulario abierto) | Etapa 3, al migrar cada página |
 | Lint del frontend: 9 errores que ya existían (eran 11; los de `ChatbotFlotante` y `DonacionModal` se fueron con T1 y T2). 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 3 |
-| Lint del backend: 6 errores, todos variables sin usar, en `cajas.routes.js`, `pagos.routes.js` y `reportes.routes.js` | Etapa 2 |
+| `fecha_pago` de `pagos_credito` no se envía desde el backend: la pone la base, seguramente con `CURRENT_DATE` o `now()`, que en Supabase están en UTC. Si es así, los pagos registrados después de las 19:00 quedan con fecha del día siguiente. Hay que revisar el valor por defecto de la columna | Etapa 2 (T10, junto con la base) |
+| `SociosPage.tsx:30` propone como fecha de ingreso `new Date().toISOString().split("T")[0]`, que después de las 19:00 da mañana | Etapa 3 (Socios) |
+| El vencimiento del crédito (`creditos.fecha_vencimiento`, desembolso + plazo, mismo día del mes) no coincide con el de su última cuota (último día del mes). Con un desembolso el 31, `setMonth` además salta al mes siguiente. Es la lógica de antes; no se cambió | Sin asignar (decisión de negocio) |
 | El documento de TIC debe declarar donaciones y chatbot como trabajo futuro en su sección 1.3 (§7). Ese documento no está en el repositorio | Fuera del código |
-| **Revisar:** en `pagos.routes.js`, a `montoCapital` se le asigna un valor que nunca se usa. Puede ser un error de cálculo en los pagos, no solo código sobrante | Etapa 2, con prioridad |
 
 ---
 
@@ -194,6 +198,9 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T7 hecha. Fechas del backend en la zona de Ecuador. 12 casos probados con el proceso en UTC (registro a las 20:00, ciclos en su último día, depósito del 31 a las 21:00). La prueba destapó que los ciclos se cerraban un día antes; corregido. Lint del backend en cero.
+- **11 nov 2026:** T6 hecha. Borrada la segunda ruta `/resumen` y el código muerto de reportes; `montoCapital` revisado y no era un error. **Lint del backend en cero.**
+- **11 nov 2026:** T5 hecha. Borrado el endpoint de pago comentado y otros restos; los comentarios explicativos se quedan. Build OK.
 - **11 nov 2026:** T4 hecha. Sin logs de claves ni de depuración; `config/supabase.js` reemplazado y borrado (sí se usaba, ver Decisiones); fuera `test-email`. El servidor arranca. Build OK; lint del backend con los mismos 6 errores previos.
 - **11 nov 2026:** T3 hecha. Borrados los recursos y el README de la plantilla de Vite; el favicon declara `image/png`. Build OK.
 - **11 nov 2026:** T2 hecha. Chatbot quitado del backend y del frontend. Lint del frontend baja de 11 a 9 errores. Build OK.
