@@ -1,147 +1,142 @@
 // src/pages/ResetPasswordPage.tsx
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Lock } from "lucide-react"
-import { Field } from "../components/Field"
-import { Button } from "../components/Button"
+import { CircleCheck, Lock, TriangleAlert } from "lucide-react"
 import { authService } from "../api/auth.service"
+import { PaginaAcceso, EnlaceAcceso } from "../components/layout/PaginaAcceso"
+import { Form } from "../components/Form"
+import { TextField } from "../components/TextField"
+import { Button } from "../components/Button"
+
+/**
+ * Nueva contraseña desde el enlace del correo. Supabase pone el token en el hash:
+ * /reset-password#access_token=eyJ...&type=recovery
+ */
+function tokenDelEnlace(): string | null {
+  const params = new URLSearchParams(window.location.hash.replace("#", ""))
+  const token = params.get("access_token")
+  return token && params.get("type") === "recovery" ? token : null
+}
+
+type Campo = "password" | "confirm"
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
-
+  const [token] = useState(tokenDelEnlace)
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | undefined>(() => {
-    const hash = window.location.hash
-    const params = new URLSearchParams(hash.replace("#", ""))
-    const token = params.get("access_token")
-    const type = params.get("type")
+  const [errores, setErrores] = useState<Partial<Record<Campo, string>>>({})
+  const [error, setError] = useState("")
+  const [cargando, setCargando] = useState(false)
+  const [listo, setListo] = useState(false)
 
-    return token && type === "recovery" ? undefined : "El enlace no es válido o ya expiró."
-  })
-  const [tokenValido] = useState<boolean>(() => {
-    const hash = window.location.hash
-    const params = new URLSearchParams(hash.replace("#", ""))
-    const token = params.get("access_token")
-    const type = params.get("type")
-
-    return Boolean(token && type === "recovery")
-  })
-
-  // Supabase pone el token en el hash de la URL:
-  // /reset-password#access_token=eyJ...&type=recovery
+  // api.client lee el token de localStorage para la llamada que cambia la contraseña
   useEffect(() => {
-    const hash = window.location.hash
-    const params = new URLSearchParams(hash.replace("#", ""))
-    const token = params.get("access_token")
-    const type = params.get("type")
+    if (token) localStorage.setItem("token", token)
+  }, [token])
 
-    if (token && type === "recovery") {
-      // Guarda el token para que api.client lo use en el request
-      localStorage.setItem("token", token)
-    }
-  }, [])
+  // Tras cambiarla, lleva al inicio de sesión; el enlace de la vista de éxito no espera
+  useEffect(() => {
+    if (!listo) return
+    const t = setTimeout(() => navigate("/login", { replace: true }), 4000)
+    return () => clearTimeout(t)
+  }, [listo, navigate])
 
-  async function handleReset() {
-    // Validación local antes de llamar al backend
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres")
-      return
-    }
-    if (password !== confirm) {
-      setError("Las contraseñas no coinciden")
-      return
-    }
-
-    setError(undefined)
-    setLoading(true)
+  async function cambiar() {
+    const e: Partial<Record<Campo, string>> = {}
+    if (password.length < 6) e.password = "Usa al menos 6 caracteres"
+    if (!e.password && password !== confirm) e.confirm = "Las contraseñas no coinciden"
+    setErrores(e)
+    setError("")
+    if (Object.keys(e).length > 0) return
+    setCargando(true)
     try {
       await authService.updatePassword(password)
-      setSuccess(true)
-      // Limpia el token de recovery — ya no sirve
+      // El token de recuperación ya no sirve
       localStorage.removeItem("token")
-      setTimeout(() => navigate("/login"), 2500)
+      setListo(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar la contraseña")
+      setError(err instanceof Error ? err.message : "No se pudo cambiar la contraseña")
     } finally {
-      setLoading(false)
+      setCargando(false)
     }
   }
 
-  // ── Token inválido ───────────────────────────────────────────
-  if (!tokenValido && error) {
+  if (!token) {
     return (
-      <div className="min-h-screen bg-bg_base flex items-center justify-center p-6">
-        <div className="w-full max-w-sm flex flex-col gap-4 text-center">
-          <h1 className="text-xl font-semibold text-text_primary">Enlace inválido</h1>
-          <p className="text-sm text-danger_r">{error}</p>
-          <a href="/forgot-password" className="text-sm text-primary_y hover:underline">
-            Solicitar un nuevo enlace
-          </a>
-        </div>
-      </div>
+      <PaginaAcceso
+        titulo="El enlace no es válido"
+        icono={
+          <span className="mb-2 flex size-12 items-center justify-center rounded-full bg-surface-2 text-destructivo">
+            <TriangleAlert size={24} aria-hidden="true" />
+          </span>
+        }
+        descripcion="El enlace para cambiar la contraseña está incompleto o ya venció. Pide uno nuevo; dura poco tiempo."
+        pie={<EnlaceAcceso a="/login">Volver a iniciar sesión</EnlaceAcceso>}
+      >
+        <p className="text-sm">
+          <EnlaceAcceso a="/forgot-password">Pedir un enlace nuevo</EnlaceAcceso>
+        </p>
+      </PaginaAcceso>
     )
   }
 
-  // ── Vista de éxito ───────────────────────────────────────────
-  if (success) {
+  if (listo) {
     return (
-      <div className="min-h-screen bg-bg_base flex items-center justify-center p-6">
-        <div className="w-full max-w-sm flex flex-col gap-4 text-center">
-          <h1 className="text-xl font-semibold text-text_primary">¡Contraseña actualizada!</h1>
-          <p className="text-sm text-text_secondary">
-            Tu contraseña fue cambiada correctamente. Redirigiendo al login...
-          </p>
-        </div>
-      </div>
+      <PaginaAcceso
+        titulo="Contraseña cambiada"
+        icono={
+          <span className="mb-2 flex size-12 items-center justify-center rounded-full bg-surface-2 text-estado-ok">
+            <CircleCheck size={24} aria-hidden="true" />
+          </span>
+        }
+        descripcion="Ya puedes entrar con tu nueva contraseña. Te llevamos al inicio de sesión en unos segundos."
+      >
+        <p className="text-sm">
+          <EnlaceAcceso a="/login">Ir a iniciar sesión</EnlaceAcceso>
+        </p>
+      </PaginaAcceso>
     )
   }
 
-  // ── Formulario ───────────────────────────────────────────────
   return (
-    <div>
-      <div className="flex flex-row items-center justify-center mt-8">
-        <img src="/logo_domus.png" alt="Logo de la caja" className="w-24" />
-        <h1 className="text-2xl font-semibold text-text_primary">Domus</h1>
-      </div>
-      <div className="mt-4 bg-bg_base flex items-center justify-center p-6">
-        <div className="bg-secondary_wt w-full max-w-sm flex flex-col gap-5 p-5 rounded-lg shadow-md">
-          <div>
-            <h1 className="text-2xl font-semibold text-text_primary">Nueva contraseña</h1>
-            <p className="text-sm text-text_secondary mt-1">Ingresa tu nueva contraseña.</p>
-          </div>
-
-          <Field
-            label="Nueva contraseña"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            icon={Lock}
-            required
-            hint="Mínimo 6 caracteres"
-          />
-          <Field
-            label="Confirmar contraseña"
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder="••••••••"
-            icon={Lock}
-            required
-            error={error}
-          />
-
-          <Button
-            label="Cambiar contraseña"
-            variant="primary"
-            loading={loading}
-            onClick={handleReset}
-          />
-        </div>
-      </div>
-    </div>
+    <PaginaAcceso titulo="Nueva contraseña" descripcion="Escribe la contraseña que vas a usar.">
+      <Form
+        onSubmit={cambiar}
+        error={error}
+        actions={<Button type="submit" label="Cambiar contraseña" loading={cargando} fullWidth />}
+      >
+        <TextField
+          label="Nueva contraseña"
+          type="password"
+          name="new-password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value)
+            setErrores((x) => ({ ...x, password: undefined }))
+          }}
+          icon={Lock}
+          hint="Al menos 6 caracteres."
+          error={errores.password}
+          required
+          autoFocus
+        />
+        <TextField
+          label="Confirmar contraseña"
+          type="password"
+          name="confirm-password"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => {
+            setConfirm(e.target.value)
+            setErrores((x) => ({ ...x, confirm: undefined }))
+          }}
+          icon={Lock}
+          error={errores.confirm}
+          required
+        />
+      </Form>
+    </PaginaAcceso>
   )
 }

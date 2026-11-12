@@ -1,111 +1,93 @@
-// src/pages/LoginPage.tsx
+// src/pages/Login.tsx
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { Lock, Mail } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
-import { Field } from "../components/Field"
+import { PaginaAcceso, EnlaceAcceso } from "../components/layout/PaginaAcceso"
+import { Form } from "../components/Form"
+import { TextField } from "../components/TextField"
 import { Button } from "../components/Button"
-import { Mail, Lock, Forward } from "lucide-react"
-import { Link } from "react-router-dom"
+
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [errores, setErrores] = useState<{ email?: string; password?: string }>({})
   const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [cargando, setCargando] = useState(false)
 
-  async function handleLogin() {
+  async function ingresar() {
+    const e: typeof errores = {}
+    if (!email.trim()) e.email = "Escribe tu correo"
+    if (!password) e.password = "Escribe tu contraseña"
+    setErrores(e)
     setError("")
-    setLoading(true)
+    if (e.email || e.password) return
+    setCargando(true)
     try {
-      await login(email, password)
-      navigate("/cajas", { replace: true }) // redirige al perfil
+      await login(email.trim(), password)
+      navigate("/cajas", { replace: true })
     } catch (err) {
-      // El error viene del throw en api.client con el mensaje del backend
-      setError(err instanceof Error ? err.message : "Error al iniciar sesión")
-    } finally {
-      setLoading(false)
+      // El backend no dice cuál de los dos falló; el mensaje va para el formulario entero
+      setError(err instanceof Error ? err.message : "No se pudo iniciar sesión")
+      setCargando(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-base)" }}>
-      <div className="flex flex-row items-center justify-center mt-8">
-        <img src="/logo_domus.png" alt="Logo de la caja" className="w-24" />
-        <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
-          Domus
-        </h1>
-      </div>
-
-      <div
-        className="m-5 flex justify-center items-center p-1"
-        style={{ background: "var(--bg-base)" }}
-      >
-        <div
-          className="w-full max-w-sm flex flex-col gap-5 p-5 rounded-lg shadow-md"
-          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-base)" }}
-        >
-          <div className="text-center">
-            <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
-              Iniciar sesión
-            </h1>
-            <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-              Accede a tu caja de ahorro
-            </p>
-          </div>
-
-          <Field
-            label="Correo electrónico"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="ana@cajacomunidad.ec"
-            error={error}
-            hint="Usa tu correo registrado"
-            icon={Mail}
-            required
-          />
-          <Field
-            label="Contraseña"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            hint="Usa tu contraseña"
-            error={error ? "Correo o contraseña incorrectos" : undefined}
-            icon={Lock}
-            required
-          />
-          <div className="text-right">
-            <Link
-              to="/forgot-password"
-              className="text-xs hover:underline"
-              style={{ color: "var(--color-primary_y)" }}
-            >
-              ¿Olvidaste tu contraseña?
-            </Link>
-          </div>
-
-          <Button
-            label="Ingresar"
-            variant="primary"
-            loading={loading}
-            onClick={handleLogin}
-            icon={Forward}
-          />
+    <PaginaAcceso
+      titulo="Iniciar sesión"
+      descripcion="Entra para trabajar con tu caja de ahorro."
+      // HU002: el enlace para crear cuenta va justo debajo del de recuperar la contraseña
+      pie={
+        <div className="flex flex-col gap-3">
+          <p>
+            <EnlaceAcceso a="/forgot-password">¿Olvidaste tu contraseña?</EnlaceAcceso>
+          </p>
+          <p>
+            ¿No tienes cuenta? <EnlaceAcceso a="/register">Crea una</EnlaceAcceso>
+          </p>
         </div>
-      </div>
-      <p className="text-center text-sm mt-auto mb-4" style={{ color: "var(--text-secondary)" }}>
-        No tienes cuenta?{" "}
-        <Link
-          to="/register"
-          className="hover:underline"
-          style={{ color: "var(--color-secondary_g)" }}
-        >
-          Regístrate aquí
-        </Link>
-      </p>
-    </div>
+      }
+    >
+      <Form
+        onSubmit={ingresar}
+        error={error}
+        actions={<Button type="submit" label="Ingresar" loading={cargando} fullWidth />}
+      >
+        <TextField
+          label="Correo electrónico"
+          type="email"
+          name="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value)
+            setErrores((x) => ({ ...x, email: undefined }))
+          }}
+          placeholder="ana@cajacomunidad.ec"
+          icon={Mail}
+          error={errores.email}
+          required
+          autoFocus
+        />
+        <TextField
+          label="Contraseña"
+          type="password"
+          name="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value)
+            setErrores((x) => ({ ...x, password: undefined }))
+          }}
+          icon={Lock}
+          error={errores.password}
+          required
+        />
+      </Form>
+    </PaginaAcceso>
   )
 }

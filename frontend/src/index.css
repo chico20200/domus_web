@@ -57,10 +57,12 @@
   --color-secondary_wt: #e3e3e3;
 }
 
-/* Anchos de página (especificaciones §4.1). Clases: max-w-formulario, max-w-completo. Los usa PageShell */
+/* Anchos de página (especificaciones §4.1). Clases: max-w-formulario, max-w-completo y max-w-acceso.
+   Los usan PageShell, PaginaSinMenu y PaginaAcceso; las páginas no escriben max-w-* */
 @theme {
   --container-formulario: 40rem; /* 640 px */
   --container-completo: 75rem; /* 1200 px */
+  --container-acceso: 24rem; /* 384 px: tarjeta de inicio de sesión, registro y contraseña */
 }
 
 @theme inline {
