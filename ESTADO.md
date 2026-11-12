@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (3 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (4 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración de base pendiente de ejecutar |
-| 3 | Migración de pantallas | En curso: 3/15 |
+| 3 | Migración de pantallas | En curso: 4/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -77,7 +77,7 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 | T1 | `DataTable`: columnas declaradas, alineación, primera columna fija, pie de totales, cargando y vacío | — | ✅ | `0b01629` |
 | T2 | `Card` se divide en `StatCard` y `Panel` | — | ✅ | `d142581` |
 | T3 | `ConfirmDialog` sobre `Modal`; `confirm()` de `NotifContext` lo usa, y el `window.confirm` de Socios pasa a él | — | ✅ | `6e367c5` |
-| T4 | Marco de la aplicación: `Sidebar`, `TopBar` y `AppLayout` a clases sobre tokens | — | ⬜ | |
+| T4 | Marco de la aplicación: `Sidebar`, `TopBar` y `AppLayout` a clases sobre tokens | — | ✅ | `ddfd551` |
 | T5 | Configuración, en tres componentes de sección | T1–T4 | ⬜ | |
 | T6 | Créditos, con `TablaAmortizacion` y `AbonoModal` sobre `Modal` | T1–T4 | ⬜ | |
 | T7 | Reportes, incluidos los colores de los PDF | T1–T4 | ⬜ | |
@@ -96,6 +96,10 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | Marco (T4): `Sidebar`, `TopBar` y `AppLayout` sin un solo `style={{}}`. El avatar y el logo de la caja pasan de blanco sobre `primary_y` (2,4:1 en oscuro) a `bg-accion-primaria` con `text-sobre-accion` (4,60:1 claro, 7,29:1 oscuro). El enlace activo pasa del fondo teñido `rgba(221,154,76,0.12)` a `bg-surface-2` con texto `accion-texto` y la barra de 3 px (4,61:1 claro, 5,69:1 oscuro) | `frontend/src/components/layout/` |
+| 12 nov 2026 | Tamaños del marco a la escala de §2.4: el título de la barra superior pasa de 15 px a `text-xl` (20 px), los enlaces de 13 px a `text-sm` y el rol de 10 px a `text-xs`. Para el título se eligió 20 y no los 24 de "título de página" porque va dentro de una barra de 56 px junto a botones de 32 px; si se prefiere 24, es cambiar una clase en `TopBar.tsx` | `frontend/src/components/layout/TopBar.tsx` |
+| 12 nov 2026 | La barra lateral usa `bg-surface` en lugar de `--sidebar-bg`, y los enlaces `text-secondary` en lugar de `--sidebar-text`. En claro no cambia nada (`#ffffff`); en oscuro pasa de `#1e1e1e` a `#242424`, igual que la barra superior. Las dos variables quedan sin uso y se borran en T15 | `frontend/src/components/layout/Sidebar.tsx` |
+| 12 nov 2026 | Accesibilidad del marco: con la barra contraída cada enlace lleva su nombre en `aria-label` y `title` (antes eran solo íconos sin nombre); `nav` con `aria-label`; el botón de contraer dice "Contraer menú lateral" y expone `aria-expanded`; botones con foco visible y `type="button"`; la animación de ancho respeta "reducir movimiento". `h-screen` pasa a `h-dvh` | `frontend/src/components/layout/` |
 | 12 nov 2026 | Reglas de Git en CLAUDE.md: commits locales en la rama de la etapa, al menos uno por tarea; nunca en `main` ni `git push`; la fusión en `main` solo a pedido del usuario | `CLAUDE.md` |
 | 12 nov 2026 | `ConfirmDialog` (T3): las páginas siguen llamando a `confirm()` de `useNotif()` con las mismas opciones; solo cambia lo que se dibuja. Va sobre `Modal`, así que Escape, clic afuera y Cerrar responden "no". El foco inicial queda en Cerrar y no en el botón que confirma, para que un Enter por inercia no ejecute la acción. Cancelar es `ghost`; confirmar es `destructive` si `peligroso`, si no `primary` | `frontend/src/components/ConfirmDialog.tsx` |
 | 12 nov 2026 | `Modal` sin contenido no pinta el cuerpo: una confirmación solo tiene título, descripción y botones, y el cuerpo vacío dejaba 24 px de hueco | `frontend/src/components/Modal.tsx` |
@@ -203,7 +207,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | `frontend/index.html` declara `lang="en"`; la interfaz es solo en español | Etapa 3 |
 | `graphify-out/` no está en `.gitignore` | Sin asignar |
 | Los alias `--color-primary_y` y compañía se resuelven en `:root`, así que solo siguen el modo oscuro porque `ThemeContext` pone `.dark` en `<html>`. Si algún día `.dark` se aplica a un subárbol, los alias no cambiarían. Desaparece al borrar los alias | Etapa 3 |
-| 5 sitios fuera de `Button` ponen `text-white` sobre un relleno de color. En modo oscuro dan 2,4:1. Se corrige usando `text-sobre-accion` | Etapa 3 |
+| 5 sitios fuera de `Button` ponen `text-white` sobre un relleno de color. En modo oscuro dan 2,4:1. Se corrige usando `text-sobre-accion`. Quedan en `ProfilePage` (avatar), `AhorrosPage` (tarjeta de la cuenta, 3) y `ForgotPasswordPage` (ícono). Los del marco, que eran estilos en línea, se corrigieron en T4 | Etapa 3 (Perfil, Ahorros, autenticación) |
 | Valores fuera de escala en las páginas: 57 usos de 20 px (`p-5`, `px-5`…), 12 de 40 px, 13 `borderRadius` y 12 `fontSize` en `style={{}}`, 6 `text-lg`. Inventario y reemplazos en `docs/SISTEMA_DE_DISENO.md` §5 | Etapa 3, página por página |
 | Los PDF de `ReportesPage` pintan la cabecera con el naranja viejo `[221, 154, 76]` y texto blanco (2,4:1) | Etapa 3 (Reportes) |
 | **Fechas un día atrasadas.** Las columnas `date` llegan como `"2026-11-11"` y las páginas hacen `new Date(f)`, que las toma como UTC: en Ecuador se ven como el día anterior (`fecha_apertura`, `fecha_ingreso`, `fecha_desembolso`, vencimientos). `fecha()` ya lo corrige; falta reemplazar las 6 funciones locales | Etapa 3, al migrar cada página |
@@ -243,6 +247,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T4 hecha (`ddfd551`). Marco de la aplicación a clases sobre tokens. Revisado en Chromium con la barra abierta y contraída, en claro y oscuro (ancho contraído 56 px, nombres de los enlaces en `aria-label`). El enlace activo no se pudo ver sin sesión; su contraste se midió: 4,61:1 y 5,69:1. Build OK; lint del frontend con los 9 errores previos.
 - **12 nov 2026:** CLAUDE.md con una sección de Git: commits solo locales en la rama de la etapa; push y fusión en `main` los decide el usuario.
 - **12 nov 2026:** T3 hecha (`6e367c5`). `ConfirmDialog` sobre `Modal`, usado por `confirm()`. Probado en Chromium con teclado y mouse: Enter sobre Cerrar, Escape y clic afuera dan "no"; Tab hasta Eliminar y Enter da "sí"; el foco vuelve al botón que abrió. Build OK; lint del frontend con los 9 errores previos.
 - **12 nov 2026:** T2 hecha (`d142581`). `StatCard` y `Panel`, agregados a `/dev/componentes` y revisados en claro y oscuro. Build OK; lint del frontend con los 9 errores previos.
