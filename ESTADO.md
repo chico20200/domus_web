@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones. 1 de 15 tareas hechas (T1).
+- **Etapa actual:** Etapa 1, Fundaciones. 2 de 15 tareas hechas (T1, T2).
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `3699443`
+- **Último commit de referencia:** `aa9fc24`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | En curso: 1/15 |
+| 1 | Fundaciones | En curso: 2/15 |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -30,7 +30,7 @@ Leyenda: ⬜ pendiente · 🔄 en curso · ✅ hecha (con commit)
 | # | Tarea | Depende de | Estado | Commit |
 | --- | --- | --- | --- | --- |
 | T1 | Prettier y ESLint en todo el repositorio, en un commit solo de formato | — | ✅ | `b64c07f` herramientas, `3699443` formato |
-| T2 | Tokens semánticos únicos en `:root` y `.dark`, expuestos en `@theme`, con alias de los nombres viejos | T1 | ⬜ | |
+| T2 | Tokens semánticos únicos en `:root` y `.dark`, expuestos en `@theme`, con alias de los nombres viejos | T1 | ✅ | `aa9fc24` |
 | T3 | Verificar contraste AA y oscurecer el naranja de marca para usar texto blanco | T2 | ⬜ | |
 | T4 | Documentar la escala de espaciado, texto y radios (equivalencias con Tailwind) | T2 | ⬜ | |
 | T5 | `src/lib/format.ts`: `moneda`, `fecha`, `fechaHora`, `porcentaje` | T1 | ⬜ | |
@@ -59,6 +59,9 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | Prettier se pasa al inicio de la Etapa 1 (T1), no al final, para que los diffs de las demás tareas queden limpios | Este documento |
 | 11 nov 2026 | Se hace una página de muestra de componentes solo para desarrollo (T15) | Este documento |
 | 11 nov 2026 | Un solo estilo Prettier para todo el repositorio: sin punto y coma, comillas dobles, 2 espacios, ancho 100. Los `.md` no se formatean | `.prettierrc.json`, `.prettierignore` |
+| 11 nov 2026 | Tokens: los colores de acción y estado (`--color-*`) van en `@theme static` y se redefinen en `.dark`; superficies, texto y bordes (`--bg-*`, `--text-*`, `--border-*`) van en `:root`/`.dark` y se exponen con `@theme inline` en los espacios de Tailwind `--background-color-*`, `--text-color-*`, `--border-color-*`, `--ring-color-*`, `--outline-color-*`. Así las clases quedan cortas: `bg-surface`, `text-muted`, `border-focus`, `ring-focus` | `frontend/src/index.css` |
+| 11 nov 2026 | Tokens añadidos a la lista de §2.3 porque los primitivos los necesitan: `--color-destructivo-hover` (botón destructivo) y `--color-sobre-accion` (texto sobre el naranja, blanco). `--border-focus` apunta a la acción primaria | `frontend/src/index.css` |
+| 11 nov 2026 | Los alias viejos (`primary_y`, `secondary_g`, `danger_r`, `blk_1`, `blk_2`, `secondary_wt`) y `--sidebar-bg`/`--sidebar-text` se conservan hasta terminar la Etapa 3. `secondary_gh`, `blk_*` y `secondary_wt` siguen con valor fijo porque no tienen equivalente semántico | `frontend/src/index.css` |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -81,6 +84,8 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | `frontend/index.html` declara `lang="en"`; la interfaz es solo en español | Etapa 3 |
 | `favicon.svg`, `hero.png`, `react.svg`, `vite.svg` e `icons.svg` son archivos de la plantilla de Vite, no de DOMUS | Etapa 2 |
 | `graphify-out/` no está en `.gitignore` | Sin asignar |
+| Los alias `--color-primary_y` y compañía se resuelven en `:root`, así que solo siguen el modo oscuro porque `ThemeContext` pone `.dark` en `<html>`. Si algún día `.dark` se aplica a un subárbol, los alias no cambiarían. Desaparece al borrar los alias | Etapa 3 |
+| `--color-estado-alerta` es nuevo (`#b45309` claro, `#e0a33a` oscuro) y no se ha medido su contraste | T3 |
 | Lint del frontend: 11 errores que ya existían. 2 en `ChatbotFlotante` y `DonacionModal`; 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 2 (chatbot y donaciones); Etapa 3 (el resto) |
 | Lint del backend: 6 errores, todos variables sin usar, en `cajas.routes.js`, `pagos.routes.js` y `reportes.routes.js` | Etapa 2 |
 | **Revisar:** en `pagos.routes.js`, a `montoCapital` se le asigna un valor que nunca se usa. Puede ser un error de cálculo en los pagos, no solo código sobrante | Etapa 2, con prioridad |
@@ -104,6 +109,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T2 hecha. Un solo juego de tokens semánticos en `index.css` para claro y oscuro, expuestos como clases de Tailwind. Se comprobó en el CSS compilado que las 18 clases nuevas y viejas se generan y apuntan a la variable correcta. Los colores de marca no cambian todavía (eso es T3). Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T1 hecha. Prettier común para el frontend y el backend, y ESLint nuevo en el backend. El formato se verificó comparando el AST antes y después: equivalente en los 20 archivos del backend y en los bundles del frontend. Build OK. El lint sigue fallando por 11 errores previos del frontend y 6 del backend, ahora registrados en Hallazgos.
 - **11 nov 2026:** Especificaciones movidas de la raíz a `docs/ESPECIFICACIONES.md`; se resuelve el hallazgo de la ruta en CLAUDE.md.
 - **11 nov 2026:** Se crea este documento. Plan de la Etapa 1 aprobado con cuatro decisiones (naranja, componentes a Etapa 3, Prettier primero, página de muestra).
