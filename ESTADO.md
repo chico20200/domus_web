@@ -3,10 +3,10 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 11 de noviembre de 2026
-- **Etapa actual:** Etapa 1, Fundaciones. 3 de 15 tareas hechas (T1–T3).
+- **Etapa actual:** Etapa 1, Fundaciones. 4 de 15 tareas hechas (T1–T4).
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `7cd1f4d`
+- **Último commit de referencia:** `0d06d1e`
 
 ---
 
@@ -14,7 +14,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
-| 1 | Fundaciones | En curso: 3/15 |
+| 1 | Fundaciones | En curso: 4/15 |
 | 2 | Limpieza | Pendiente |
 | 3 | Migración de pantallas | Pendiente |
 | 4 | Flujos | Pendiente |
@@ -32,7 +32,7 @@ Leyenda: ⬜ pendiente · 🔄 en curso · ✅ hecha (con commit)
 | T1 | Prettier y ESLint en todo el repositorio, en un commit solo de formato | — | ✅ | `b64c07f` herramientas, `3699443` formato |
 | T2 | Tokens semánticos únicos en `:root` y `.dark`, expuestos en `@theme`, con alias de los nombres viejos | T1 | ✅ | `aa9fc24` |
 | T3 | Verificar contraste AA y oscurecer el naranja de marca para usar texto blanco | T2 | ✅ | `7cd1f4d` |
-| T4 | Documentar la escala de espaciado, texto y radios (equivalencias con Tailwind) | T2 | ⬜ | |
+| T4 | Documentar la escala de espaciado, texto y radios (equivalencias con Tailwind) | T2 | ✅ | `0d06d1e` |
 | T5 | `src/lib/format.ts`: `moneda`, `fecha`, `fechaHora`, `porcentaje` | T1 | ⬜ | |
 | T6 | `Button`: variantes `primary`, `secondary`, `ghost`, `destructive`; `type`, `fullWidth`; sin `onEnter` ni `m-1` | T2 | ⬜ | |
 | T7 | `FieldBase`: label asociado con `useId`, colores por token, sin la prop `variant` | T2 | ⬜ | |
@@ -67,6 +67,10 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | El hover oscurece en modo claro y aclara en modo oscuro (antes aclaraba siempre, y eso bajaba el contraste) | `frontend/src/index.css` |
 | 11 nov 2026 | Alerta pasa a un ámbar más amarillo (tono 44°) para no confundirse con la acción primaria (tono 32°) | `frontend/src/index.css` |
 | 11 nov 2026 | `text-muted` también tiene que cumplir 4,5:1 porque se usa para texto informativo. Para que la jerarquía no se pierda, `text-secondary` se oscureció en claro y se aclaró en oscuro | `frontend/src/index.css` |
+| 11 nov 2026 | El sistema de diseño se documenta en `docs/SISTEMA_DE_DISENO.md`: clases por función, escalas y excepciones. `index.css` remite a ese archivo | `docs/SISTEMA_DE_DISENO.md` |
+| 11 nov 2026 | Las escalas se usan con las clases normales de Tailwind (`p-4`, `text-sm`, `rounded-xl`), sin tokens nuevos. Los valores de la escala ya coinciden con los de Tailwind | `docs/SISTEMA_DE_DISENO.md` |
+| 11 nov 2026 | Excepciones a la escala: anchos y altos libres; el hueco del ícono dentro de un campo (`pl-9`) lo resuelve `FieldBase`; `rounded-full` solo para elementos circulares o en píldora (avatares, puntos, `Badge`); los PDF de jsPDF tienen sus propios tamaños | `docs/SISTEMA_DE_DISENO.md` |
+| 11 nov 2026 | Peso de letra provisional, porque las especificaciones no lo fijan: `font-normal` cuerpo, `font-medium` etiquetas y botones, `font-semibold` títulos | `docs/SISTEMA_DE_DISENO.md` |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -91,6 +95,8 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | `graphify-out/` no está en `.gitignore` | Sin asignar |
 | Los alias `--color-primary_y` y compañía se resuelven en `:root`, así que solo siguen el modo oscuro porque `ThemeContext` pone `.dark` en `<html>`. Si algún día `.dark` se aplica a un subárbol, los alias no cambiarían. Desaparece al borrar los alias | Etapa 3 |
 | `Button` (y otros 7 sitios) ponen `text-white` sobre el relleno. En modo oscuro eso da 2,4:1 sobre el naranja, igual que antes de T3. Se corrige usando `text-sobre-accion` | T6 en `Button`; Etapa 3 en el resto |
+| Valores fuera de escala en las páginas: 57 usos de 20 px (`p-5`, `px-5`…), 12 de 40 px, 13 `borderRadius` y 14 `fontSize` en `style={{}}`, 6 `text-lg`. Inventario y reemplazos en `docs/SISTEMA_DE_DISENO.md` §5 | Etapa 3, página por página |
+| Los PDF de `ReportesPage` pintan la cabecera con el naranja viejo `[221, 154, 76]` y texto blanco (2,4:1) | Etapa 3 (Reportes) |
 | `--border-base` mide 1,1–1,5:1 contra las superficies. Sirve para separar tarjetas, pero no como único borde de un campo de formulario (WCAG 1.4.11 pide 3:1) | T7 |
 | Lint del frontend: 11 errores que ya existían. 2 en `ChatbotFlotante` y `DonacionModal`; 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34`; 3 `any` en `TablaAmortizacion` y `ReportesPage`; un `let` que debería ser `const` en `ReportesPage` | Etapa 2 (chatbot y donaciones); Etapa 3 (el resto) |
 | Lint del backend: 6 errores, todos variables sin usar, en `cajas.routes.js`, `pagos.routes.js` y `reportes.routes.js` | Etapa 2 |
@@ -115,6 +121,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** T4 hecha. Nuevo `docs/SISTEMA_DE_DISENO.md` con las clases de color, las escalas de espaciado, texto y radios con su equivalente en Tailwind, y un inventario de lo que hoy está fuera de escala con su reemplazo. No se tocó ninguna página. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T3 hecha. Se midieron todas las combinaciones de texto y relleno en los dos modos. Además del naranja fallaban el rojo, el verde, `text-muted` y alerta. Todas quedan en AA, con mínimo 4,61:1. En oscuro el texto sobre los rellenos pasa a ser oscuro. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T2 hecha. Un solo juego de tokens semánticos en `index.css` para claro y oscuro, expuestos como clases de Tailwind. Se comprobó en el CSS compilado que las 18 clases nuevas y viejas se generan y apuntan a la variable correcta. Los colores de marca no cambian todavía (eso es T3). Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T1 hecha. Prettier común para el frontend y el backend, y ESLint nuevo en el backend. El formato se verificó comparando el AST antes y después: equivalente en los 20 archivos del backend y en los bundles del frontend. Build OK. El lint sigue fallando por 11 errores previos del frontend y 6 del backend, ahora registrados en Hallazgos.
