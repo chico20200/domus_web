@@ -1,5 +1,6 @@
 // src/context/NotifContext.tsx
 import { createContext, useContext, useState, useCallback } from "react"
+import { ConfirmDialog, type ConfirmOpts } from "../components/ConfirmDialog"
 
 // ── Tipos ─────────────────────────────────────────────────────
 export type ToastTipo = "exito" | "error" | "info" | "advertencia"
@@ -8,14 +9,6 @@ interface Toast {
   id: string
   tipo: ToastTipo
   mensaje: string
-}
-
-interface ConfirmOpts {
-  titulo: string
-  mensaje?: string
-  labelOk?: string
-  labelCancel?: string
-  peligroso?: boolean // ← botón rojo para acciones destructivas
 }
 
 interface ConfirmState extends ConfirmOpts {
@@ -191,80 +184,15 @@ function NotifRenderer({ onCerrarConfirm }: { onCerrarConfirm: () => void }) {
       </div>
 
       {/* ── Diálogo de confirmación ───────────────────────── */}
-      {_confirm && (
-        <div
-          className="fixed inset-0 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.45)", zIndex: 70 }}
-          onClick={() => responder(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-xl p-5 flex flex-col gap-4"
-            style={{ background: "var(--bg-surface)", animation: "notifIn .15s ease-out" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3">
-              <div
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "50%",
-                  flexShrink: 0,
-                  background: _confirm.peligroso ? "rgba(217,97,70,0.12)" : "rgba(221,154,76,0.12)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <AlertTriangle
-                  size={18}
-                  style={{
-                    color: _confirm.peligroso ? "var(--color-danger_r)" : "var(--color-primary_y)",
-                  }}
-                />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>
-                  {_confirm.titulo}
-                </h3>
-                {_confirm.mensaje && (
-                  <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-                    {_confirm.mensaje}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => responder(false)}
-                className="px-4 py-2 rounded-lg text-sm font-medium"
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--border-base)",
-                  color: "var(--text-secondary)",
-                  cursor: "pointer",
-                }}
-              >
-                {_confirm.labelCancel ?? "Cancelar"}
-              </button>
-              <button
-                onClick={() => responder(true)}
-                className="px-4 py-2 rounded-lg text-sm font-medium"
-                style={{
-                  background: _confirm.peligroso
-                    ? "var(--color-danger_r)"
-                    : "var(--color-primary_y)",
-                  border: "none",
-                  color: "white",
-                  cursor: "pointer",
-                }}
-              >
-                {_confirm.labelOk ?? "Confirmar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        abierto={_confirm !== null}
+        titulo={_confirm?.titulo ?? ""}
+        mensaje={_confirm?.mensaje}
+        labelOk={_confirm?.labelOk}
+        labelCancel={_confirm?.labelCancel}
+        peligroso={_confirm?.peligroso}
+        onResponder={responder}
+      />
 
       {/* Animación de entrada */}
       <style>{`

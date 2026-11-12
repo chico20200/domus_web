@@ -6,6 +6,7 @@ import { AppLayout } from "../components/layout/AppLayout"
 import { Button } from "../components/Button"
 import { Field } from "../components/Field"
 import { useCaja } from "../context/CajaContext"
+import { useNotif } from "../context/NotifContext"
 import { sociosService } from "../api/socios.service"
 import type { Socio } from "../api/socios.types"
 
@@ -33,6 +34,7 @@ const formVacio: FormSocio = {
 export default function SociosPage() {
   const navigate = useNavigate()
   const { cajaActiva } = useCaja()
+  const { toast, confirm } = useNotif()
 
   const [socios, setSocios] = useState<Socio[]>([])
   const [loading, setLoading] = useState(true)
@@ -121,12 +123,19 @@ export default function SociosPage() {
   }
 
   async function handleDesactivar(socio: Socio) {
-    if (!confirm(`¿Desactivar a ${socio.nombre} ${socio.apellido}?`)) return
+    const ok = await confirm({
+      titulo: `¿Desactivar a ${socio.nombre} ${socio.apellido}?`,
+      mensaje: "Su ficha deja de aparecer como activa. Sus cuentas y créditos se conservan.",
+      labelOk: "Desactivar",
+      peligroso: true,
+    })
+    if (!ok) return
     try {
       await sociosService.desactivar(cajaActiva!.id, socio.id)
       await cargarSocios()
+      toast("exito", "Socio desactivado")
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error al desactivar")
+      toast("error", err instanceof Error ? err.message : "Error al desactivar")
     }
   }
 

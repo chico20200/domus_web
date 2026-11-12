@@ -8,3 +8,4 @@
 - Cada vez que se termine una tarea, se tome una decisión o se encuentre un problema,
   actualizar ESTADO.md (tabla de tareas, decisiones, hallazgos y una línea en la bitácora).
 - Antes de buscar en el código, consultar graphify-out/GRAPH_REPORT.md.
+- No hagas commits a github, todos los commits lo hago yo y los 

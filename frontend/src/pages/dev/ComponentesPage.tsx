@@ -28,6 +28,7 @@ import { DataTable, type Columna } from "../../components/DataTable"
 import { StatCard } from "../../components/StatCard"
 import { Panel } from "../../components/Panel"
 import { useTheme } from "../../context/ThemeContext"
+import { useNotif } from "../../context/NotifContext"
 import { fecha, fechaHora, moneda, porcentaje } from "../../lib/format"
 
 /**
@@ -121,6 +122,8 @@ const COLUMNAS_SOCIOS: Columna<(typeof SOCIOS_MUESTRA)[number]>[] = [
 
 export default function ComponentesPage() {
   const { isDark, toggleTheme } = useTheme()
+  const { confirm } = useNotif()
+  const [respuesta, setRespuesta] = useState("—")
 
   // Campos sueltos
   const [texto, setTexto] = useState("")
@@ -151,7 +154,7 @@ export default function ComponentesPage() {
   }
 
   // Modal
-  const [modal, setModal] = useState<"" | "normal" | "amplio" | "confirmar">("")
+  const [modal, setModal] = useState<"" | "normal" | "amplio">("")
   const [deposito, setDeposito] = useState("")
 
   return (
@@ -339,9 +342,33 @@ export default function ComponentesPage() {
           <Button
             variant="destructive"
             label="Confirmación"
-            onClick={() => setModal("confirmar")}
+            onClick={async () => {
+              const ok = await confirm({
+                titulo: "¿Eliminar a Ana Pérez?",
+                mensaje:
+                  "Se borrarán sus cuentas sin movimientos. Esta acción no se puede deshacer.",
+                labelOk: "Eliminar",
+                peligroso: true,
+              })
+              setRespuesta(ok ? "Confirmó" : "Canceló")
+            }}
+          />
+          <Button
+            variant="secondary"
+            label="Confirmación no destructiva"
+            onClick={async () => {
+              const ok = await confirm({
+                titulo: "¿Prepagar la última cuota?",
+                mensaje: "Se abonará el capital y se condonará el interés de esa cuota.",
+                labelOk: "Prepagar",
+              })
+              setRespuesta(ok ? "Confirmó" : "Canceló")
+            }}
           />
         </div>
+        <p className="text-sm text-secondary" data-respuesta>
+          Última respuesta de confirm(): {respuesta}
+        </p>
 
         <Modal
           abierto={modal === "normal"}
@@ -382,19 +409,6 @@ export default function ComponentesPage() {
             ventana.
           </p>
         </Modal>
-
-        <Modal
-          abierto={modal === "confirmar"}
-          onCerrar={() => setModal("")}
-          titulo="¿Eliminar a Ana Pérez?"
-          descripcion="Se borrarán sus cuentas sin movimientos. Esta acción no se puede deshacer."
-          acciones={
-            <>
-              <Button variant="ghost" label="Cancelar" onClick={() => setModal("")} />
-              <Button variant="destructive" label="Eliminar" onClick={() => setModal("")} />
-            </>
-          }
-        />
       </Seccion>
 
       <Seccion titulo="LoadingState y EmptyState">
