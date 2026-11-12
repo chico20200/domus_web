@@ -6,7 +6,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 - **Etapa actual:** Etapa 1, Fundaciones, **terminada** (15 de 15). Falta decidir si se fusiona `etapa-1` en `main` antes de empezar la Etapa 2.
 - **Rama de trabajo:** `etapa-1` (sale de `main` en `c844dfb`)
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
-- **Último commit de referencia:** `efb5891`
+- **Último commit de referencia:** `1b11cb2`
 
 ---
 
@@ -109,6 +109,7 @@ Cada tarea se cierra con `npm run build`, `npm run lint` y commit (CLAUDE.md).
 | 11 nov 2026 | La página de muestra se registra solo con `import.meta.env.DEV` y se carga con `lazy()`: no llega al build de producción (comprobado buscando su texto en `dist`) | `frontend/src/App.tsx` |
 | 11 nov 2026 | Un modal con formulario lleva el `Form` dentro del cuerpo, con sus botones en `actions` del `Form`, no en `acciones` del `Modal`: el botón de envío tiene que quedar dentro del `<form>` para que Enter funcione. `acciones` del `Modal` es para modales sin formulario (confirmaciones, tablas) | `frontend/src/pages/dev/ComponentesPage.tsx` |
 | 11 nov 2026 | Regla de clases: un componente no pone en su base una clase que una variante necesita sobrescribir (`border-transparent` contra `border-accion-primaria`). Dos utilidades de la misma propiedad empatan en especificidad y gana la que Tailwind escriba después, no la última del `className` | `frontend/src/components/Button.tsx` |
+| 11 nov 2026 | **Naranja de modo claro un tono más claro, a pedido.** El relleno pasa de `#a35800` a `#b26000` (4,6:1 con blanco, lo más claro posible con texto blanco), con hover `#a35800`. Se separa un token `--color-accion-texto` (`#a35800` claro, `#dd9a4c` oscuro) para el naranja como texto o borde (botón secundario, enlaces, foco), porque `#b26000` como texto da 3,9:1 sobre `bg-surface-2`. El alias `primary_y` apunta a `accion-texto`: sus 33 usos son de texto, así que los 10 fondos viejos (avatar, tarjeta destacada, botón del chat) conservan `#a35800` hasta la Etapa 3. Se consideró aclararlo más con texto oscuro y se descartó para mantener el texto blanco | `frontend/src/index.css`, `docs/SISTEMA_DE_DISENO.md` |
 | 11 nov 2026 | Los errores de lint que ya existían no se corrigen en T1: son de lógica, no de formato. Se registran como hallazgos y se resuelven en su etapa | Este documento, Hallazgos |
 
 ## Decisiones pendientes (especificaciones §13)
@@ -170,6 +171,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **11 nov 2026:** Naranja de modo claro aclarado a `#b26000` y nuevo token `--color-accion-texto` para su uso como texto. Contraste medido de nuevo: todo AA, mínimo 4,60:1. Revisado en `/dev/componentes` y en login. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** **Etapa 1 terminada.** T15 hecha: página de muestra en `/dev/componentes` (solo desarrollo) con todos los primitivos. Revisada en claro y oscuro, y su formulario probado con teclado real. Al revisarla apareció un error de T6: el `Button` `secondary` no mostraba el contorno y se veía como `ghost`, también en las páginas reales. Corregido en `69d389d`. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T14 hecha. `Badge` con cuatro tonos y ícono opcional. Se midió el patrón de fondo teñido y no cumple AA con la paleta de T3, así que el badge es de contorno; la regla se anota para la migración. Revisado sobre las tres superficies en claro y oscuro. Build OK; lint con los mismos 11 errores previos.
 - **11 nov 2026:** T13 hecha. `LoadingState` y `EmptyState`, revisados en claro y oscuro dentro de una tarjeta, sobre una página temporal ya borrada. Build OK; lint con los mismos 11 errores previos.
