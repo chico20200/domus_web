@@ -189,7 +189,7 @@ export default function ProfilePage() {
 
           <div className="flex gap-3">
             <Button label="Editar perfil" variant="primary" onClick={handleEdit} />
-            <Button label="Cerrar sesión" variant="danger" onClick={logout} />
+            <Button label="Cerrar sesión" variant="destructive" onClick={logout} />
           </div>
         </div>
       </AppLayout>

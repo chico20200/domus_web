@@ -92,7 +92,6 @@ export default function LoginPage() {
             variant="primary"
             loading={loading}
             onClick={handleLogin}
-            onEnter={handleLogin}
             icon={Forward}
           />
         </div>

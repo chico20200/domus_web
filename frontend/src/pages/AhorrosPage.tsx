@@ -216,7 +216,7 @@ export default function AhorrosPage() {
               />
               <Button
                 label="Retiro"
-                variant="danger"
+                variant="destructive"
                 icon={ArrowUpCircle}
                 onClick={() => abrirModal("retiro")}
               />
@@ -518,7 +518,7 @@ function ModalOperacion({
         <div className="flex gap-3">
           <Button
             label={esDeposito ? "Depositar" : "Retirar"}
-            variant={esDeposito ? "secondary" : "danger"}
+            variant={esDeposito ? "secondary" : "destructive"}
             loading={procesando}
             onClick={onConfirmar}
           />

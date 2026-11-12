@@ -188,7 +188,7 @@ export default function ReportesPage() {
     <AppLayout titulo="Reportes">
       <div className="flex flex-col gap-5">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
               Distribución de intereses
