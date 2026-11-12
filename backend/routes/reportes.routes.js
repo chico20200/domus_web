@@ -3,7 +3,7 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
-const { generarMesesPeriodo, calcularDistribucionInteres } = require("../utils/reportes")
+const { calcularDistribucionInteres } = require("../utils/reportes")
 const { calcularCiclos } = require("../utils/ciclos")
 
 router.use(verifyToken)
@@ -64,7 +64,6 @@ router.get("/distribucion-interes", async (req, res) => {
     }
 
     const meses = cicloSel.meses
-    const mesFin = meses[meses.length - 1]
 
     // Socios activos
     const { data: socios } = await supabaseAdmin

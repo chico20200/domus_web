@@ -3,8 +3,8 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
-const { generarTablaAmortizacion } = require("../utils/amortizacion")
-const { analizarEstadoCredito } = require("../utils/amortizacion")
+const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
+
 router.use(verifyToken)
 
 async function verificarRol(userId, cajaId, rolMinimo = "socio") {
@@ -90,7 +90,6 @@ router.post("/", async (req, res) => {
 
   // 5. Encuentra la primera cuota que aún debe capital o interés
   let numeroCuota = null
-  let cuotaActual = null
   let faltaCapital = 0
   let faltaInteres = 0
 
@@ -102,7 +101,6 @@ router.post("/", async (req, res) => {
     // Si esta cuota todavía debe algo, es la que toca pagar
     if (pendienteCapital > 0.001 || pendienteInteres > 0.001) {
       numeroCuota = fila.numero_cuota
-      cuotaActual = fila
       faltaCapital = pendienteCapital > 0 ? pendienteCapital : 0
       faltaInteres = pendienteInteres > 0 ? pendienteInteres : 0
       break
@@ -272,7 +270,7 @@ router.post("/prepago", async (req, res) => {
     .select("*")
     .eq("credito_id", creditoId)
 
-  const { prepagable, cuotaCorriente } = analizarEstadoCredito(credito, pagos)
+  const { prepagable } = analizarEstadoCredito(credito, pagos)
 
   if (!prepagable) {
     return res.status(400).json({
@@ -387,17 +385,10 @@ router.post("/abono", async (req, res) => {
     })
   }
 
-  let montoCapital = 0
-  let montoInteres = 0
-
-  if (montoNum <= faltaCapital) {
-    // Todo va a capital
-    montoCapital = +montoNum.toFixed(2)
-  } else {
-    // Cubre el capital y el resto va a interés
-    montoCapital = faltaCapital
-    montoInteres = +(montoNum - faltaCapital).toFixed(2)
-  }
+  // Si alcanza solo para capital, todo va a capital; si sobra, el resto va a interés
+  const cubreCapital = montoNum > faltaCapital
+  const montoCapital = cubreCapital ? faltaCapital : +montoNum.toFixed(2)
+  const montoInteres = cubreCapital ? +(montoNum - faltaCapital).toFixed(2) : 0
 
   const montoPagado = +(montoCapital + montoInteres).toFixed(2)
 

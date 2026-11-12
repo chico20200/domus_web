@@ -111,10 +111,9 @@ router.post("/", async (req, res) => {
 })
 
 // ─────────────────────────────────────────────
-// GET /api/cajas/:cajaId
-// Detalle de una caja — solo miembros
+// GET /api/cajas/:cajaId/resumen
+// Datos de la caja, totales y movimientos recientes — solo miembros
 // ─────────────────────────────────────────────
-// backend/routes/cajas.routes.js — en GET /:cajaId/resumen
 router.get("/:cajaId/resumen", async (req, res) => {
   const userId = req.user.id
   const { cajaId } = req.params
@@ -251,101 +250,6 @@ router.put("/:cajaId", async (req, res) => {
   }
 
   return res.json({ message: "Caja actualizada correctamente", caja: data })
-})
-
-// backend/routes/cajas.routes.js — agrega al final antes de module.exports
-
-// GET /api/cajas/:cajaId/resumen
-router.get("/:cajaId/resumen", async (req, res) => {
-  const userId = req.user.id
-  const { cajaId } = req.params
-
-  // Verifica membresía
-  const { data: miembro } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("rol")
-    .eq("caja_id", cajaId)
-    .eq("user_id", userId)
-    .eq("activo", true)
-    .single()
-
-  if (!miembro) {
-    return res.status(403).json({ error: "No perteneces a esta caja" })
-  }
-
-  // Datos de la caja
-  const { data: caja } = await supabaseAdmin
-    .from("cajas")
-    .select("id, nombre, descripcion, created_at")
-    .eq("id", cajaId)
-    .single()
-
-  // Total de miembros activos
-  const { count: totalMiembros } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("*", { count: "exact", head: true })
-    .eq("caja_id", cajaId)
-    .eq("activo", true)
-
-  // Total de socios activos
-  const { count: totalSocios } = await supabaseAdmin
-    .from("socios")
-    .select("*", { count: "exact", head: true })
-    .eq("caja_id", cajaId)
-    .eq("activo", true)
-
-  // Saldo total en cuentas de ahorro
-  const { data: cuentas } = await supabaseAdmin
-    .from("cuentas_ahorro")
-    .select("saldo")
-    .eq("caja_id", cajaId)
-    .eq("estado", "activa")
-
-  const saldoTotal = (cuentas ?? []).reduce((sum, c) => sum + parseFloat(c.saldo ?? 0), 0)
-
-  // Créditos activos y saldo pendiente
-  const { data: creditos } = await supabaseAdmin
-    .from("creditos")
-    .select("saldo_pendiente")
-    .eq("caja_id", cajaId)
-    .eq("estado", "activo")
-
-  const saldoPendiente = (creditos ?? []).reduce(
-    (sum, c) => sum + parseFloat(c.saldo_pendiente ?? 0),
-    0,
-  )
-
-  // Transacciones recientes
-  const { data: transacciones } = await supabaseAdmin
-    .from("transacciones")
-    .select(
-      `
-      id,
-      tipo,
-      monto,
-      descripcion,
-      created_at,
-      cuentas_ahorro (
-        socios ( nombre, apellido )
-      )
-    `,
-    )
-    .eq("caja_id", cajaId)
-    .order("created_at", { ascending: false })
-    .limit(5)
-
-  return res.json({
-    caja,
-    rol: miembro.rol,
-    resumen: {
-      totalMiembros: totalMiembros ?? 0,
-      totalSocios: totalSocios ?? 0,
-      saldoTotal: saldoTotal,
-      creditosActivos: creditos?.length ?? 0,
-      saldoPendiente: saldoPendiente,
-    },
-    transaccionesRecientes: transacciones ?? [],
-  })
 })
 
 // POST /api/cajas/unirse
@@ -515,7 +419,7 @@ router.put("/:cajaId/configuracion-ciclo", async (req, res) => {
     return res.status(400).json({ error: "La duración debe estar entre 1 y 24 meses" })
   }
 
-  const { data, error } = await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("cajas")
     .update({
       fecha_fundacion: fecha_fundacion,
@@ -524,8 +428,6 @@ router.put("/:cajaId/configuracion-ciclo", async (req, res) => {
       updated_at: new Date().toISOString(),
     })
     .eq("id", cajaId)
-    .select()
-    .single()
 
   if (error) return res.status(500).json({ error: error.message })
 
