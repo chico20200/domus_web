@@ -168,7 +168,7 @@ router.put("/:creditoId/aprobar", requierePermiso("creditos.aprobar"), async (re
 
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId/creditos/:creditoId/estado
-// Cambia el estado del crédito (admin)
+// Cambia el estado del crédito (coordinador)
 // ─────────────────────────────────────────────
 router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), async (req, res) => {
   const { cajaId, creditoId } = req.params

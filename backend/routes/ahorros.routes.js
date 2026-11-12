@@ -251,7 +251,7 @@ router.post("/:cuentaId/retiro", requierePermiso("movimientos.registrar"), async
 
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId/cuentas/:cuentaId/estado
-// Cambia estado de cuenta — solo admin
+// Cambia estado de cuenta — solo coordinador
 // ─────────────────────────────────────────────
 router.put("/:cuentaId/estado", requierePermiso("cuentas.cambiar_estado"), async (req, res) => {
   const { cajaId, cuentaId } = req.params

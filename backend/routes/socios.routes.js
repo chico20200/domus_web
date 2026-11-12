@@ -47,7 +47,7 @@ router.get("/:socioId", requierePermiso("caja.ver"), async (req, res) => {
 
 // ─────────────────────────────────────────────
 // POST /api/cajas/:cajaId/socios
-// Registra un nuevo socio — tesorero o admin
+// Registra un nuevo socio — tesorero o coordinador
 // ─────────────────────────────────────────────
 router.post("/", requierePermiso("socios.gestionar"), async (req, res) => {
   const { cajaId } = req.params
@@ -92,7 +92,7 @@ router.post("/", requierePermiso("socios.gestionar"), async (req, res) => {
 
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId/socios/:socioId
-// Actualiza datos del socio — tesorero o admin
+// Actualiza datos del socio — tesorero o coordinador
 // ─────────────────────────────────────────────
 router.put("/:socioId", requierePermiso("socios.gestionar"), async (req, res) => {
   const { cajaId, socioId } = req.params
@@ -128,7 +128,7 @@ router.put("/:socioId", requierePermiso("socios.gestionar"), async (req, res) =>
 
 // ─────────────────────────────────────────────
 // DELETE /api/cajas/:cajaId/socios/:socioId
-// Desactiva un socio — solo admin
+// Desactiva un socio — solo coordinador
 // ─────────────────────────────────────────────
 router.delete("/:socioId", requierePermiso("socios.eliminar"), async (req, res) => {
   const { cajaId, socioId } = req.params

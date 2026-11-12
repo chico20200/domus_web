@@ -4,6 +4,7 @@ const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
+const { fechaLocal } = require("../utils/fechas")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
 
 router.use(verifyToken)
@@ -130,6 +131,7 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
     .insert({
       caja_id: cajaId,
       credito_id: creditoId,
+      fecha_pago: fechaLocal(),
       numero_cuota: numeroCuota,
       monto_pagado: montoPagado,
       monto_capital: montoCapital,
@@ -271,6 +273,7 @@ router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, re
     .insert({
       caja_id: cajaId,
       credito_id: creditoId,
+      fecha_pago: fechaLocal(),
       numero_cuota: prepagable.numero_cuota,
       monto_pagado: montoCapital,
       monto_capital: montoCapital,
@@ -381,6 +384,7 @@ router.post("/abono", requierePermiso("movimientos.registrar"), async (req, res)
     .insert({
       caja_id: cajaId,
       credito_id: creditoId,
+      fecha_pago: fechaLocal(),
       numero_cuota: cuotaCorriente.numero_cuota,
       monto_pagado: montoPagado,
       monto_capital: montoCapital,

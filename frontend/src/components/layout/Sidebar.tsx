@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
 } from "lucide-react"
 import { useCaja } from "../../context/CajaContext"
+import { ETIQUETA_ROL, tieneRol } from "../../lib/roles"
 
 interface SidebarProps {
   abierto: boolean
@@ -25,7 +26,7 @@ export function Sidebar({ abierto, onToggle }: SidebarProps) {
   const { cajaActiva, salirDeCaja } = useCaja()
 
   const rol = cajaActiva?.rol ?? "socio"
-  const esTesorero = rol === "tesorero" || rol === "admin"
+  const esTesorero = tieneRol(rol, "tesorero")
 
   // Cada item define quién puede verlo
   const navItems = [
@@ -133,7 +134,7 @@ export function Sidebar({ abierto, onToggle }: SidebarProps) {
                 whiteSpace: "nowrap",
               }}
             >
-              {rol}
+              {ETIQUETA_ROL[rol]}
             </p>
           </div>
         )}

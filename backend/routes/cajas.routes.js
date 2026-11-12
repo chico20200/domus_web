@@ -51,7 +51,7 @@ router.get("/mis-cajas", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // POST /api/cajas
-// Crea una nueva caja y registra al creador como admin
+// Crea una nueva caja y registra al creador como coordinador
 // ─────────────────────────────────────────────
 router.post("/", async (req, res) => {
   const userId = req.user.id
@@ -76,11 +76,11 @@ router.post("/", async (req, res) => {
     return res.status(500).json({ error: errorCaja.message })
   }
 
-  // 2. Registra al creador como admin
+  // 2. Registra al creador como coordinador
   const { error: errorMiembro } = await supabase.from("miembros_caja").insert({
     caja_id: caja.id,
     user_id: userId,
-    rol: "admin",
+    rol: "coordinador",
   })
 
   if (errorMiembro) {
@@ -181,7 +181,7 @@ router.get("/:cajaId/resumen", requierePermiso("caja.ver"), async (req, res) => 
 
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId
-// Edita nombre/descripción — solo admin
+// Edita nombre/descripción — solo coordinador
 // ─────────────────────────────────────────────
 router.put("/:cajaId", requierePermiso("caja.configurar"), async (req, res) => {
   const { cajaId } = req.params
@@ -355,7 +355,7 @@ router.get("/:cajaId/ciclos", requierePermiso("caja.ver"), async (req, res) => {
 
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId/configuracion-ciclo
-// Configura el periodo de la caja — solo admin
+// Configura el periodo de la caja — solo coordinador
 // ─────────────────────────────────────────────
 router.put("/:cajaId/configuracion-ciclo", requierePermiso("caja.configurar"), async (req, res) => {
   const { cajaId } = req.params

@@ -343,7 +343,7 @@ export default function SociosPage() {
                   >
                     <Pencil size={14} />
                   </button>
-                  {cajaActiva?.rol === "admin" && (
+                  {cajaActiva?.rol === "coordinador" && (
                     <button
                       onClick={() => handleDesactivar(socio)}
                       className="w-8 h-8 rounded-lg flex items-center justify-center"

@@ -7,13 +7,14 @@ import { useCaja } from "../context/CajaContext"
 import { Button } from "../components/Button"
 import { Field } from "../components/Field"
 import type { MiCaja } from "../api/cajas.types"
+import { ETIQUETA_ROL, type RolCaja } from "../lib/roles"
 import { apiClient } from "../api/api.client"
 
 // Ícono y color según el rol
 const rolConfig = {
-  admin: { label: "Administrador", icon: Shield, color: "var(--color-primary_y)" },
-  tesorero: { label: "Tesorero", icon: Briefcase, color: "var(--color-secondary_g)" },
-  socio: { label: "Socio", icon: Users, color: "var(--text-secondary)" },
+  coordinador: { label: ETIQUETA_ROL.coordinador, icon: Shield, color: "var(--color-primary_y)" },
+  tesorero: { label: ETIQUETA_ROL.tesorero, icon: Briefcase, color: "var(--color-secondary_g)" },
+  socio: { label: ETIQUETA_ROL.socio, icon: Users, color: "var(--text-secondary)" },
 }
 
 export default function CajasPage() {
@@ -66,7 +67,7 @@ export default function CajasPage() {
           id: string
           nombre: string
           descripcion?: string
-          rol: "admin" | "tesorero" | "socio"
+          rol: RolCaja
         }
       }>("/cajas/unirse", { codigo })
 
@@ -106,7 +107,7 @@ export default function CajasPage() {
         id: response.caja.id,
         nombre: response.caja.nombre,
         descripcion: response.caja.descripcion,
-        rol: "admin",
+        rol: "coordinador",
       }
       setCajaActiva(nuevaCaja)
       navigate("/dashboard")

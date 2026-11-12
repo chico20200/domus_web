@@ -1,4 +1,6 @@
 // src/api/cajas.types.ts
+import type { RolCaja } from "../lib/roles"
+
 export interface Caja {
   id: string
   nombre: string
@@ -12,7 +14,7 @@ export interface MiCaja {
   id: string
   nombre: string
   descripcion: string
-  rol: "admin" | "tesorero" | "socio"
+  rol: RolCaja
 }
 
 export interface GetMisCajasResponse {

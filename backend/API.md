@@ -21,10 +21,10 @@ Respuestas de error de autenticación:
 Las rutas anidadas bajo `/api/cajas/:cajaId/...` validan el rol del usuario dentro de esa caja específica (tabla `miembros_caja`), con jerarquía:
 
 ```
-socio (1) < tesorero (2) < admin (3)
+socio (1) < tesorero (2) < coordinador (3)
 ```
 
-La verificación la hace un solo middleware, `requierePermiso("<permiso>")` en `middlewares/permisos.middleware.js`. Ahí está la tabla única que asigna a cada permiso su rol mínimo (`caja.ver` → socio, `movimientos.registrar` → tesorero, `caja.configurar` → admin, etc.). Cada endpoint indica el **rol mínimo** requerido.
+La verificación la hace un solo middleware, `requierePermiso("<permiso>")` en `middlewares/permisos.middleware.js`. Ahí está la tabla única que asigna a cada permiso su rol mínimo (`caja.ver` → socio, `movimientos.registrar` → tesorero, `caja.configurar` → coordinador, etc.). Cada endpoint indica el **rol mínimo** requerido.
 
 - `403 { error: 'Sin acceso a esta caja' }` — el usuario no es miembro activo de la caja.
 - `403 { error: 'Tu rol no permite esta acción' }` — no alcanza el rol mínimo. Un rol que no está en la escalera tampoco pasa.
@@ -107,7 +107,7 @@ Lista las cajas activas a las que pertenece el usuario, junto con su rol en cada
 - 200: `{ cajas: [{ id, nombre, descripcion, rol }] }`
 
 ### POST /api/cajas
-Crea una nueva caja. El creador queda registrado automáticamente como `admin`.
+Crea una nueva caja. El creador queda registrado automáticamente como `coordinador`.
 
 - Body: `{ nombre, descripcion? }`
 - 201: `{ message, caja }`
@@ -123,7 +123,7 @@ Devuelve el detalle de la caja, el rol del usuario y un resumen de indicadores (
 ### PUT /api/cajas/:cajaId
 Edita nombre/descripción de la caja.
 
-- Rol mínimo: `admin`
+- Rol mínimo: `coordinador`
 - Body (al menos uno): `{ nombre?, descripcion? }`
 - 200: `{ message, caja }`
 - 400: `{ error }` si no se envían campos
@@ -176,7 +176,7 @@ Actualiza datos del socio.
 ### DELETE /api/cajas/:cajaId/socios/:socioId
 Desactiva (soft delete) un socio.
 
-- Rol mínimo: `admin`
+- Rol mínimo: `coordinador`
 - 200: `{ message: 'Socio desactivado correctamente' }`
 
 ---
@@ -234,7 +234,7 @@ Registra un retiro, validando saldo suficiente.
 ### PUT /api/cajas/:cajaId/cuentas/:cuentaId/estado
 Cambia el estado de la cuenta.
 
-- Rol mínimo: `admin`
+- Rol mínimo: `coordinador`
 - Body: `{ estado }` — uno de `activa | cerrada | suspendida`
 - 200: `{ message, cuenta }`
 - 400: `{ error: 'Estado inválido' }`
@@ -254,29 +254,29 @@ Lista los miembros de la caja con perfil y email.
 ### PUT /api/cajas/:cajaId/miembros/:userId
 Cambia el rol de un miembro.
 
-- Rol mínimo: `admin`
-- Body: `{ nuevoRol }` — uno de `admin | tesorero | socio`
+- Rol mínimo: `coordinador`
+- Body: `{ nuevoRol }` — uno de `coordinador | tesorero | socio`
 - 200: `{ message, miembro }`
 - 400: `{ error: 'Rol inválido' }` o `{ error: 'No puedes cambiar tu propio rol' }`
 
 ### DELETE /api/cajas/:cajaId/miembros/:userId
 Remueve (desactiva) a un miembro.
 
-- Rol mínimo: `admin`
+- Rol mínimo: `coordinador`
 - 200: `{ message: 'Miembro removido correctamente' }`
 - 400: `{ error: 'No puedes removerte a ti mismo' }`
 
 ### POST /api/cajas/:cajaId/miembros/invitaciones
 Genera un código de invitación (8 caracteres, expira en 7 días). Desactiva cualquier código anterior sin usar.
 
-- Rol mínimo: `admin`
+- Rol mínimo: `coordinador`
 - Body: `{ rolInvitado? }` (default `'socio'`)
 - 201: `{ message, codigo, expira, rol }`
 
 ### GET /api/cajas/:cajaId/miembros/invitaciones
 Devuelve el código de invitación activo (no usado, no expirado) más reciente de la caja.
 
-- Rol mínimo: `admin`
+- Rol mínimo: `coordinador`
 - 200: `{ invitacion }` (o `null` si no hay ninguno activo)
 
 ---
@@ -334,7 +334,7 @@ Registra un pago contra el crédito y actualiza `saldo_pendiente` (pasa a `pagad
 ### PUT /api/cajas/:cajaId/creditos/:creditoId/estado
 Cambia manualmente el estado del crédito.
 
-- Rol mínimo: `admin`
+- Rol mínimo: `coordinador`
 - Body: `{ estado }` — uno de `pendiente | activo | pagado | mora | castigado`
 - 200: `{ message, credito }`
 - 400: `{ error: 'Estado inválido' }`

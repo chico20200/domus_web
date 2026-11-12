@@ -3,7 +3,7 @@ const supabaseAdmin = require("../config/supabaseAdmin")
 
 // Escalera de roles dentro de una caja. Cada rol puede todo lo que pueden los de
 // abajo, y no al revés (especificaciones §6.2).
-const NIVEL = { socio: 1, tesorero: 2, admin: 3 }
+const NIVEL = { socio: 1, tesorero: 2, coordinador: 3 }
 
 // Tabla única de permisos: el rol mínimo que pide cada acción.
 // Es la única fuente de verdad; las rutas solo nombran el permiso.
@@ -21,12 +21,12 @@ const PERMISOS = {
   "reportes.generar": "tesorero",
 
   // Configurar la caja: nombre, descripción y ciclos
-  "caja.configurar": "admin",
+  "caja.configurar": "coordinador",
   // Cambiar roles, quitar miembros e invitar
-  "miembros.gestionar": "admin",
-  "socios.eliminar": "admin",
-  "cuentas.cambiar_estado": "admin",
-  "creditos.cambiar_estado": "admin",
+  "miembros.gestionar": "coordinador",
+  "socios.eliminar": "coordinador",
+  "cuentas.cambiar_estado": "coordinador",
+  "creditos.cambiar_estado": "coordinador",
 }
 
 /**

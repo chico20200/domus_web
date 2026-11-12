@@ -3,7 +3,9 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
-const { requierePermiso } = require("../middlewares/permisos.middleware")
+const { requierePermiso, NIVEL } = require("../middlewares/permisos.middleware")
+
+const ROLES_VALIDOS = Object.keys(NIVEL)
 
 router.use(verifyToken)
 
@@ -80,14 +82,13 @@ router.get("/", requierePermiso("caja.ver"), async (req, res) => {
 })
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId/miembros/:userId
-// Cambia el rol de un miembro — solo admin
+// Cambia el rol de un miembro — solo coordinador
 // ─────────────────────────────────────────────
 router.put("/:userId", requierePermiso("miembros.gestionar"), async (req, res) => {
   const { cajaId, userId } = req.params
 
   const { nuevoRol } = req.body
-  const rolesValidos = ["admin", "tesorero", "socio"]
-  if (!rolesValidos.includes(nuevoRol)) {
+  if (!ROLES_VALIDOS.includes(nuevoRol)) {
     return res.status(400).json({ error: "Rol inválido" })
   }
 
@@ -111,7 +112,7 @@ router.put("/:userId", requierePermiso("miembros.gestionar"), async (req, res) =
 
 // ─────────────────────────────────────────────
 // DELETE /api/cajas/:cajaId/miembros/:userId
-// Remueve un miembro — solo admin
+// Remueve un miembro — solo coordinador
 // ─────────────────────────────────────────────
 router.delete("/:userId", requierePermiso("miembros.gestionar"), async (req, res) => {
   const { cajaId, userId } = req.params
@@ -133,12 +134,15 @@ router.delete("/:userId", requierePermiso("miembros.gestionar"), async (req, res
 
 // ─────────────────────────────────────────────
 // POST /api/cajas/:cajaId/invitaciones
-// Genera un código de invitación — solo admin
+// Genera un código de invitación — solo coordinador
 // ─────────────────────────────────────────────
 router.post("/invitaciones", requierePermiso("miembros.gestionar"), async (req, res) => {
   const { cajaId } = req.params
 
   const { rolInvitado = "socio" } = req.body
+  if (!ROLES_VALIDOS.includes(rolInvitado)) {
+    return res.status(400).json({ error: "Rol inválido" })
+  }
 
   // Desactiva códigos anteriores no usados de esta caja
   await supabaseAdmin
@@ -176,7 +180,7 @@ router.post("/invitaciones", requierePermiso("miembros.gestionar"), async (req, 
 
 // ─────────────────────────────────────────────
 // GET /api/cajas/:cajaId/invitaciones
-// Ver código activo de la caja — solo admin
+// Ver código activo de la caja — solo coordinador
 // ─────────────────────────────────────────────
 router.get("/invitaciones", requierePermiso("miembros.gestionar"), async (req, res) => {
   const { cajaId } = req.params
