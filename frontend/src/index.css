@@ -21,6 +21,9 @@
  * y llevan texto oscuro. Por eso el texto sobre un relleno siempre es text-sobre-accion,
  * nunca text-white. Hover: más oscuro en claro, más claro en oscuro.
  * Si se cambia un valor, volver a medir todas las combinaciones.
+ *
+ * Qué clase usar para cada función, y las escalas de espaciado, texto y radios:
+ * docs/SISTEMA_DE_DISENO.md
  */
 
 @theme static {
