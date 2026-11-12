@@ -74,7 +74,7 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | # | Tarea | Depende de | Estado | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | `DataTable`: columnas declaradas, alineación, primera columna fija, pie de totales, cargando y vacío | — | ✅ | ver bitácora |
+| T1 | `DataTable`: columnas declaradas, alineación, primera columna fija, pie de totales, cargando y vacío | — | ✅ | `0b01629` |
 | T2 | `Card` se divide en `StatCard` y `Panel` | — | ⬜ | |
 | T3 | `ConfirmDialog` sobre `Modal`; `confirm()` de `NotifContext` lo usa, y el `window.confirm` de Socios pasa a él | — | ⬜ | |
 | T4 | Marco de la aplicación: `Sidebar`, `TopBar` y `AppLayout` a clases sobre tokens | — | ⬜ | |
@@ -98,7 +98,6 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 | --- | --- | --- |
 | 12 nov 2026 | `DataTable` (T1): las columnas se declaran como arreglo `{ clave, encabezado, celda, alinear, pie, fija }`. Las numéricas van a la derecha con cifras de ancho fijo (`tabular-nums`). Cuerpo en `text-sm` (14 px, cuerpo de §2.4) y encabezados en `text-xs`; las tablas de hoy usan `text-xs` en todo. `detalle` agrega una fila a todo el ancho debajo de otra (los pagos de cada cuota en la amortización). `descripcion` es obligatoria y va como `<caption>` oculto | `frontend/src/components/DataTable.tsx` |
 | 12 nov 2026 | La columna fija se separa con una sombra interior de 1 px, no con `border-r`: con `border-collapse`, el borde de una celda `sticky` se queda en su sitio al desplazar. Comprobado en Chromium a 760 px de ancho | `frontend/src/components/DataTable.tsx` |
-| 12 nov 2026 | Socios y Pagos no son tablas sino listas de tarjetas (avatar, nombre, acciones). Se migran con `Panel` y no con `DataTable` | Este documento |
 | 12 nov 2026 | Etapa 3 en 15 tareas: primero los componentes que faltan y el marco (T1–T4), después una página por tarea en el orden de §12, y un cierre que borra lo viejo. Se suman dos tareas que §12 no nombra: el marco (`Sidebar` y `TopBar` son 100 % estilos en línea, §4.2) y `CajasPage`, que no está en la lista | Este documento |
 | 11 nov 2026 | Etapa 2 en 10 tareas, en la rama `etapa-2`. Primero lo que solo borra (T1–T5), después lo que cambia lógica (T6–T9) y al final la migración de rol (T10), que toca la base de datos | Este documento |
 | 11 nov 2026 | `config/supabase.js` no estaba sin usar, como dice §6.4: lo importaban `auth.routes.js` y `profile.routes.js`. Auth pasa a `config/supabaseAuth.js` (clave anon, sin sesión persistente) y perfiles a `supabaseAdmin`. Un cliente que hace `signInWithPassword` guarda esa sesión en memoria y sus consultas siguientes salen con el token de ese usuario, así que el cliente de auth nunca se usa para tablas | `backend/config/supabaseAuth.js` |
