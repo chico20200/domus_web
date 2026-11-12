@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (11 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (12 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración `001` ejecutada |
-| 3 | Migración de pantallas | En curso: 11/15 |
+| 3 | Migración de pantallas | En curso: 12/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -85,7 +85,7 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 | T9 | Socios | T1–T4 | ✅ | `29246e4` |
 | T10 | Dashboard | T1–T4 | ✅ | `dc9dca2` |
 | T11 | Pagos (`ConfirmarPagoModal` ya quedó sobre `Modal` en T6) | T1–T4 | ✅ | `5650cbe` |
-| T12 | Perfil | T1–T4 | ⬜ | |
+| T12 | Perfil | T1–T4 | ✅ | `78be44d` |
 | T13 | Cajas (solo la migración visual; el asistente de creación es Etapa 4) | T1–T4 | ⬜ | |
 | T14 | Las cuatro de autenticación, y `lang="es"` en `index.html` | T1–T4 | ⬜ | |
 | T15 | Cierre: borrar los alias de color, `Field.tsx` y `Card.tsx`; lint del frontend en cero | T5–T14 | ⬜ | |
@@ -96,6 +96,11 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | Perfil (T12): `PageShell` de 640 px con tres `Panel`: cabecera (avatar, nombre, correo), datos personales y sesión. Se edita en el mismo panel, que pasa a un `Form` con "Guardar cambios" y "Cancelar" `ghost`; el aviso de guardado es un toast. Antes la edición cambiaba toda la página y el título | `frontend/src/pages/ProfilePage.tsx` |
+| 12 nov 2026 | HU016 en el formulario: nombre de al menos 6 caracteres, solo letras (con tildes, ñ, espacios, apóstrofo y guion) y teléfono opcional de exactamente 10 dígitos. Las filas "Por verificar en `ProfilePage`" de §11 pasan a cumplidas en la interfaz (el backend no valida) | `frontend/src/lib/validacion.ts` |
+| 12 nov 2026 | Se quitó "Cambiar foto": era un botón sin acción. Si el perfil tiene `foto_url` se muestra; subir una foto no está en las especificaciones | `frontend/src/pages/ProfilePage.tsx` |
+| 12 nov 2026 | "Cerrar sesión" pasa de `destructive` a `secondary`, en su propio panel: no borra nada (§2.2). El avatar usa `bg-accion-primaria` con `text-sobre-accion` | `frontend/src/pages/ProfilePage.tsx` |
+| 12 nov 2026 | Error corregido: `loading` empezaba en `false`, así que mientras cargaba se veía "Sin nombre" y el teléfono vacío. Ahora usa `useDatos`, con `LoadingState` y error con "Reintentar" | `frontend/src/pages/ProfilePage.tsx` |
 | 12 nov 2026 | Pagos (T11): `PageShell` de 640 px; `DataTable` con socio (plazo y tasa debajo), cuota, saldo, estado (`Badge`) y una sola acción por fila, "Registrar pago", `secondary`. Antes cada fila tenía "Pago completo" `primary` y dos botones más (HT02: un solo `primary` por pantalla). El botón lleva el socio en `aria-label` ("Registrar pago de Ana Pérez") con la prop nueva `ariaLabel` de `Button` | `frontend/src/pages/PagosPage.tsx` |
 | 12 nov 2026 | Registrar un pago en Pagos va en dos pasos: `ElegirPagoModal` (completo, solo capital o solo interés, como radios con su explicación; completo viene marcado) y luego `ConfirmarPagoModal` con el desglose. Los textos de cada tipo están en `TIPO_PAGO` de `lib/creditos.ts` y los usan los dos modales. Abono y prepago siguen solo en el detalle del crédito | `frontend/src/pages/pagos/ElegirPagoModal.tsx`, `frontend/src/lib/creditos.ts` |
 | 12 nov 2026 | Pagos lista los créditos en mora además de los activos, mora primero. Antes filtraba solo `activo`, así que un crédito en mora no se podía cobrar desde Pagos aunque el backend lo acepta. El saldo ya no va en rojo | `frontend/src/pages/PagosPage.tsx` |
@@ -248,6 +253,8 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 | Hallazgo | Etapa que lo resuelve |
 | --- | --- |
+| El avatar de la barra superior usa la inicial del correo ("C") y el de Perfil las iniciales del nombre ("AT"): la misma persona se ve con dos avatares distintos. La barra no carga el perfil; haría falta que `AuthContext` lo tenga | Sin asignar |
+| El backend de perfil no valida nada: `PUT /profiles/me` guarda cualquier nombre y teléfono, y acepta `foto_url` sin revisar que sea una URL. HU016 queda cumplida solo en el formulario | Etapa 4 o 6 (validación del backend) |
 | El backend acepta pagos, abonos de cuota y prepago en créditos `pendiente` (sin desembolsar) y `castigado`: `POST /pagos` solo rechaza `pagado`. La interfaz solo ofrece pagar créditos activos y en mora, pero una llamada directa pasa | Etapa 4 o 6 (validación del backend) |
 | Ningún proceso pone un crédito en `mora`: solo `PUT /creditos/:id/estado`, que no tiene botón en la interfaz. Un crédito con cuotas vencidas sigue "Activo" en todas las listas; el atraso solo se ve al abrir el pago de la cuota | Sin asignar (regla de negocio) |
 | `PUT /socios/:id` no guarda `fecha_ingreso` aunque se envíe: la fecha de ingreso no se puede corregir después del registro. La ficha lo dice al editar ("No se cambia después del registro"). Decidir si debe poder corregirse | Sin asignar (regla de negocio) |
@@ -263,7 +270,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | `frontend/index.html` declara `lang="en"`; la interfaz es solo en español | Etapa 3 |
 | `graphify-out/` no está en `.gitignore` | Sin asignar |
 | Los alias `--color-primary_y` y compañía se resuelven en `:root`, así que solo siguen el modo oscuro porque `ThemeContext` pone `.dark` en `<html>`. Si algún día `.dark` se aplica a un subárbol, los alias no cambiarían. Desaparece al borrar los alias | Etapa 3 |
-| 5 sitios fuera de `Button` ponen `text-white` sobre un relleno de color. En modo oscuro dan 2,4:1. Se corrige usando `text-sobre-accion`. Quedan en `ProfilePage` (avatar) y `ForgotPasswordPage` (ícono). Los del marco se corrigieron en T4 y los 3 de la tarjeta de `AhorrosPage` en T8 (la tarjeta ya no tiene relleno naranja) | Etapa 3 (Perfil, autenticación) |
+| 5 sitios fuera de `Button` ponen `text-white` sobre un relleno de color. En modo oscuro dan 2,4:1. Se corrige usando `text-sobre-accion`. Queda `ForgotPasswordPage` (ícono). El marco se corrigió en T4, la tarjeta de `AhorrosPage` en T8 y el avatar de `ProfilePage` en T12 | Etapa 3 (T14) |
 | Valores fuera de escala en las páginas: 57 usos de 20 px (`p-5`, `px-5`…), 12 de 40 px, 13 `borderRadius` y 12 `fontSize` en `style={{}}`, 6 `text-lg`. Inventario y reemplazos en `docs/SISTEMA_DE_DISENO.md` §5 | Etapa 3, página por página |
 | **Fechas un día atrasadas.** Las columnas `date` llegan como `"2026-11-11"` y las páginas hacen `new Date(f)`, que las toma como UTC: en Ecuador se ven como el día anterior (`fecha_apertura`, `fecha_ingreso`, `fecha_desembolso`, vencimientos). `fecha()` ya lo corrige; falta reemplazar las 6 funciones locales | Etapa 3, al migrar cada página |
 | `ForgotPasswordPage` y `ResetPasswordPage` usan una tarjeta `bg-secondary_wt` de color fijo que no cambia en modo oscuro | Etapa 3 (autenticación) |
@@ -274,7 +281,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 3. `DonacionModal` se borró en la Etapa 2; el de `NotifContext` pasó a `ConfirmDialog` en T3; `AbonoModal`, `ConfirmarPagoModal` y `TablaAmortizacion` pasaron a `Modal` en T6. Los dos de `AhorrosPage` pasaron a `Modal` en T8. Resuelto |
 | 10 textos "Cargando…" sueltos (`App.tsx`, 7 páginas, `AbonoModal`, `TablaAmortizacion`) y 7 "Aún no hay…" (Ahorros ×2, Dashboard, Socios, Cajas, Créditos ×2) se reemplazan por `LoadingState` y `EmptyState` | Etapa 3, al migrar cada página |
 | Etiquetas de estado escritas a mano con `rgba` fijo se pasan a `Badge`. Queda `CajasPage` (T13); Configuración, Créditos, Socios y Pagos se resolvieron en T5, T6, T9 y T11 | Etapa 3 (T13) |
-| Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan (Créditos y Pagos se resolvieron en T6 y T11; "Retiro" en T8) | Etapa 3, al migrar cada página |
+| Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" (en Perfil) y "Retiro" usaban `destructive` pero no borran ni desactivan; corregidos en T12 y T8 (Créditos y Pagos se resolvieron en T6 y T11; "Retiro" en T8) | Etapa 3, al migrar cada página |
 | Lint del frontend: 5 errores que ya existían (eran 11; se fueron los de `ChatbotFlotante` y `DonacionModal` en la Etapa 2, los 2 `any` de `TablaAmortizacion` en T6 y el `any` y el `let` de `ReportesPage` en T7). 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34` | Etapa 3 (T15) |
 | El vencimiento del crédito (`creditos.fecha_vencimiento`, desembolso + plazo, mismo día del mes) no coincide con el de su última cuota (último día del mes). Con un desembolso el 31, `setMonth` además salta al mes siguiente. Es la lógica de antes; no se cambió | Sin asignar (decisión de negocio) |
 | Para la decisión pendiente de aislamiento (§6.3, §13.2): RLS ya está activado en las 9 tablas de `public` y hay 11 políticas, pero el backend usa la clave de servicio, que las ignora. Antes de decidir, revisar qué dicen esas 11 políticas | Decisión pendiente |
@@ -300,6 +307,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T12 hecha (`78be44d`). Perfil migrado, sin `style={{}}` ni `text-white`. Validaciones de HU016 probadas con 14 casos. Probado en Chromium con la API simulada: vista con teléfono sin registrar, edición con nombre y teléfono inválidos, guardado con espacios de más (se envían limpios) y aviso; en claro y oscuro. Build OK; lint del frontend en 5 errores.
 - **12 nov 2026:** T11 hecha (`5650cbe`). Pagos migrada, sin `style={{}}`. Probada en Chromium con la API simulada: cinco créditos (activo, mora, pendiente, pagado, activo con tilde), solo se listan tres con mora primero; búsqueda "alvarez"; elegir "Solo capital" con la flecha y Enter; desglose con cuota atrasada; pago y aviso con el saldo; Escape devuelve el foco al botón de la fila; en claro y oscuro. Repetida la prueba de Ahorros tras cambiar el orden de los botones. Build OK; lint del frontend en 5 errores y 0 avisos.
 - **12 nov 2026:** T10 hecha (`dc9dca2`). Dashboard migrado, sin `style={{}}`; `Card.tsx` ya no la usa ninguna página (se borra en T15). Probado en Chromium con la API simulada: con movimientos (uno sin socio), caja vacía y error del servidor; en claro y oscuro. La prueba mostró el borde doble de la tabla dentro del panel, también en Ahorros; corregido con `sinMarco`. Build OK; lint del frontend sigue en 5 errores.
 - **12 nov 2026:** T9 hecha (`29246e4`). Socios migrada, sin `style={{}}`. Validaciones probadas con 21 casos (cédulas válidas e inválidas, teléfonos, correos). Probada en Chromium con la API simulada: lista como coordinador y tesorero (sin desactivar), búsqueda sin tildes y sin resultados, ficha nueva con cuatro errores y luego válida con espacios y guiones, edición de una ficha con cédula antigua inválida, desactivar con confirmación; en claro y oscuro. La prueba mostró el lápiz desalineado en filas inactivas; corregido. Build OK; lint del frontend sigue en 5 errores.
