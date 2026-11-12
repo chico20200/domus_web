@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (0 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (1 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración de base pendiente de ejecutar |
-| 3 | Migración de pantallas | En curso: 0/15 |
+| 3 | Migración de pantallas | En curso: 1/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -74,7 +74,7 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | # | Tarea | Depende de | Estado | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | `DataTable`: columnas declaradas, alineación, primera columna fija, pie de totales, cargando y vacío | — | ⬜ | |
+| T1 | `DataTable`: columnas declaradas, alineación, primera columna fija, pie de totales, cargando y vacío | — | ✅ | ver bitácora |
 | T2 | `Card` se divide en `StatCard` y `Panel` | — | ⬜ | |
 | T3 | `ConfirmDialog` sobre `Modal`; `confirm()` de `NotifContext` lo usa, y el `window.confirm` de Socios pasa a él | — | ⬜ | |
 | T4 | Marco de la aplicación: `Sidebar`, `TopBar` y `AppLayout` a clases sobre tokens | — | ⬜ | |
@@ -96,6 +96,9 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | `DataTable` (T1): las columnas se declaran como arreglo `{ clave, encabezado, celda, alinear, pie, fija }`. Las numéricas van a la derecha con cifras de ancho fijo (`tabular-nums`). Cuerpo en `text-sm` (14 px, cuerpo de §2.4) y encabezados en `text-xs`; las tablas de hoy usan `text-xs` en todo. `detalle` agrega una fila a todo el ancho debajo de otra (los pagos de cada cuota en la amortización). `descripcion` es obligatoria y va como `<caption>` oculto | `frontend/src/components/DataTable.tsx` |
+| 12 nov 2026 | La columna fija se separa con una sombra interior de 1 px, no con `border-r`: con `border-collapse`, el borde de una celda `sticky` se queda en su sitio al desplazar. Comprobado en Chromium a 760 px de ancho | `frontend/src/components/DataTable.tsx` |
+| 12 nov 2026 | Socios y Pagos no son tablas sino listas de tarjetas (avatar, nombre, acciones). Se migran con `Panel` y no con `DataTable` | Este documento |
 | 12 nov 2026 | Etapa 3 en 15 tareas: primero los componentes que faltan y el marco (T1–T4), después una página por tarea en el orden de §12, y un cierre que borra lo viejo. Se suman dos tareas que §12 no nombra: el marco (`Sidebar` y `TopBar` son 100 % estilos en línea, §4.2) y `CajasPage`, que no está en la lista | Este documento |
 | 11 nov 2026 | Etapa 2 en 10 tareas, en la rama `etapa-2`. Primero lo que solo borra (T1–T5), después lo que cambia lógica (T6–T9) y al final la migración de rol (T10), que toca la base de datos | Este documento |
 | 11 nov 2026 | `config/supabase.js` no estaba sin usar, como dice §6.4: lo importaban `auth.routes.js` y `profile.routes.js`. Auth pasa a `config/supabaseAuth.js` (clave anon, sin sesión persistente) y perfiles a `supabaseAdmin`. Un cliente que hace `signInWithPassword` guarda esa sesión en memoria y sus consultas siguientes salen con el token de ese usuario, así que el cliente de auth nunca se usa para tablas | `backend/config/supabaseAuth.js` |
@@ -235,6 +238,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T1 hecha. `DataTable` con columnas declaradas, pie, fila de detalle, columna fija, cargando y vacío; agregada a `/dev/componentes`. Revisada en Chromium en claro, oscuro y a 760 px con desplazamiento horizontal; la prueba mostró que el borde de la columna fija no la seguía, y se cambió por una sombra interior. Build OK; lint del frontend con los 9 errores previos.
 - **12 nov 2026:** Plan de la Etapa 3 en 15 tareas; rama `etapa-3` abierta.
 - **12 nov 2026:** `etapa-2` fusionada en `main` con `--no-ff` (`e34de4f`). Build OK en `main`. Sin subir a GitHub; la migración `001` sigue sin ejecutar.
 - **12 nov 2026:** T10 hecha en el código; SQL de la migración escrito y sin ejecutar. Esquema revisado en Supabase (solo lectura). Prueba de permisos con los nombres nuevos: 175 de 175, y `admin` ya no pasa en ninguna ruta. 11 casos de `lib/roles.ts`; uno destapó que `"toString" in NIVEL` era verdadero, y se pasó a `Object.hasOwn`. Build OK; lint del frontend con los 9 errores previos, backend en cero.

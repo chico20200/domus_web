@@ -22,6 +22,7 @@ import { Modal } from "../../components/Modal"
 import { LoadingState } from "../../components/LoadingState"
 import { EmptyState } from "../../components/EmptyState"
 import { Badge } from "../../components/Badge"
+import { DataTable, type Columna } from "../../components/DataTable"
 import { useTheme } from "../../context/ThemeContext"
 import { fecha, fechaHora, moneda, porcentaje } from "../../lib/format"
 
@@ -66,6 +67,52 @@ const SOCIOS = [
   { value: "1", label: "Ana Pérez · 1712345678" },
   { value: "2", label: "Luis Toapanta · 0912345678" },
   { value: "3", label: "Rosa Quishpe · 0601234567", disabled: true },
+]
+
+const MESES_MUESTRA = [
+  { mes: "2026-09", capital: 4200, interes: 63.4, tasa: 1.5095 },
+  { mes: "2026-10", capital: 4810.5, interes: 71.25, tasa: 1.4811 },
+  { mes: "2026-11", capital: 5120, interes: 0, tasa: 0 },
+]
+
+const SOCIOS_MUESTRA = ["Ana Pérez", "Luis Andrade", "Rosa Chicaiza"].map((nombre, i) => ({
+  id: i,
+  nombre,
+  meses: MESES_MUESTRA.map((m) => m.interes / (i + 2)),
+}))
+
+const COLUMNAS_MESES: Columna<(typeof MESES_MUESTRA)[number]>[] = [
+  { clave: "mes", encabezado: "Mes", celda: (m) => m.mes, pie: "Total" },
+  {
+    clave: "capital",
+    encabezado: "Capital de la caja",
+    alinear: "derecha",
+    celda: (m) => moneda(m.capital),
+  },
+  {
+    clave: "interes",
+    encabezado: "Interés recaudado",
+    alinear: "derecha",
+    celda: (m) => moneda(m.interes),
+    pie: moneda(134.65),
+  },
+  {
+    clave: "tasa",
+    encabezado: "Rendimiento",
+    alinear: "derecha",
+    celda: (m) => porcentaje(m.tasa, 4),
+    pie: porcentaje(2.9906, 4),
+  },
+]
+
+const COLUMNAS_SOCIOS: Columna<(typeof SOCIOS_MUESTRA)[number]>[] = [
+  { clave: "socio", encabezado: "Socio", celda: (s) => s.nombre, fija: true },
+  ...Array.from({ length: 12 }, (_, i) => ({
+    clave: `m${i}`,
+    encabezado: `Mes ${i + 1}`,
+    alinear: "derecha" as const,
+    celda: (s: (typeof SOCIOS_MUESTRA)[number]) => moneda(s.meses[i % 3]),
+  })),
 ]
 
 export default function ComponentesPage() {
@@ -383,6 +430,40 @@ export default function ComponentesPage() {
           <Badge tono="alerta" label="Sobre surface-2" />
           <Badge tono="destructivo" label="Sobre surface-2" />
         </div>
+      </Seccion>
+
+      <Seccion
+        titulo="DataTable"
+        nota="Columnas declaradas, números a la derecha, pie de totales, fila de detalle y columna fija."
+      >
+        <DataTable
+          descripcion="Interés recaudado por mes"
+          filas={MESES_MUESTRA}
+          claveFila={(m) => m.mes}
+          columnas={COLUMNAS_MESES}
+          detalle={(m) => (m.interes === 0 ? "Sin pagos registrados este mes" : null)}
+        />
+        <DataTable
+          descripcion="Interés por socio y por mes"
+          filas={SOCIOS_MUESTRA}
+          claveFila={(s) => s.id}
+          columnas={COLUMNAS_SOCIOS}
+        />
+        <DataTable
+          descripcion="Tabla cargando"
+          filas={[]}
+          claveFila={() => 0}
+          columnas={COLUMNAS_MESES}
+          cargando
+          textoCargando="Cargando distribución…"
+        />
+        <DataTable
+          descripcion="Tabla vacía"
+          filas={[]}
+          claveFila={() => 0}
+          columnas={COLUMNAS_MESES}
+          vacio={<EmptyState icono={Users} titulo="Aún no hay movimientos en este ciclo" />}
+        />
       </Seccion>
 
       <Seccion titulo="Formato" nota="src/lib/format.ts">
