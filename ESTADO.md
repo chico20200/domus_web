@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (8 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`), sin subir a GitHub. **Falta subir `main` y ejecutar la migración `001` en Supabase** (pasos en Decisiones).
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (8 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -15,7 +15,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | Etapa | Nombre | Estado |
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
-| 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración de base pendiente de ejecutar |
+| 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración `001` ejecutada |
 | 3 | Migración de pantallas | En curso: 8/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
@@ -64,7 +64,7 @@ Rama `etapa-2`. Alcance de §12: quitar donaciones, PayPal y chatbot; borrar el 
 | T7 | Fecha local de Ecuador en el backend en lugar de `toISOString()` | T5 | ✅ | `55f114a` |
 | T8 | Middleware único `requierePermiso` con la tabla de permisos; se borran las copias de `verificarRol` | T5 | ✅ | `dd80830` |
 | T9 | `.eq('caja_id', cajaId)` en toda escritura | T8 | ✅ | `74c7323` |
-| T10 | Migración de `admin` a `coordinador`: base de datos, backend y frontend | T8 | ✅ Código. SQL escrito, **sin ejecutar** | `1aebb13` |
+| T10 | Migración de `admin` a `coordinador`: base de datos, backend y frontend | T8 | ✅ Código y SQL (ejecutado por el usuario) | `1aebb13` |
 
 ---
 
@@ -282,6 +282,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** El usuario confirma que subió `main` y ejecutó la migración `001`. Comprobado en Supabase (solo lectura): `rol_caja` tiene `coordinador`, `tesorero` y `socio`.
 - **12 nov 2026:** T8 hecha (`3c10e2d`). Ahorros migrada, sin `style={{}}`. Probada en Chromium con la API simulada como tesorero (lista; abrir cuenta vacía y con socio; depósito vacío, con tres decimales y de $0,29 con revisión; retiro mayor al saldo; Escape; cuenta suspendida) y como socio (vinculado y sin ficha); en claro y oscuro. Build OK; lint del frontend sigue en 5 errores (los de T15).
 - **12 nov 2026:** T7 hecha (`383d22e`). Reportes migrada, sin `style={{}}`. Probada en Chromium con la API simulada: ciclo actual con 12 meses y tres socios, pestañas con las flechas, cambio al ciclo 2 (reparto que no cuadra), PDF descargado y revisado como imagen, sin periodo como coordinador y como tesorero; en claro y oscuro. Build OK; lint del frontend baja de 7 a 5 errores. `Card.tsx` ya solo la usa el Dashboard.
 - **12 nov 2026:** T6 hecha (`b4615dc`). Créditos migrada, con sus tres modales, sin `style={{}}`. Probada en Chromium con la API simulada: lista; nueva solicitud vacía (4 errores), corregida y enviada con Enter; aprobar con confirmación; pago completo con desglose y aviso de cuota atrasada; abono sin motivo (error); tabla de amortización y su PDF (revisado como imagen); en claro y oscuro. La prueba destapó que los errores no se borraban al corregir el campo y que la línea del total se cortaba; corregidos. Build OK; lint del frontend baja de 9 a 7 errores.
