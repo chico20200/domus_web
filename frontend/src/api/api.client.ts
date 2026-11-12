@@ -1,6 +1,22 @@
 // src/api/api.client.ts
 const BASE_URL = import.meta.env.VITE_API_URL
 
+/**
+ * Error de una respuesta que no es 2xx. `message` es el texto del backend; `status` y
+ * `datos` (el cuerpo completo) sirven para distinguir casos, como el
+ * `requiere_configuracion` de Reportes.
+ */
+export class ApiError extends Error {
+  status: number
+  datos: Record<string, unknown>
+  constructor(mensaje: string, status: number, datos: Record<string, unknown>) {
+    super(mensaje)
+    this.name = "ApiError"
+    this.status = status
+    this.datos = datos
+  }
+}
+
 // La función central que todos los servicios usan
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token")
@@ -17,7 +33,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   // Si la respuesta no es 2xx, lanza un error con el mensaje del backend
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.error || `Error ${response.status}`)
+    throw new ApiError(errorData.error || `Error ${response.status}`, response.status, errorData)
   }
 
   return response.json() as Promise<T>
