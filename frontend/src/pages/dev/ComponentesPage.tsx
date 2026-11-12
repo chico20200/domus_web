@@ -121,6 +121,7 @@ export default function ComponentesPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Muestra clase="bg-accion-primaria" nombre="accion-primaria" />
           <Muestra clase="bg-accion-primaria-hover" nombre="accion-primaria-hover" />
+          <Muestra clase="bg-accion-texto" nombre="accion-texto" />
           <Muestra clase="bg-destructivo" nombre="destructivo" />
           <Muestra clase="bg-destructivo-hover" nombre="destructivo-hover" />
           <Muestra clase="bg-estado-ok" nombre="estado-ok" />
@@ -133,7 +134,7 @@ export default function ComponentesPage() {
           <span className="text-primary">text-primary</span>
           <span className="text-secondary">text-secondary</span>
           <span className="text-muted">text-muted</span>
-          <span className="text-accion-primaria">text-accion-primaria</span>
+          <span className="text-accion-texto">text-accion-texto</span>
           <span className="text-destructivo">text-destructivo</span>
           <span className="text-estado-ok">text-estado-ok</span>
           <span className="text-estado-alerta">text-estado-alerta</span>

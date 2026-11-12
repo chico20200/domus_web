@@ -8,7 +8,7 @@
  *
  * - Colores de acción y estado (--color-*): se declaran en @theme static,
  *   que Tailwind emite en :root, y se redefinen en .dark. Clases: bg-accion-primaria,
- *   text-destructivo, border-estado-ok, etc.
+ *   text-accion-texto, text-destructivo, border-estado-ok, etc.
  * - Superficies, texto y bordes (--bg-*, --text-*, --border-*): se declaran en :root
  *   y .dark, y se exponen en @theme inline. Clases: bg-base, bg-surface, bg-surface-2,
  *   text-primary, text-secondary, text-muted, border-base, border-control, border-focus, ring-focus,
@@ -27,8 +27,14 @@
  */
 
 @theme static {
-  --color-accion-primaria: #a35800;
-  --color-accion-primaria-hover: #8c4b00;
+  /* Relleno de la acción principal. #b26000 da 4,6:1 con texto blanco: es lo más claro posible */
+  --color-accion-primaria: #b26000;
+  --color-accion-primaria-hover: #a35800;
+  /*
+   * Naranja como texto o borde: enlaces, botón secundario, foco. Más oscuro que el relleno
+   * porque tiene que leerse sobre bg-surface-2 (4,6:1). No usar el relleno como texto.
+   */
+  --color-accion-texto: #a35800;
   --color-sobre-accion: #ffffff;
   --color-destructivo: #bc4227;
   --color-destructivo-hover: #a23921;
@@ -39,7 +45,8 @@
    * Alias de los nombres viejos. Solo para no romper el código que todavía los usa.
    * No usar en código nuevo; se borran cuando la Etapa 3 termine de migrar las páginas.
    */
-  --color-primary_y: var(--color-accion-primaria);
+  /* primary_y se usa sobre todo como color de texto: apunta a accion-texto para seguir cumpliendo AA */
+  --color-primary_y: var(--color-accion-texto);
   --color-primary_yh: var(--color-accion-primaria-hover);
   --color-secondary_g: var(--color-estado-ok);
   --color-secondary_gh: #5aa82d;
@@ -86,7 +93,7 @@
   --border-base: #e2e2dc;
   /* Borde de campos de formulario: 3:1 contra las tres superficies (WCAG 1.4.11) */
   --border-control: #878782;
-  --border-focus: var(--color-accion-primaria);
+  --border-focus: var(--color-accion-texto);
 
   /* Solo los usa Sidebar; se reemplazan por bg-surface y text-secondary en la Etapa 3 */
   --sidebar-bg: #ffffff;
@@ -99,6 +106,7 @@
 
   --color-accion-primaria: #dd9a4c;
   --color-accion-primaria-hover: #e6ad6a;
+  --color-accion-texto: #dd9a4c;
   --color-sobre-accion: #1a1a1a;
   --color-destructivo: #df7b64;
   --color-destructivo-hover: #e4907e;
@@ -113,7 +121,7 @@
   --text-muted: #979797;
   --border-base: #3a3a3a;
   --border-control: #797974;
-  --border-focus: var(--color-accion-primaria);
+  --border-focus: var(--color-accion-texto);
 
   --sidebar-bg: #1e1e1e;
   --sidebar-text: #c0c0c0;

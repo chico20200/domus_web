@@ -25,12 +25,12 @@ interface ButtonProps {
 }
 
 // Cada variante fija su propio color de borde. No poner border-transparent en BASE:
-// tiene la misma especificidad que border-accion-primaria y, según el orden del CSS
+// tiene la misma especificidad que border-accion-texto y, según el orden del CSS
 // generado, taparía el contorno de secondary.
 const VARIANTES: Record<ButtonVariant, string> = {
   primary:
     "border-transparent bg-accion-primaria text-sobre-accion enabled:hover:bg-accion-primaria-hover",
-  secondary: "border-accion-primaria text-accion-primaria enabled:hover:bg-surface-2",
+  secondary: "border-accion-texto text-accion-texto enabled:hover:bg-surface-2",
   ghost: "border-transparent text-secondary enabled:hover:bg-surface-2 enabled:hover:text-primary",
   destructive:
     "border-transparent bg-destructivo text-sobre-accion enabled:hover:bg-destructivo-hover",

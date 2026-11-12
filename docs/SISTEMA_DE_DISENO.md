@@ -22,6 +22,7 @@ Los valores y su medición de contraste están en `frontend/src/index.css`. Aqu�
 | Borde de campos de formulario | `border-control` | 3:1 contra las tres superficies. Lo aplica `FieldBase` |
 | Foco | `ring-focus`, `outline-focus`, `border-focus` | |
 | Relleno de la acción principal | `bg-accion-primaria`, `hover:bg-accion-primaria-hover` | Un solo botón primario por pantalla |
+| Naranja como texto o borde: enlaces, botón secundario | `text-accion-texto`, `border-accion-texto` | Nunca `text-accion-primaria`: el relleno es más claro y como texto no llega a 4,5:1 |
 | Relleno de la acción destructiva | `bg-destructivo`, `hover:bg-destructivo-hover` | |
 | Texto sobre cualquier relleno de color | `text-sobre-accion` | Nunca `text-white`: en modo oscuro el texto sobre relleno es oscuro |
 | Estado correcto: al día, vigente, registrado | `text-estado-ok`, `bg-estado-ok` | |
