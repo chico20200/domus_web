@@ -1,348 +1,164 @@
 // src/pages/CajasPage.tsx
-import { useState, useEffect } from "react"
+import { useCallback, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Plus, Building2, ChevronRight, Users, Shield, Briefcase } from "lucide-react"
-import { cajasService } from "../api/cajas.service"
-import { useCaja } from "../context/CajaContext"
+import {
+  Briefcase,
+  Building2,
+  ChevronRight,
+  KeyRound,
+  Plus,
+  Shield,
+  UserRound,
+  Users,
+  type LucideIcon,
+} from "lucide-react"
+import { PaginaSinMenu } from "../components/layout/PaginaSinMenu"
 import { Button } from "../components/Button"
-import { Field } from "../components/Field"
+import { Badge } from "../components/Badge"
+import { EmptyState } from "../components/EmptyState"
+import { LoadingState } from "../components/LoadingState"
+import { useCaja } from "../context/CajaContext"
+import { useNotif } from "../context/NotifContext"
+import { cajasService } from "../api/cajas.service"
 import type { MiCaja } from "../api/cajas.types"
 import { ETIQUETA_ROL, type RolCaja } from "../lib/roles"
-import { apiClient } from "../api/api.client"
+import { useDatos } from "../lib/useDatos"
+import { NuevaCajaModal } from "./cajas/NuevaCajaModal"
+import { UnirseModal } from "./cajas/UnirseModal"
 
-// Ícono y color según el rol
-const rolConfig = {
-  coordinador: { label: ETIQUETA_ROL.coordinador, icon: Shield, color: "var(--color-primary_y)" },
-  tesorero: { label: ETIQUETA_ROL.tesorero, icon: Briefcase, color: "var(--color-secondary_g)" },
-  socio: { label: ETIQUETA_ROL.socio, icon: Users, color: "var(--text-secondary)" },
+/**
+ * Mis cajas: elegir la caja con la que trabajar, crear una o unirse con un código.
+ * Crear y unirse tienen el mismo peso (HU004). El asistente de creación de §5.1 llega
+ * en la Etapa 4; aquí solo se migró lo visual.
+ */
+
+const ICONO_ROL: Record<RolCaja, LucideIcon> = {
+  coordinador: Shield,
+  tesorero: Briefcase,
+  socio: Users,
 }
 
 export default function CajasPage() {
   const navigate = useNavigate()
   const { setCajaActiva } = useCaja()
+  const { toast } = useNotif()
+  const cargar = useCallback(async () => (await cajasService.getMisCajas()).cajas, [])
+  const { datos, cargando, error, recargar } = useDatos(cargar)
+  const [modal, setModal] = useState<"crear" | "unirse" | null>(null)
 
-  const [cajas, setCajas] = useState<MiCaja[]>([])
-  const [loading, setLoading] = useState(true)
-  const [creando, setCreando] = useState(false)
-  const [showForm, setShowForm] = useState(false)
-  const [nombre, setNombre] = useState("")
-  const [descripcion, setDescripcion] = useState("")
-  const [error, setError] = useState<string | undefined>(undefined)
-  const [codigo, setCodigo] = useState("")
-  const [uniendose, setUniendose] = useState(false)
-  const [showUnirse, setShowUnirse] = useState(false)
-  const [errorUnirse, setErrorUnirse] = useState<string | undefined>(undefined)
-
-  useEffect(() => {
-    async function cargar() {
-      try {
-        const response = await cajasService.getMisCajas()
-        setCajas(response.cajas)
-      } catch {
-        // Si falla, muestra lista vacía — puede crear su primera caja
-      } finally {
-        setLoading(false)
-      }
-    }
-    cargar()
-  }, [])
-
-  function seleccionarCaja(caja: MiCaja) {
+  function entrar(caja: MiCaja) {
     setCajaActiva(caja)
     navigate("/dashboard")
   }
 
-  async function handleUnirse() {
-    if (!codigo.trim()) {
-      setErrorUnirse("Ingresa el código de invitación")
-      return
-    }
-    setUniendose(true)
-    setErrorUnirse(undefined)
-    try {
-      const res = await apiClient.post<{
-        message: string
-        socioVinculado: boolean
-        caja: {
-          id: string
-          nombre: string
-          descripcion?: string
-          rol: RolCaja
-        }
-      }>("/cajas/unirse", { codigo })
-
-      const caja = {
-        id: res.caja.id,
-        nombre: res.caja.nombre,
-        descripcion: res.caja.descripcion ?? "",
-        rol: res.caja.rol,
-      }
-
-      setCajaActiva(caja)
-
-      // Mensaje personalizado si se vinculó a un socio existente
-      if (res.socioVinculado) {
-        console.log("Tu cuenta fue vinculada a tu registro de socio en esta caja")
-      }
-
-      navigate("/dashboard")
-    } catch (err) {
-      setErrorUnirse(err instanceof Error ? err.message : "Código inválido")
-    } finally {
-      setUniendose(false)
-    }
-  }
-
-  async function handleCrear() {
-    if (!nombre.trim()) {
-      setError("El nombre de la caja es requerido")
-      return
-    }
-    setCreando(true)
-    setError(undefined)
-    try {
-      const response = await cajasService.crear({ nombre, descripcion })
-      // Agrega la nueva caja a la lista y la selecciona automáticamente
-      const nuevaCaja: MiCaja = {
-        id: response.caja.id,
-        nombre: response.caja.nombre,
-        descripcion: response.caja.descripcion,
-        rol: "coordinador",
-      }
-      setCajaActiva(nuevaCaja)
-      navigate("/dashboard")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear la caja")
-    } finally {
-      setCreando(false)
-    }
-  }
+  const cajas = datos ?? []
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-base)" }}>
-      {/* Header */}
-      <div
-        className="px-6 py-4 flex items-center justify-between"
-        style={{
-          background: "var(--bg-surface)",
-          borderBottom: "1px solid var(--border-base)",
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <img src="/logo_domus.png" alt="Domus" className="w-8 h-8" />
-          <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
-            Domus
-          </span>
-        </div>
-        <button
-          className="text-sm hover:underline"
-          style={{ color: "var(--text-secondary)" }}
+    <PaginaSinMenu
+      titulo="Mis cajas de ahorro"
+      descripcion={
+        cargando || error
+          ? undefined
+          : cajas.length > 0
+            ? "Elige la caja con la que vas a trabajar."
+            : "Crea una caja para tu organización o únete a una con el código que te dieron."
+      }
+      acciones={
+        <Button
+          label="Mi perfil"
+          variant="ghost"
+          icon={UserRound}
           onClick={() => navigate("/perfil")}
-        >
-          Mi perfil
-        </button>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-4 py-10">
-        {/* Título */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-            Mis cajas de ahorro
-          </h1>
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Selecciona una caja para continuar
-          </p>
+        />
+      }
+    >
+      {cargando ? (
+        <LoadingState texto="Cargando tus cajas…" />
+      ) : error ? (
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-base bg-surface p-6">
+          <p className="text-sm text-secondary">No se pudieron cargar tus cajas: {error}</p>
+          <Button label="Reintentar" variant="secondary" onClick={recargar} />
         </div>
+      ) : cajas.length === 0 ? (
+        <div className="rounded-xl border border-base bg-surface">
+          <EmptyState
+            icono={Building2}
+            titulo="Aún no perteneces a ninguna caja"
+            descripcion="Si tu organización ya usa DOMUS, pide el código de invitación al coordinador. Si no, crea la caja y quedarás como su coordinador."
+          />
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {cajas.map((caja) => (
+            <li key={caja.id}>
+              <button
+                type="button"
+                onClick={() => entrar(caja)}
+                className="flex w-full items-center gap-4 rounded-xl border border-base bg-surface p-4 text-left transition-colors hover:border-accion-texto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-accion-texto">
+                  <Building2 size={22} aria-hidden="true" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="text-base font-medium text-primary">{caja.nombre}</span>
+                  {caja.descripcion && (
+                    <span className="truncate text-sm text-secondary">{caja.descripcion}</span>
+                  )}
+                  <span>
+                    <Badge
+                      tono="neutral"
+                      icon={ICONO_ROL[caja.rol] ?? Users}
+                      label={ETIQUETA_ROL[caja.rol] ?? caja.rol}
+                    />
+                  </span>
+                </span>
+                <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
-        {/* Estado de carga */}
-        {loading && (
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Cargando cajas...
-          </p>
-        )}
-
-        {/* Lista de cajas */}
-        {!loading && cajas.length > 0 && (
-          <div className="flex flex-col gap-3 mb-6">
-            {cajas.map((caja) => {
-              const config = rolConfig[caja.rol]
-              const RolIcon = config.icon
-              return (
-                <button
-                  key={caja.id}
-                  onClick={() => seleccionarCaja(caja)}
-                  className="w-full text-left rounded-xl p-4 flex items-center gap-4 transition-all"
-                  style={{
-                    background: "var(--bg-surface)",
-                    border: "1px solid var(--border-base)",
-                  }}
-                  onMouseEnter={(e) => {
-                    ;(e.currentTarget as HTMLElement).style.borderColor = "var(--color-primary_y)"
-                  }}
-                  onMouseLeave={(e) => {
-                    ;(e.currentTarget as HTMLElement).style.borderColor = "var(--border-base)"
-                  }}
-                >
-                  {/* Ícono de caja */}
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(221,154,76,0.12)" }}
-                  >
-                    <Building2 size={22} style={{ color: "var(--color-primary_y)" }} />
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>
-                      {caja.nombre}
-                    </p>
-                    {caja.descripcion && (
-                      <p
-                        className="text-xs mt-0.5 truncate"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        {caja.descripcion}
-                      </p>
-                    )}
-                    {/* Rol */}
-                    <div className="flex items-center gap-1 mt-1">
-                      <RolIcon size={11} style={{ color: config.color }} />
-                      <span className="text-xs" style={{ color: config.color }}>
-                        {config.label}
-                      </span>
-                    </div>
-                  </div>
-
-                  <ChevronRight size={16} style={{ color: "var(--text-muted)" }} />
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Sin cajas — primera vez */}
-        {!loading && cajas.length === 0 && !showForm && (
-          <div
-            className="rounded-xl p-8 text-center mb-6"
-            style={{
-              background: "var(--bg-surface)",
-              border: "1px dashed var(--border-base)",
-            }}
-          >
-            <Building2 size={40} className="mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
-            <p className="font-medium mb-1" style={{ color: "var(--text-primary)" }}>
-              Aún no perteneces a ninguna caja
-            </p>
-            <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
-              Crea tu primera caja de ahorro para comenzar
-            </p>
-          </div>
-        )}
-
-        {/* Formulario de nueva caja */}
-        {showForm && (
-          <div
-            className="rounded-xl p-5 mb-6"
-            style={{
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-base)",
-            }}
-          >
-            <h2 className="font-medium mb-4" style={{ color: "var(--text-primary)" }}>
-              Nueva caja de ahorro
-            </h2>
-            <div className="flex flex-col gap-3">
-              <Field
-                label="Nombre de la caja"
-                type="text"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Caja Comunitaria Norte"
-                required
-                error={error}
-              />
-              <Field
-                label="Descripción (opcional)"
-                type="text"
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-                placeholder="Breve descripción de la caja"
-              />
-            </div>
-            <div className="flex gap-3 mt-4">
-              <Button
-                label="Crear caja"
-                variant="primary"
-                loading={creando}
-                onClick={handleCrear}
-              />
-              <Button
-                label="Cancelar"
-                variant="secondary"
-                onClick={() => {
-                  setShowForm(false)
-                  setNombre("")
-                  setDescripcion("")
-                  setError(undefined)
-                }}
-              />
-            </div>
-          </div>
-        )}
-        {!showForm && !showUnirse && (
-          <button
-            className="text-sm hover:underline mr-2"
-            style={{ color: "var(--text-secondary)" }}
-            onClick={() => setShowUnirse(true)}
-          >
-            ¿Tienes un código de invitación? Únete aquí
-          </button>
-        )}
-
-        {showUnirse && (
-          <div
-            className="rounded-xl p-5"
-            style={{
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-base)",
-            }}
-          >
-            <h3 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)" }}>
-              Unirse a una caja
-            </h3>
-            <Field
-              label="Código de invitación"
-              type="text"
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-              placeholder="Ej: AXBK73P2"
-              error={errorUnirse}
-              required
-            />
-            <div className="flex gap-3 mt-4">
-              <Button label="Unirse" variant="primary" loading={uniendose} onClick={handleUnirse} />
-              <Button
-                label="Cancelar"
-                variant="secondary"
-                onClick={() => {
-                  setShowUnirse(false)
-                  setCodigo("")
-                  setErrorUnirse(undefined)
-                }}
-              />
-            </div>
-          </div>
-        )}
-        {/* Botón crear nueva caja */}
-        {!showForm && (
+      {!cargando && !error && (
+        <div className="flex flex-wrap gap-3">
           <Button
-            label="Crear nueva caja"
+            label="Crear una caja"
             variant="secondary"
             icon={Plus}
-            onClick={() => setShowForm(true)}
+            onClick={() => setModal("crear")}
           />
-        )}
-      </div>
-    </div>
+          <Button
+            label="Unirse con un código"
+            variant="secondary"
+            icon={KeyRound}
+            onClick={() => setModal("unirse")}
+          />
+        </div>
+      )}
+
+      {modal === "crear" && (
+        <NuevaCajaModal
+          onCerrar={() => setModal(null)}
+          onCreada={(caja) => {
+            toast("exito", `${caja.nombre} quedó creada. Eres su coordinador.`)
+            entrar(caja)
+          }}
+        />
+      )}
+      {modal === "unirse" && (
+        <UnirseModal
+          onCerrar={() => setModal(null)}
+          onUnido={(caja, vinculado) => {
+            toast(
+              "exito",
+              vinculado
+                ? `Entraste a ${caja.nombre}. Tu cuenta quedó vinculada a tu ficha de socio.`
+                : `Entraste a ${caja.nombre} como ${ETIQUETA_ROL[caja.rol]?.toLowerCase() ?? caja.rol}.`,
+            )
+            entrar(caja)
+          }}
+        />
+      )}
+    </PaginaSinMenu>
   )
 }

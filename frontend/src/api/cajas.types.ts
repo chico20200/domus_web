@@ -30,3 +30,15 @@ export interface CreateCajaResponse {
   message: string
   caja: Caja
 }
+
+export interface UnirseResponse {
+  message: string
+  /** true si el correo de la cuenta coincidió con una ficha de socio de la caja */
+  socioVinculado: boolean
+  caja: {
+    id: string
+    nombre: string
+    descripcion?: string
+    rol: RolCaja
+  }
+}
