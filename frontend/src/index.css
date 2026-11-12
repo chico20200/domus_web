@@ -1,21 +1,62 @@
 @import "tailwindcss";
 
-@theme {
-  /* Colores de marca — fijos */
-  --color-primary_y: #dd9a4c;
-  --color-primary_yh: #f39007;
-  --color-secondary_g: #6ab23e;
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Tokens semánticos (especificaciones §2.3).
+ * Nombres por función, no por color. Un solo juego para claro y oscuro.
+ *
+ * - Colores de acción y estado (--color-*): se declaran en @theme static,
+ *   que Tailwind emite en :root, y se redefinen en .dark. Clases: bg-accion-primaria,
+ *   text-destructivo, border-estado-ok, etc.
+ * - Superficies, texto y bordes (--bg-*, --text-*, --border-*): se declaran en :root
+ *   y .dark, y se exponen en @theme inline. Clases: bg-base, bg-surface, bg-surface-2,
+ *   text-primary, text-secondary, text-muted, border-base, border-focus, ring-focus,
+ *   outline-focus.
+ *
+ * Los valores de color de marca son los de antes; el ajuste de contraste es la tarea T3.
+ */
+
+@theme static {
+  --color-accion-primaria: #dd9a4c;
+  --color-accion-primaria-hover: #f39007;
+  --color-sobre-accion: #ffffff;
+  --color-destructivo: #d96146;
+  --color-destructivo-hover: #da2b2b;
+  --color-estado-ok: #6ab23e;
+  --color-estado-alerta: #b45309;
+
+  /*
+   * Alias de los nombres viejos. Solo para no romper el código que todavía los usa.
+   * No usar en código nuevo; se borran cuando la Etapa 3 termine de migrar las páginas.
+   */
+  --color-primary_y: var(--color-accion-primaria);
+  --color-primary_yh: var(--color-accion-primaria-hover);
+  --color-secondary_g: var(--color-estado-ok);
   --color-secondary_gh: #5aa82d;
-  --color-danger_r: #d96146;
-  --color-danger_rh: #da2b2b;
+  --color-danger_r: var(--color-destructivo);
+  --color-danger_rh: var(--color-destructivo-hover);
   --color-blk_1: #2b2b2b;
   --color-blk_2: #3b3b3b;
   --color-secondary_wt: #e3e3e3;
 }
 
-@custom-variant dark (&:where(.dark, .dark *));
+@theme inline {
+  --background-color-base: var(--bg-base);
+  --background-color-surface: var(--bg-surface);
+  --background-color-surface-2: var(--bg-surface-2);
 
-/* Variables semánticas — modo claro (default) */
+  --text-color-primary: var(--text-primary);
+  --text-color-secondary: var(--text-secondary);
+  --text-color-muted: var(--text-muted);
+
+  --border-color-base: var(--border-base);
+  --border-color-focus: var(--border-focus);
+  --ring-color-focus: var(--border-focus);
+  --outline-color-focus: var(--border-focus);
+}
+
+/* Modo claro (por defecto) */
 :root {
   --bg-base: #f5f5f0;
   --bg-surface: #ffffff;
@@ -24,12 +65,23 @@
   --text-secondary: #6b6b6b;
   --text-muted: #9b9b9b;
   --border-base: #e2e2dc;
+  --border-focus: var(--color-accion-primaria);
+
+  /* Solo los usa Sidebar; se reemplazan por bg-surface y text-secondary en la Etapa 3 */
   --sidebar-bg: #ffffff;
   --sidebar-text: #4b4b4b;
 }
 
-/* Variables semánticas — modo oscuro */
+/* Modo oscuro */
 .dark {
+  --color-accion-primaria: #dd9a4c;
+  --color-accion-primaria-hover: #f39007;
+  --color-sobre-accion: #ffffff;
+  --color-destructivo: #d96146;
+  --color-destructivo-hover: #da2b2b;
+  --color-estado-ok: #6ab23e;
+  --color-estado-alerta: #e0a33a;
+
   --bg-base: #1a1a1a;
   --bg-surface: #242424;
   --bg-surface-2: #2e2e2e;
@@ -37,6 +89,8 @@
   --text-secondary: #a0a0a0;
   --text-muted: #6b6b6b;
   --border-base: #3a3a3a;
+  --border-focus: var(--color-accion-primaria);
+
   --sidebar-bg: #1e1e1e;
   --sidebar-text: #c0c0c0;
 }
