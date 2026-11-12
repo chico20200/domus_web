@@ -117,6 +117,7 @@ export function DetalleCuenta({
       <Panel titulo="Movimientos" sinRelleno>
         <DataTable<Transaccion>
           descripcion="Depósitos y retiros de la cuenta, del más reciente al más antiguo"
+          sinMarco
           filas={transacciones}
           claveFila={(t) => t.id}
           vacio={

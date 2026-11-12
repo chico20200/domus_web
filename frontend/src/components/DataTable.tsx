@@ -53,6 +53,11 @@ interface DataTableProps<T> {
   /** Lo que se muestra si no hay filas; normalmente un EmptyState */
   vacio?: ReactNode
   detalle?: (fila: T) => ReactNode
+  /**
+   * Sin borde ni esquinas propias, para cuando la tabla va dentro de un `Panel sinRelleno`
+   * que ya dibuja el marco (si no, se ven dos bordes)
+   */
+  sinMarco?: boolean
 }
 
 const ALINEACION: Record<Alineacion, string> = {
@@ -81,23 +86,25 @@ export function DataTable<T>({
   textoCargando,
   vacio,
   detalle,
+  sinMarco = false,
 }: DataTableProps<T>) {
   const conPie = columnas.some((c) => c.pie !== undefined)
+  const marco = sinMarco ? "rounded-b-xl" : "rounded-xl border border-base bg-surface"
 
   if (cargando) {
     return (
-      <div className="rounded-xl border border-base bg-surface">
+      <div className={marco}>
         <LoadingState texto={textoCargando} />
       </div>
     )
   }
 
   if (filas.length === 0 && vacio) {
-    return <div className="rounded-xl border border-base bg-surface">{vacio}</div>
+    return <div className={marco}>{vacio}</div>
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-base bg-surface">
+    <div className={`overflow-x-auto ${marco}`}>
       <table className="w-full border-collapse text-sm">
         <caption className="sr-only">{descripcion}</caption>
         <thead>
