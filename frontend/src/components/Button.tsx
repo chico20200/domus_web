@@ -24,17 +24,22 @@ interface ButtonProps {
   onClick?: () => void
 }
 
+// Cada variante fija su propio color de borde. No poner border-transparent en BASE:
+// tiene la misma especificidad que border-accion-primaria y, según el orden del CSS
+// generado, taparía el contorno de secondary.
 const VARIANTES: Record<ButtonVariant, string> = {
-  primary: "bg-accion-primaria text-sobre-accion enabled:hover:bg-accion-primaria-hover",
+  primary:
+    "border-transparent bg-accion-primaria text-sobre-accion enabled:hover:bg-accion-primaria-hover",
   secondary: "border-accion-primaria text-accion-primaria enabled:hover:bg-surface-2",
-  ghost: "text-secondary enabled:hover:bg-surface-2 enabled:hover:text-primary",
-  destructive: "bg-destructivo text-sobre-accion enabled:hover:bg-destructivo-hover",
+  ghost: "border-transparent text-secondary enabled:hover:bg-surface-2 enabled:hover:text-primary",
+  destructive:
+    "border-transparent bg-destructivo text-sobre-accion enabled:hover:bg-destructivo-hover",
 }
 
 const BASE = [
   "inline-flex items-center justify-center gap-2",
-  // Borde transparente en todas las variantes para que midan lo mismo que secondary
-  "rounded-lg border border-transparent px-4 py-2",
+  // Todas las variantes tienen borde de 1 px (transparente salvo secondary): miden lo mismo
+  "rounded-lg border px-4 py-2",
   "text-sm font-medium",
   "transition-colors cursor-pointer",
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
