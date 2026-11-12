@@ -14,7 +14,6 @@ import {
   ArrowLeftRight,
 } from "lucide-react"
 import { useCaja } from "../../context/CajaContext"
-// import { useAuth }  from "../../context/AuthContext"
 
 interface SidebarProps {
   abierto: boolean
@@ -24,12 +23,9 @@ interface SidebarProps {
 export function Sidebar({ abierto, onToggle }: SidebarProps) {
   const navigate = useNavigate()
   const { cajaActiva, salirDeCaja } = useCaja()
-  // const { user }           = useAuth()
 
   const rol = cajaActiva?.rol ?? "socio"
-  // const esSocio    = rol === "socio"
   const esTesorero = rol === "tesorero" || rol === "admin"
-  // const esAdmin    = rol === "admin"
 
   // Cada item define quién puede verlo
   const navItems = [

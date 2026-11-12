@@ -6,7 +6,6 @@ import type {
   GetCreditoResponse,
   CreateCreditoRequest,
   CreateCreditoResponse,
-  // PagoCreditoResponse,
   ChangeEstadoResponse,
 } from "./creditos.types"
 
@@ -42,10 +41,6 @@ export const creditosService = {
       fecha_desembolso,
     })
   },
-
-  // async pago(cajaId: string, creditoId: string, monto: number, descripcion?: string): Promise<PagoCreditoResponse> {
-  //   return apiClient.post<PagoCreditoResponse>(`/cajas/${cajaId}/creditos/${creditoId}/pago`, { monto, descripcion })
-  // },
 
   async cambiarEstado(
     cajaId: string,
