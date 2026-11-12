@@ -7,6 +7,7 @@ import { PaginaAcceso, EnlaceAcceso } from "../components/layout/PaginaAcceso"
 import { Form } from "../components/Form"
 import { TextField } from "../components/TextField"
 import { Button } from "../components/Button"
+import { ApiError } from "../api/api.client"
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -30,8 +31,11 @@ export default function LoginPage() {
       await login(email.trim(), password)
       navigate("/cajas", { replace: true })
     } catch (err) {
-      // El backend no dice cuál de los dos falló; el mensaje va para el formulario entero
-      setError(err instanceof Error ? err.message : "No se pudo iniciar sesión")
+      // El backend responde 401 igual para correo inexistente y contraseña mala (no revela
+      // qué cuentas existen); el mensaje va para el formulario entero
+      if (err instanceof ApiError && err.status === 401)
+        setError("El correo o la contraseña no son correctos")
+      else setError(err instanceof Error ? err.message : "No se pudo iniciar sesión")
       setCargando(false)
     }
   }
