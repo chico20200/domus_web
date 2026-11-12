@@ -3,6 +3,7 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const { fechaLocal, leerFecha } = require("../utils/fechas")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
 
 router.use(verifyToken)
@@ -153,7 +154,7 @@ router.put("/:creditoId/aprobar", async (req, res) => {
   if (!rol) return res.status(403).json({ error: "Se requiere rol tesorero o admin" })
 
   const { fecha_desembolso } = req.body
-  const fecha = fecha_desembolso ? new Date(fecha_desembolso) : new Date()
+  const fecha = fecha_desembolso ? leerFecha(fecha_desembolso) : new Date()
 
   // Lee el crédito
   const { data: credito } = await supabaseAdmin
@@ -174,8 +175,8 @@ router.put("/:creditoId/aprobar", async (req, res) => {
     .from("creditos")
     .update({
       estado: "activo",
-      fecha_desembolso: fecha.toISOString().split("T")[0],
-      fecha_vencimiento: fecha_vencimiento.toISOString().split("T")[0],
+      fecha_desembolso: fechaLocal(fecha),
+      fecha_vencimiento: fechaLocal(fecha_vencimiento),
       aprobado_por: req.user.id,
       updated_at: new Date().toISOString(),
     })

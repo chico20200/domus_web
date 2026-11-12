@@ -3,6 +3,7 @@ const express = require("express")
 const router = express.Router({ mergeParams: true }) // ← mergeParams para leer :cajaId
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const { fechaLocal } = require("../utils/fechas")
 
 router.use(verifyToken)
 
@@ -101,7 +102,7 @@ router.post("/", async (req, res) => {
       telefono: telefono?.trim() ?? "",
       email: email?.trim() ?? "",
       direccion: direccion?.trim() ?? "",
-      fecha_ingreso: fecha_ingreso ?? new Date().toISOString().split("T")[0],
+      fecha_ingreso: fecha_ingreso ?? fechaLocal(),
     })
     .select()
     .single()

@@ -3,6 +3,7 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const { fechaLocal } = require("../utils/fechas")
 
 router.use(verifyToken)
 
@@ -137,7 +138,7 @@ router.post("/", async (req, res) => {
       numero_cuenta,
       saldo: 0.0,
       estado: "activa",
-      fecha_apertura: new Date().toISOString().split("T")[0],
+      fecha_apertura: fechaLocal(),
     })
     .select()
     .single()

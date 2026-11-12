@@ -1,4 +1,5 @@
 // backend/utils/reportes.js
+const { fechaLocal } = require("./fechas")
 
 /** Último día del mes en formato ISO */
 function finDeMes(mesISO) {
@@ -28,7 +29,7 @@ function calcularDistribucionInteres({ meses, socios, transacciones, pagosIntere
   transacciones.forEach((t) => {
     if (!txPorSocio[t.socio_id]) txPorSocio[t.socio_id] = []
     txPorSocio[t.socio_id].push({
-      fecha: t.created_at.split("T")[0],
+      fecha: fechaLocal(new Date(t.created_at)),
       signo: t.tipo === "deposito" ? 1 : -1,
       monto: parseFloat(t.monto),
     })

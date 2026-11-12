@@ -2,6 +2,10 @@
 const express = require("express")
 const cors = require("cors")
 require("dotenv").config()
+const { ZONA_HORARIA } = require("./utils/fechas")
+
+// Antes de cualquier cálculo de fechas: ver utils/fechas.js
+process.env.TZ = ZONA_HORARIA
 
 const authRoutes = require("./routes/auth.routes")
 const profileRoutes = require("./routes/profile.routes")
