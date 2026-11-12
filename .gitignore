@@ -1,0 +1,8 @@
+.mcp.json
+.prettierignore
+.prettierrc.json
+CLAUDE.md
+.claude
+/.impeccable
+/docs
+/graphyfy-out
