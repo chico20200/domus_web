@@ -55,14 +55,16 @@ export function ElegirPagoModal({ nombreSocio, cuotaMensual, onCerrar, onContinu
                     : "border-control hover:bg-surface-2",
                 ].join(" ")}
               >
-                <input
-                  type="radio"
-                  name="tipo-pago"
-                  value={t}
-                  checked={elegido}
-                  onChange={() => setTipo(t)}
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-accion-texto focus-visible:outline-none"
-                />
+                <span className="flex h-5 shrink-0 items-center">
+                  <input
+                    type="radio"
+                    name="tipo-pago"
+                    value={t}
+                    checked={elegido}
+                    onChange={() => setTipo(t)}
+                    className="h-4 w-4 accent-accion-texto focus-visible:outline-none"
+                  />
+                </span>
                 <span className="flex flex-col gap-1">
                   <span className="text-sm font-medium text-primary">{TIPO_PAGO[t].etiqueta}</span>
                   <span className="text-xs text-secondary">{TIPO_PAGO[t].explicacion}</span>

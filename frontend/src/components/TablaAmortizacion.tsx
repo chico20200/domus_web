@@ -262,7 +262,9 @@ export function TablaAmortizacion({ cajaId, creditoId, nombreCaja, onCerrar }: P
                 <ul className="flex flex-col gap-1">
                   {f.movimientos.map((m, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <HandCoins size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
+                      <span className="flex h-4 shrink-0 items-center">
+                        <HandCoins size={12} aria-hidden="true" />
+                      </span>
                       {descripcionMovimiento(m)}
                     </li>
                   ))}

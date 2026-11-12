@@ -88,7 +88,9 @@ function NotifRenderer({ onCerrarConfirm }: { onCerrarConfirm: () => void }) {
               key={t.id}
               className={`pointer-events-auto flex items-start gap-3 rounded-lg border border-l-4 border-base bg-surface py-3 pr-2 pl-3 shadow-lg motion-safe:animate-aviso-entra ${tono.franja}`}
             >
-              <Icono size={18} aria-hidden="true" className={`mt-0.5 shrink-0 ${tono.texto}`} />
+              <span className="flex h-5 shrink-0 items-center">
+                <Icono size={18} aria-hidden="true" className={tono.texto} />
+              </span>
               <p className="flex-1 text-sm text-primary">{t.mensaje}</p>
               <button
                 type="button"

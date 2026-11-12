@@ -36,7 +36,7 @@ export function PaginaSinMenu({ titulo, descripcion, acciones, children }: Props
           />
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-formulario flex-col gap-8 px-4 py-10">
+      <main className="mx-auto flex w-full max-w-formulario flex-col gap-8 px-4 py-12">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold text-primary">{titulo}</h1>
           {descripcion && <p className="text-sm text-secondary">{descripcion}</p>}

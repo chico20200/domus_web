@@ -114,11 +114,9 @@ export function PeriodoCaja({ cajaId }: { cajaId: string }) {
 
       {!cargando && !errorCarga && !configurado && (
         <div className="flex gap-3 rounded-lg border-l-[3px] border-estado-alerta bg-surface-2 p-4">
-          <TriangleAlert
-            size={16}
-            className="mt-0.5 shrink-0 text-estado-alerta"
-            aria-hidden="true"
-          />
+          <span className="flex h-5 shrink-0 items-center">
+            <TriangleAlert size={16} className="text-estado-alerta" aria-hidden="true" />
+          </span>
           <p className="text-sm text-primary">
             <strong className="font-medium">Periodo sin configurar.</strong> La distribución de
             intereses de Reportes no estará disponible hasta que lo guardes.

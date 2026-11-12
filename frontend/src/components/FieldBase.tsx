@@ -81,12 +81,13 @@ export function FieldBase({
 
   const control: ControlProps = {
     id: controlId,
-    // pr-9: 12 px de margen + 16 px del ícono + 8 px de separación (excepción documentada en T4).
-    // pr-11: el botón de `accion` ocupa 36 px desde el borde derecho
+    // pr-9 (36 px, excepción documentada en T4): 12 px de margen + 16 px del ícono + 8 px de
+    // separación. El botón de `accion` mide lo mismo: 4 px de margen + 32 px de botón, con el
+    // ícono centrado, así que el texto queda igual de lejos del ojo que de un ícono
     className: [
       CONTROL_BASE,
       hayError ? CONTROL_ERROR : CONTROL_NORMAL,
-      accion ? "pr-11" : Icon ? "pr-9" : "",
+      accion || Icon ? "pr-9" : "",
     ].join(" "),
     disabled: disabled || undefined,
     "aria-required": required || undefined,

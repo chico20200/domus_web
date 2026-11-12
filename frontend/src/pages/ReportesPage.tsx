@@ -220,13 +220,13 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
           ].join(" ")}
         >
           {dist.validacion.cuadra ? (
-            <CircleCheck size={18} className="mt-0.5 shrink-0 text-estado-ok" aria-hidden="true" />
+            <span className="flex h-5 shrink-0 items-center">
+              <CircleCheck size={18} className="text-estado-ok" aria-hidden="true" />
+            </span>
           ) : (
-            <TriangleAlert
-              size={18}
-              className="mt-0.5 shrink-0 text-destructivo"
-              aria-hidden="true"
-            />
+            <span className="flex h-5 shrink-0 items-center">
+              <TriangleAlert size={18} className="text-destructivo" aria-hidden="true" />
+            </span>
           )}
           <div className="flex flex-col gap-1 text-sm">
             <p className="font-medium text-primary">

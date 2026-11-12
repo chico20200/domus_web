@@ -95,11 +95,9 @@ export function ConfirmarPagoModal({
 
             {cuota.vencida && (
               <div className="flex gap-3 rounded-lg border-l-[3px] border-destructivo bg-surface-2 p-3">
-                <TriangleAlert
-                  size={16}
-                  className="mt-0.5 shrink-0 text-destructivo"
-                  aria-hidden="true"
-                />
+                <span className="flex h-5 shrink-0 items-center">
+                  <TriangleAlert size={16} className="text-destructivo" aria-hidden="true" />
+                </span>
                 <p className="text-sm text-primary">
                   Cuota atrasada: venció el {fecha(cuota.fecha_vencimiento)}.
                   {vencidas > 1 && ` Hay ${vencidas} cuotas vencidas en total.`}

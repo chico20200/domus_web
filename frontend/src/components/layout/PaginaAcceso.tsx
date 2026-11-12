@@ -23,7 +23,7 @@ interface Props {
 export function PaginaAcceso({ titulo, descripcion, icono, pie, children }: Props) {
   const { isDark, toggleTheme } = useTheme()
   return (
-    <div className="flex min-h-screen flex-col items-center bg-base px-4 py-10">
+    <div className="flex min-h-screen flex-col items-center bg-base px-4 py-12">
       <div className="fixed top-4 right-4">
         <BotonIcono
           icono={isDark ? Sun : Moon}
