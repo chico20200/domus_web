@@ -3,7 +3,7 @@
 Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una decisión o se encuentra algo nuevo.
 
 - **Última actualización:** 12 de noviembre de 2026
-- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (8 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
+- **Etapa actual:** Etapa 3, Migración de pantallas: en curso (9 de 15). Las etapas 1 y 2 están fusionadas en `main` (`9a22d71`, `e34de4f`) y subidas a GitHub por el usuario. La migración `001` ya está ejecutada en Supabase.
 - **Rama de trabajo:** `etapa-3`, abierta desde `main` en `e34de4f`. Las etapas 1 y 2 se trabajaron en `etapa-1` y `etapa-2` y se fusionaron con `--no-ff`.
 - **Fuente de verdad:** `docs/ESPECIFICACIONES.md` (sección 12 para el orden de trabajo)
 - **Último commit de referencia:** `e34de4f`
@@ -16,7 +16,7 @@ Documento vivo. Se actualiza cada vez que se termina una tarea, se toma una deci
 | --- | --- | --- |
 | 1 | Fundaciones | Hecha: 15/15, fusionada en `main` |
 | 2 | Limpieza | Hecha: 10/10, fusionada en `main`. Migración `001` ejecutada |
-| 3 | Migración de pantallas | En curso: 8/15 |
+| 3 | Migración de pantallas | En curso: 9/15 |
 | 4 | Flujos | Pendiente |
 | 5 | Lo nuevo del documento | Pendiente |
 | 6 | Verificación | Pendiente |
@@ -82,7 +82,7 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 | T6 | Créditos, con `TablaAmortizacion` y `AbonoModal` sobre `Modal` | T1–T4 | ✅ | `b4615dc` |
 | T7 | Reportes, incluidos los colores de los PDF | T1–T4 | ✅ | `383d22e` |
 | T8 | Ahorros | T1–T4 | ✅ | `3c10e2d` |
-| T9 | Socios | T1–T4 | ⬜ | |
+| T9 | Socios | T1–T4 | ✅ | `29246e4` |
 | T10 | Dashboard | T1–T4 | ⬜ | |
 | T11 | Pagos (`ConfirmarPagoModal` ya quedó sobre `Modal` en T6) | T1–T4 | ⬜ | |
 | T12 | Perfil | T1–T4 | ⬜ | |
@@ -96,6 +96,11 @@ Rama `etapa-3`. Alcance de §12: cada página a `PageShell` y a los primitivos n
 
 | Fecha | Decisión | Dónde quedó escrita |
 | --- | --- | --- |
+| 12 nov 2026 | Socios (T9): `PageShell` de 1200 px (la tabla tiene seis columnas); `DataTable` con socio, cédula, contacto, ingreso, estado (`Badge`) y acciones. Activos primero y por apellido. La búsqueda ignora tildes y mayúsculas ("perez" encuentra a "Pérez") y cuenta "N de M". La ficha vinculada a una cuenta de DOMUS lo indica bajo el nombre | `frontend/src/pages/SociosPage.tsx` |
+| 12 nov 2026 | La ficha (HU-O01) pasa de un formulario en la página a un `Modal` con `Form`: error por campo, Enter envía, "Cancelar" `ghost`. Explica qué es la ficha y, junto al correo, cómo se vincula a una cuenta de DOMUS (§8, "Crear un socio"). Al editar, la fecha de ingreso se muestra como texto porque el backend no la cambia | `frontend/src/pages/socios/SocioModal.tsx` |
+| 12 nov 2026 | `lib/validacion.ts`: cédula ecuatoriana (10 dígitos, provincia 01–24 o 30, tercer dígito menor que 6, dígito verificador módulo 10), teléfono (celular 09 de 10 dígitos, fijo 02–07 de 9, o con +593) y correo. Se aceptan espacios y guiones al escribir y se guardan solo los dígitos. Al editar, la cédula se valida solo si cambió, para no bloquear fichas antiguas | `frontend/src/lib/validacion.ts` |
+| 12 nov 2026 | `hoyISO()` en `lib/format.ts`: la fecha local de hoy para campos `date`. La fecha de ingreso por defecto usaba `toISOString()`, que en Ecuador después de las 19:00 da mañana. El campo no acepta fechas futuras | `frontend/src/lib/format.ts` |
+| 12 nov 2026 | Los botones de editar y desactivar de cada fila llevan el nombre del socio en `aria-label` ("Desactivar a Luis Andrade"), miden 36 px y tienen foco visible. Desactivar solo aparece para el coordinador y en socios activos | `frontend/src/pages/SociosPage.tsx` |
 | 12 nov 2026 | Ahorros (T8): `PageShell` de 640 px; la lista y el historial con `DataTable`; el estado de la cuenta con `Badge` (`lib/ahorros.ts`: activa → ok, suspendida → alerta, cerrada → neutral). La página queda en `AhorrosPage`, `pages/ahorros/DetalleCuenta.tsx`, `OperacionModal.tsx` y `NuevaCuentaModal.tsx` | `frontend/src/pages/ahorros/` |
 | 12 nov 2026 | El socio tiene su propia vista, "Mis ahorros": total ahorrado con `StatCard`, sus cuentas y el detalle en solo lectura. Si su usuario no está vinculado a una ficha, se le explica qué pedir al tesorero, en vez de "Aún no hay cuentas" (§9, `AhorrosPage` no se adaptaba al rol) | `frontend/src/pages/AhorrosPage.tsx` |
 | 12 nov 2026 | Depósito y retiro (HU-O03) en dos pasos dentro del mismo modal: monto y descripción, y después un resumen con el saldo actual, el movimiento y el saldo después, que hay que confirmar. El monto acepta como máximo dos decimales y el retiro no puede pasar del saldo (antes lo rechazaba solo el backend) | `frontend/src/pages/ahorros/OperacionModal.tsx` |
@@ -234,6 +239,10 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 | Hallazgo | Etapa que lo resuelve |
 | --- | --- |
+| `PUT /socios/:id` no guarda `fecha_ingreso` aunque se envíe: la fecha de ingreso no se puede corregir después del registro. La ficha lo dice al editar ("No se cambia después del registro"). Decidir si debe poder corregirse | Sin asignar (regla de negocio) |
+| El backend no valida la cédula ni el teléfono; solo exige nombre, apellido y cédula y que la cédula no se repita en la caja. El formulario ya valida (T9), pero una llamada directa pasa. Hay fichas con cédulas que no cumplen el dígito verificador; al editarlas, el formulario solo revisa la cédula si se cambia | Etapa 4 o 6 (validación del backend) |
+| No hay forma de reactivar un socio inactivo: el backend solo tiene `DELETE` (pone `activo: false`) y `PUT` no acepta `activo` | Sin asignar (flujo nuevo) |
+| La ficha se vincula a la cuenta de usuario solo al unirse a la caja con un código, y compara el correo con `.eq`, que distingue mayúsculas. Si la ficha se crea después de que la persona se unió, o el correo difiere en una mayúscula, no se vincula nunca. "Mis ahorros" sí compara sin mayúsculas, así que el socio ve sus cuentas aunque la ficha no esté vinculada | Etapa 4 (flujos) |
 | Cualquier miembro de la caja, también el socio, puede pedir `GET /cuentas` (todas las cuentas con nombre y cédula de cada titular) y `GET /socios` (todas las fichas): las dos rutas piden solo `caja.ver`. La página del socio además necesita la lista completa de socios para encontrar su propia ficha. Hace falta una ruta "mis cuentas" que resuelva la ficha en el servidor, y limitar las otras dos a tesorero y coordinador | Etapa 4 (revalidación del rol) o 6 |
 | El backend no impide abrir varias cuentas al mismo socio sin aviso; está permitido (§8, texto de ayuda de "Abrir una cuenta de ahorro": "un socio puede tener más de una"), pero no hay forma de cerrar o suspender una cuenta desde la interfaz aunque existe `PUT /cuentas/:id/estado` | Sin asignar (flujo nuevo) |
 | El backend de créditos solo comprueba que los campos existan: acepta monto, tasa o plazo negativos, y plazos con decimales. El formulario ya lo valida (T6), pero una llamada directa a la API pasa | Etapa 4 o 6 (validación del backend) |
@@ -254,10 +263,9 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 | Las líneas que cita §4.1 (`ConfiguracionPage.tsx:235`, etc.) se corrieron con el formato de T1; hoy son `AhorrosPage.tsx:185`, `CreditosPage.tsx:260`, `ProfilePage.tsx:152` y `:202` | Etapa 3 (referencia; Configuración ya resuelta en T5) |
 | 7 overlays escritos a mano con `fixed inset-0` (`AbonoModal`, `ConfirmarPagoModal`, `TablaAmortizacion`, `DonacionModal`, dos en `AhorrosPage` y el de confirmación de `NotifContext`) se pasan a `Modal`. Hoy no cierran con Escape ni atrapan el foco | Etapa 3. `DonacionModal` se borró en la Etapa 2; el de `NotifContext` pasó a `ConfirmDialog` en T3; `AbonoModal`, `ConfirmarPagoModal` y `TablaAmortizacion` pasaron a `Modal` en T6. Los dos de `AhorrosPage` pasaron a `Modal` en T8. Resuelto |
 | 10 textos "Cargando…" sueltos (`App.tsx`, 7 páginas, `AbonoModal`, `TablaAmortizacion`) y 7 "Aún no hay…" (Ahorros ×2, Dashboard, Socios, Cajas, Créditos ×2) se reemplazan por `LoadingState` y `EmptyState` | Etapa 3, al migrar cada página |
-| Etiquetas de estado escritas a mano con `rgba` fijo (roles en `SociosPage`, más `CajasPage` y `PagosPage`; las de `ConfiguracionPage` se resolvieron en T5) se pasan a `Badge`. Los de Créditos y sus bloques teñidos se resolvieron en T6 | Etapa 3 |
+| Etiquetas de estado escritas a mano con `rgba` fijo (`CajasPage` y `PagosPage`; la de activo/inactivo de `SociosPage` se resolvió en T9; las de `ConfiguracionPage` se resolvieron en T5) se pasan a `Badge`. Los de Créditos y sus bloques teñidos se resolvieron en T6 | Etapa 3 |
 | Botones con variante equivocada según §2.2: los 12 Cancelar/Cerrar usan `secondary` y deben ser `ghost`; "Cerrar sesión" y "Retiro" usan `destructive` pero no borran ni desactivan; hay más de un `primary` por pantalla en Pagos ("Pago completo" en cada fila) (Créditos se resolvió en T6) | Etapa 3, al migrar cada página |
 | Lint del frontend: 5 errores que ya existían (eran 11; se fueron los de `ChatbotFlotante` y `DonacionModal` en la Etapa 2, los 2 `any` de `TablaAmortizacion` en T6 y el `any` y el `let` de `ReportesPage` en T7). 4 contextos (`Auth`, `Caja`, `Notif`, `Theme`) exportan el hook junto al componente; `setState` dentro de un efecto en `AuthContext.tsx:34` | Etapa 3 (T15) |
-| `SociosPage.tsx:30` propone como fecha de ingreso `new Date().toISOString().split("T")[0]`, que después de las 19:00 da mañana | Etapa 3 (Socios) |
 | El vencimiento del crédito (`creditos.fecha_vencimiento`, desembolso + plazo, mismo día del mes) no coincide con el de su última cuota (último día del mes). Con un desembolso el 31, `setMonth` además salta al mes siguiente. Es la lógica de antes; no se cambió | Sin asignar (decisión de negocio) |
 | Para la decisión pendiente de aislamiento (§6.3, §13.2): RLS ya está activado en las 9 tablas de `public` y hay 11 políticas, pero el backend usa la clave de servicio, que las ignora. Antes de decidir, revisar qué dicen esas 11 políticas | Decisión pendiente |
 | Pagos registrados antes del 12 nov después de las 19:00 de Ecuador pueden tener `fecha_pago` del día siguiente. El código nuevo ya no lo hace; los datos viejos no se corrigieron | Sin asignar |
@@ -282,6 +290,7 @@ Problemas encontrados fuera de la etapa actual. Se resuelven cuando les toque su
 
 Una línea por cambio, la más reciente arriba.
 
+- **12 nov 2026:** T9 hecha (`29246e4`). Socios migrada, sin `style={{}}`. Validaciones probadas con 21 casos (cédulas válidas e inválidas, teléfonos, correos). Probada en Chromium con la API simulada: lista como coordinador y tesorero (sin desactivar), búsqueda sin tildes y sin resultados, ficha nueva con cuatro errores y luego válida con espacios y guiones, edición de una ficha con cédula antigua inválida, desactivar con confirmación; en claro y oscuro. La prueba mostró el lápiz desalineado en filas inactivas; corregido. Build OK; lint del frontend sigue en 5 errores.
 - **12 nov 2026:** El usuario confirma que subió `main` y ejecutó la migración `001`. Comprobado en Supabase (solo lectura): `rol_caja` tiene `coordinador`, `tesorero` y `socio`.
 - **12 nov 2026:** T8 hecha (`3c10e2d`). Ahorros migrada, sin `style={{}}`. Probada en Chromium con la API simulada como tesorero (lista; abrir cuenta vacía y con socio; depósito vacío, con tres decimales y de $0,29 con revisión; retiro mayor al saldo; Escape; cuenta suspendida) y como socio (vinculado y sin ficha); en claro y oscuro. Build OK; lint del frontend sigue en 5 errores (los de T15).
 - **12 nov 2026:** T7 hecha (`383d22e`). Reportes migrada, sin `style={{}}`. Probada en Chromium con la API simulada: ciclo actual con 12 meses y tres socios, pestañas con las flechas, cambio al ciclo 2 (reparto que no cuadra), PDF descargado y revisado como imagen, sin periodo como coordinador y como tesorero; en claro y oscuro. Build OK; lint del frontend baja de 7 a 5 errores. `Card.tsx` ya solo la usa el Dashboard.
