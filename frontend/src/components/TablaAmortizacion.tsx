@@ -1,20 +1,23 @@
 // src/components/TablaAmortizacion.tsx
-import { useState, useEffect, Fragment } from "react"
-import { Download, X, CheckCircle, Circle } from "lucide-react"
+import { useCallback } from "react"
+import { Download, HandCoins } from "lucide-react"
 import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
+import autoTable, { type RowInput } from "jspdf-autotable"
+import { Modal } from "./Modal"
 import { Button } from "./Button"
+import { Badge, type BadgeTono } from "./Badge"
+import { DataTable, type Columna } from "./DataTable"
+import { LoadingState } from "./LoadingState"
 import { creditosService } from "../api/creditos.service"
-import type { GetAmortizacionResponse } from "../api/amortizacion.types"
-import { HandCoins } from "lucide-react"
+import type { FilaAmortizacion, GetAmortizacionResponse } from "../api/amortizacion.types"
+import { fecha, moneda, porcentaje } from "../lib/format"
+import { useDatos } from "../lib/useDatos"
+import { nombreSocio } from "../lib/creditos"
 
-function formatMonto(m: number) {
-  return new Intl.NumberFormat("es-EC", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(m)
-}
+/**
+ * Tabla de amortización de un crédito, con sus pagos y abonos por cuota y descarga en PDF.
+ * Se monta solo mientras está abierta.
+ */
 
 interface Props {
   cajaId: string
@@ -23,483 +26,252 @@ interface Props {
   onCerrar: () => void
 }
 
-export function TablaAmortizacion({ cajaId, creditoId, nombreCaja, onCerrar }: Props) {
-  const [data, setData] = useState<GetAmortizacionResponse | null>(null)
-  const [loading, setLoading] = useState(true)
+// Naranja de acción del modo claro (#b26000): con texto blanco da 4,6:1, como el botón
+const NARANJA_PDF: [number, number, number] = [178, 96, 0]
 
-  useEffect(() => {
-    async function cargar() {
-      try {
-        const res = await creditosService.getAmortizacion(cajaId, creditoId)
-        setData(res)
-      } finally {
-        setLoading(false)
-      }
+function estadoCuota(f: FilaAmortizacion): { etiqueta: string; tono: BadgeTono } {
+  if (f.es_prepago) return { etiqueta: "Prepagada", tono: "ok" }
+  if (f.pagada) return { etiqueta: "Pagada", tono: "ok" }
+  if (f.vencida) return { etiqueta: "Vencida", tono: "destructivo" }
+  if (f.parcial) return { etiqueta: "Parcial", tono: "alerta" }
+  return { etiqueta: "Pendiente", tono: "neutral" }
+}
+
+function descripcionMovimiento(m: FilaAmortizacion["movimientos"][number]) {
+  return [
+    `${m.es_abono ? "Abono" : "Pago"} de ${moneda(m.monto)}`,
+    m.capital > 0 ? `capital ${moneda(m.capital)}` : null,
+    m.interes > 0 ? `interés ${moneda(m.interes)}` : null,
+    m.motivo,
+    fecha(m.fecha_pago),
+  ]
+    .filter(Boolean)
+    .join(" · ")
+}
+
+function descargarPDF(data: GetAmortizacionResponse, nombreCaja: string) {
+  const { credito, tabla, resumen } = data
+  const socio = nombreSocio(credito.socio)
+
+  const filas: RowInput[] = []
+  tabla.forEach((f) => {
+    filas.push([
+      f.numero_cuota,
+      fecha(f.fecha_vencimiento),
+      moneda(f.capital),
+      f.es_prepago ? `${moneda(f.interes_condonado)} (condonado)` : moneda(f.interes),
+      moneda(f.cuota),
+      moneda(f.saldo_restante),
+      estadoCuota(f).etiqueta,
+    ])
+    if (f.es_fraccionada) {
+      f.movimientos.forEach((m) => {
+        filas.push([
+          "",
+          {
+            content: descripcionMovimiento(m),
+            colSpan: 6,
+            styles: { fontStyle: "italic", fontSize: 7, textColor: [85, 85, 85] },
+          },
+        ])
+      })
     }
-    cargar()
-  }, [cajaId, creditoId])
+  })
 
-  function descargarPDF() {
-    if (!data) return
-    const { credito, tabla, resumen } = data
-    const socio = credito.socio
-    const nombreSocio = socio ? `${socio.nombre} ${socio.apellido}` : "Sin socio"
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text("Tabla de amortización", 14, 18)
+  doc.setFontSize(10)
+  doc.setTextColor(85)
+  doc.text(nombreCaja, 14, 25)
 
-    const doc = new jsPDF()
-    const bodyRows: any[] = []
-    tabla.forEach((f) => {
-      bodyRows.push([
-        f.numero_cuota,
-        f.fecha_vencimiento ?? "—",
-        formatMonto(f.capital),
-        f.es_prepago ? `${formatMonto(f.interes_condonado)} (condonado)` : formatMonto(f.interes),
-        formatMonto(f.cuota),
-        formatMonto(f.saldo_restante),
-        f.es_prepago
-          ? "Prepagada"
-          : f.pagada
-            ? "Pagada"
-            : f.vencida
-              ? "Vencida"
-              : f.parcial
-                ? "Parcial"
-                : "Pendiente",
-      ])
-
-      // Fila de detalle por cada abono
-      if (f.es_fraccionada) {
-        f.movimientos.forEach((m) => {
-          const desc = [
-            `${m.es_abono ? "Abono" : "Pago"} ${formatMonto(m.monto)}`,
-            m.capital > 0 ? `capital ${formatMonto(m.capital)}` : null,
-            m.interes > 0 ? `interés ${formatMonto(m.interes)}` : null,
-            m.motivo,
-            m.fecha_pago,
-          ]
-            .filter(Boolean)
-            .join(" — ")
-
-          bodyRows.push([
-            "",
-            {
-              content: desc,
-              colSpan: 6,
-              styles: {
-                fontStyle: "italic",
-                fontSize: 7,
-                textColor: m.es_abono ? [150, 110, 50] : [120, 120, 120],
-              },
-            },
-          ])
-        })
-      }
-    })
-    // Encabezado
-    doc.setFontSize(16)
-    doc.text("Tabla de Amortización", 14, 18)
-
-    doc.setFontSize(10)
-    doc.setTextColor(100)
-    doc.text(nombreCaja, 14, 25)
-
-    // Datos del crédito
-    doc.setFontSize(9)
-    doc.setTextColor(0)
-    const inicioY = 34
-    doc.text(`Socio: ${nombreSocio}`, 14, inicioY)
-    if (socio?.cedula) doc.text(`Cédula: ${socio.cedula}`, 14, inicioY + 5)
-    doc.text(`Monto prestado: ${formatMonto(credito.monto_solicitado)}`, 110, inicioY)
-    doc.text(`Tasa: ${credito.tasa_interes}% anual`, 110, inicioY + 5)
-    doc.text(`Plazo: ${credito.plazo_meses} meses`, 110, inicioY + 10)
-    doc.text(`Total a pagar: ${formatMonto(credito.monto_total)}`, 14, inicioY + 10)
-    if (credito.fecha_desembolso) {
-      doc.text(`Desembolso: ${credito.fecha_desembolso}`, 14, inicioY + 15)
-    }
-
-    // Tabla
-    autoTable(doc, {
-      startY: inicioY + 22,
-      head: [["#", "Vence", "Capital", "Interés", "Cuota", "Saldo", "Estado"]],
-      body: bodyRows,
-      foot: [
-        [
-          "Total",
-          "",
-          formatMonto(credito.monto_solicitado),
-          formatMonto(credito.interes_total),
-          formatMonto(credito.monto_total),
-          "",
-          "",
-        ],
-      ],
-      theme: "grid",
-      headStyles: { fillColor: [221, 154, 76], textColor: 255, fontSize: 8 },
-      footStyles: {
-        fillColor: [240, 240, 240],
-        textColor: 0,
-        fontStyle: "bold",
-        fontSize: 8,
-      },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: [250, 250, 248] },
-    })
-
-    // Pie con resumen
-    const finalY = (doc as any).lastAutoTable.finalY + 10
-    doc.setFontSize(9)
-    doc.text(`Cuotas pagadas: ${resumen.cuotas_pagadas} de ${resumen.cuotas_totales}`, 14, finalY)
-    doc.text(`Capital pagado: ${formatMonto(resumen.capital_pagado)}`, 14, finalY + 5)
-    doc.text(`Interés pagado: ${formatMonto(resumen.interes_pagado)}`, 14, finalY + 10)
-    doc.text(`Saldo pendiente: ${formatMonto(credito.saldo_pendiente)}`, 14, finalY + 15)
-
-    doc.setFontSize(7)
-    doc.setTextColor(150)
-    doc.text(
-      `Generado el ${new Date().toLocaleDateString("es-EC")} — Domus`,
-      14,
-      doc.internal.pageSize.height - 10,
-    )
-
-    doc.save(`amortizacion-${nombreSocio.replace(/\s+/g, "-")}.pdf`)
+  doc.setFontSize(9)
+  doc.setTextColor(0)
+  const y = 34
+  doc.text(`Socio: ${socio}`, 14, y)
+  if (credito.socio?.cedula) doc.text(`Cédula: ${credito.socio.cedula}`, 14, y + 5)
+  doc.text(`Total a pagar: ${moneda(credito.monto_total)}`, 14, y + 10)
+  if (credito.fecha_desembolso) {
+    doc.text(`Desembolso: ${fecha(credito.fecha_desembolso)}`, 14, y + 15)
   }
+  doc.text(`Monto prestado: ${moneda(credito.monto_solicitado)}`, 110, y)
+  doc.text(`Tasa: ${porcentaje(credito.tasa_interes)} anual`, 110, y + 5)
+  doc.text(`Plazo: ${credito.plazo_meses} meses`, 110, y + 10)
+
+  autoTable(doc, {
+    startY: y + 22,
+    head: [["#", "Vence", "Capital", "Interés", "Cuota", "Saldo", "Estado"]],
+    body: filas,
+    foot: [
+      [
+        "Total",
+        "",
+        moneda(credito.monto_solicitado),
+        moneda(credito.interes_total),
+        moneda(credito.monto_total),
+        "",
+        "",
+      ],
+    ],
+    theme: "grid",
+    headStyles: { fillColor: NARANJA_PDF, textColor: 255, fontSize: 8 },
+    footStyles: { fillColor: [240, 239, 234], textColor: 0, fontStyle: "bold", fontSize: 8 },
+    bodyStyles: { fontSize: 8 },
+    alternateRowStyles: { fillColor: [250, 250, 248] },
+  })
+
+  const finalY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10
+  doc.setFontSize(9)
+  doc.text(`Cuotas pagadas: ${resumen.cuotas_pagadas} de ${resumen.cuotas_totales}`, 14, finalY)
+  doc.text(`Capital pagado: ${moneda(resumen.capital_pagado)}`, 14, finalY + 5)
+  doc.text(`Interés pagado: ${moneda(resumen.interes_pagado)}`, 14, finalY + 10)
+  doc.text(`Saldo pendiente: ${moneda(credito.saldo_pendiente)}`, 14, finalY + 15)
+
+  doc.setFontSize(7)
+  doc.setTextColor(85)
+  doc.text(`Generado el ${fecha(new Date())} · DOMUS`, 14, doc.internal.pageSize.height - 10)
+
+  doc.save(`amortizacion-${socio.replace(/\s+/g, "-")}.pdf`)
+}
+
+const COLUMNAS = (data: GetAmortizacionResponse): Columna<FilaAmortizacion>[] => [
+  { clave: "n", encabezado: "#", celda: (f) => f.numero_cuota, pie: "Total" },
+  {
+    clave: "vence",
+    encabezado: "Vence",
+    celda: (f) => <span className="whitespace-nowrap">{fecha(f.fecha_vencimiento)}</span>,
+  },
+  {
+    clave: "capital",
+    encabezado: "Capital",
+    alinear: "derecha",
+    celda: (f) => moneda(f.capital),
+    pie: moneda(data.credito.monto_solicitado),
+  },
+  {
+    clave: "interes",
+    encabezado: "Interés",
+    alinear: "derecha",
+    celda: (f) =>
+      f.es_prepago ? (
+        <span className="text-muted line-through" title="Condonado por prepago">
+          {moneda(f.interes_condonado)}
+        </span>
+      ) : (
+        moneda(f.interes)
+      ),
+    pie: moneda(data.credito.interes_total),
+  },
+  {
+    clave: "cuota",
+    encabezado: "Cuota",
+    alinear: "derecha",
+    celda: (f) => <span className="font-medium">{moneda(f.cuota)}</span>,
+    pie: moneda(data.credito.monto_total),
+  },
+  {
+    clave: "saldo",
+    encabezado: "Saldo",
+    alinear: "derecha",
+    celda: (f) => <span className="text-secondary">{moneda(f.saldo_restante)}</span>,
+  },
+  {
+    clave: "estado",
+    encabezado: "Estado",
+    alinear: "centro",
+    celda: (f) => {
+      const e = estadoCuota(f)
+      return <Badge tono={e.tono} label={e.etiqueta} />
+    },
+  },
+]
+
+export function TablaAmortizacion({ cajaId, creditoId, nombreCaja, onCerrar }: Props) {
+  const cargar = useCallback(
+    () => creditosService.getAmortizacion(cajaId, creditoId),
+    [cajaId, creditoId],
+  )
+  const { datos: data, cargando, error } = useDatos(cargar)
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{ background: "rgba(0,0,0,0.4)" }}
+    <Modal
+      abierto
+      onCerrar={onCerrar}
+      titulo="Tabla de amortización"
+      descripcion={data ? nombreSocio(data.credito.socio) : undefined}
+      ancho="amplio"
+      acciones={
+        <>
+          <Button label="Cerrar" variant="ghost" onClick={onCerrar} />
+          <Button
+            label="Descargar PDF"
+            variant="secondary"
+            icon={Download}
+            disabled={!data}
+            onClick={() => data && descargarPDF(data, nombreCaja)}
+          />
+        </>
+      }
     >
-      <div
-        className="w-full max-w-3xl rounded-xl flex flex-col overflow-hidden"
-        style={{ background: "var(--bg-surface)", maxHeight: "85vh" }}
-      >
-        {/* Header */}
-        <div
-          className="px-5 py-4 flex items-center justify-between"
-          style={{ borderBottom: "1px solid var(--border-base)" }}
-        >
-          <div>
-            <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>
-              Tabla de amortización
-            </h3>
-            {data?.credito.socio && (
-              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                {data.credito.socio.nombre} {data.credito.socio.apellido}
-              </p>
-            )}
-          </div>
-          <button onClick={onCerrar} style={{ color: "var(--text-muted)" }}>
-            <X size={18} />
-          </button>
-        </div>
+      {cargando && <LoadingState texto="Cargando la tabla…" />}
+      {!cargando && error && <p className="text-sm text-destructivo">{error}</p>}
 
-        {/* Contenido */}
-        <div className="flex-1 overflow-y-auto p-5">
-          {loading && (
-            <p className="text-sm text-center py-8" style={{ color: "var(--text-secondary)" }}>
-              Cargando tabla...
-            </p>
-          )}
-
-          {data && (
-            <>
-              {/* Resumen */}
-              <div className="grid grid-cols-4 gap-3 mb-5">
-                <div className="rounded-lg p-3" style={{ background: "var(--bg-base)" }}>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    Prestado
-                  </p>
-                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    {formatMonto(data.credito.monto_solicitado)}
-                  </p>
-                </div>
-                <div className="rounded-lg p-3" style={{ background: "var(--bg-base)" }}>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    Interés total
-                  </p>
-                  <p className="text-sm font-medium" style={{ color: "var(--color-primary_y)" }}>
-                    {formatMonto(data.credito.interes_total)}
-                  </p>
-                </div>
-                <div className="rounded-lg p-3" style={{ background: "var(--bg-base)" }}>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    Total a pagar
-                  </p>
-                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    {formatMonto(data.credito.monto_total)}
-                  </p>
-                </div>
-                <div className="rounded-lg p-3" style={{ background: "var(--bg-base)" }}>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    Cuotas
-                  </p>
-                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    {data.resumen.cuotas_pagadas} / {data.resumen.cuotas_totales}
-                  </p>
-                </div>
+      {data && (
+        <div className="flex flex-col gap-4">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ["Prestado", moneda(data.credito.monto_solicitado)],
+              ["Interés total", moneda(data.credito.interes_total)],
+              ["Total a pagar", moneda(data.credito.monto_total)],
+              [
+                "Cuotas pagadas",
+                `${data.resumen.cuotas_pagadas} de ${data.resumen.cuotas_totales}`,
+              ],
+            ].map(([etiqueta, valor]) => (
+              <div key={etiqueta} className="flex flex-col gap-1 rounded-lg bg-surface-2 p-3">
+                <dt className="text-xs text-secondary">{etiqueta}</dt>
+                <dd className="text-sm font-medium text-primary tabular-nums">{valor}</dd>
               </div>
+            ))}
+          </dl>
 
-              {/* Alertas */}
+          {(data.resumen.cuotas_vencidas > 0 || data.resumen.interes_condonado > 0) && (
+            <div className="flex flex-wrap gap-2">
               {data.resumen.cuotas_vencidas > 0 && (
-                <div
-                  className="rounded-lg px-3 py-2 mb-4 text-xs"
-                  style={{
-                    background: "rgba(217,97,70,0.1)",
-                    border: "1px solid rgba(217,97,70,0.25)",
-                    color: "var(--color-danger_r)",
-                  }}
-                >
-                  <strong>
-                    {data.resumen.cuotas_vencidas} cuota
-                    {data.resumen.cuotas_vencidas > 1 ? "s" : ""} vencida
-                    {data.resumen.cuotas_vencidas > 1 ? "s" : ""}.
-                  </strong>
-                </div>
+                <Badge
+                  tono="destructivo"
+                  label={`${data.resumen.cuotas_vencidas} ${data.resumen.cuotas_vencidas === 1 ? "cuota vencida" : "cuotas vencidas"}`}
+                />
               )}
-
               {data.resumen.interes_condonado > 0 && (
-                <div
-                  className="rounded-lg px-3 py-2 mb-4 text-xs"
-                  style={{
-                    background: "rgba(106,178,62,0.1)",
-                    border: "1px solid rgba(106,178,62,0.25)",
-                    color: "var(--color-secondary_g)",
-                  }}
-                >
-                  <strong>
-                    Interés condonado por prepago: {formatMonto(data.resumen.interes_condonado)}
-                  </strong>
-                </div>
+                <Badge
+                  tono="ok"
+                  label={`Interés condonado por prepago: ${moneda(data.resumen.interes_condonado)}`}
+                />
               )}
-
-              {/* Tabla */}
-
-              <div
-                className="rounded-lg overflow-hidden"
-                style={{ border: "1px solid var(--border-base)" }}
-              >
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr style={{ background: "var(--bg-base)" }}>
-                      <th
-                        className="px-3 py-2 text-left"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        #
-                      </th>
-                      <th
-                        className="px-3 py-2 text-left"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        Vence
-                      </th>
-                      <th
-                        className="px-3 py-2 text-right"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        Capital
-                      </th>
-                      <th
-                        className="px-3 py-2 text-right"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        Interés
-                      </th>
-                      <th
-                        className="px-3 py-2 text-right"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        Cuota
-                      </th>
-                      <th
-                        className="px-3 py-2 text-right"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        Saldo
-                      </th>
-                      <th
-                        className="px-3 py-2 text-center"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        Estado
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.tabla.map((f) => (
-                      <Fragment key={f.numero_cuota}>
-                        {/* Fila de la cuota */}
-                        <tr
-                          style={{
-                            borderTop: "1px solid var(--border-base)",
-                            background: f.vencida
-                              ? "rgba(217,97,70,0.06)"
-                              : f.es_prepago
-                                ? "rgba(106,178,62,0.06)"
-                                : "transparent",
-                          }}
-                        >
-                          <td className="px-3 py-2" style={{ color: "var(--text-primary)" }}>
-                            {f.numero_cuota}
-                          </td>
-                          <td
-                            className="px-3 py-2"
-                            style={{
-                              color: f.vencida ? "var(--color-danger_r)" : "var(--text-secondary)",
-                            }}
-                          >
-                            {f.fecha_vencimiento ?? "—"}
-                          </td>
-                          <td
-                            className="px-3 py-2 text-right"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {formatMonto(f.capital)}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {f.es_prepago ? (
-                              <span
-                                style={{
-                                  textDecoration: "line-through",
-                                  color: "var(--text-muted)",
-                                }}
-                              >
-                                {formatMonto(f.interes_condonado)}
-                              </span>
-                            ) : (
-                              <span style={{ color: "var(--color-primary_y)" }}>
-                                {formatMonto(f.interes)}
-                              </span>
-                            )}
-                          </td>
-                          <td
-                            className="px-3 py-2 text-right font-medium"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {formatMonto(f.cuota)}
-                          </td>
-                          <td
-                            className="px-3 py-2 text-right"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            {formatMonto(f.saldo_restante)}
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            {f.es_prepago ? (
-                              <span style={{ color: "var(--color-secondary_g)" }}>Prepagada</span>
-                            ) : f.pagada ? (
-                              <CheckCircle
-                                size={14}
-                                className="inline"
-                                style={{ color: "var(--color-secondary_g)" }}
-                              />
-                            ) : f.vencida ? (
-                              <span style={{ color: "var(--color-danger_r)" }}>Vencida</span>
-                            ) : f.parcial ? (
-                              <span style={{ color: "var(--color-primary_y)" }}>Parcial</span>
-                            ) : (
-                              <Circle
-                                size={14}
-                                className="inline"
-                                style={{ color: "var(--text-muted)" }}
-                              />
-                            )}
-                          </td>
-                        </tr>
-
-                        {/* Filas de movimientos — HERMANAS, no hijas */}
-                        {f.es_fraccionada &&
-                          f.movimientos.map((m, i) => (
-                            <tr
-                              key={`${f.numero_cuota}-mov-${i}`}
-                              style={{
-                                background: m.es_abono
-                                  ? "rgba(221,154,76,0.04)"
-                                  : "rgba(0,0,0,0.02)",
-                              }}
-                            >
-                              <td></td>
-                              <td colSpan={6} className="px-3 py-1.5">
-                                <div className="flex items-start gap-2 text-xs">
-                                  <HandCoins
-                                    size={11}
-                                    style={{
-                                      color: m.es_abono
-                                        ? "var(--color-primary_y)"
-                                        : "var(--text-muted)",
-                                      flexShrink: 0,
-                                      marginTop: 2,
-                                    }}
-                                  />
-                                  <span style={{ color: "var(--text-secondary)" }}>
-                                    <strong
-                                      style={{
-                                        color: m.es_abono
-                                          ? "var(--color-primary_y)"
-                                          : "var(--text-secondary)",
-                                      }}
-                                    >
-                                      {m.es_abono ? "Abono" : "Pago"} {formatMonto(m.monto)}
-                                    </strong>
-                                    {m.capital > 0 && ` · capital ${formatMonto(m.capital)}`}
-                                    {m.interes > 0 && ` · interés ${formatMonto(m.interes)}`}
-                                    {m.motivo && ` · ${m.motivo}`}
-                                    {" · "}
-                                    {m.fecha_pago}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                      </Fragment>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr
-                      style={{
-                        background: "var(--bg-base)",
-                        borderTop: "2px solid var(--border-base)",
-                      }}
-                    >
-                      <td
-                        className="px-3 py-2 font-medium"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        Total
-                      </td>
-                      <td></td>
-                      <td
-                        className="px-3 py-2 text-right font-medium"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {formatMonto(data.credito.monto_solicitado)}
-                      </td>
-                      <td
-                        className="px-3 py-2 text-right font-medium"
-                        style={{ color: "var(--color-primary_y)" }}
-                      >
-                        {formatMonto(data.credito.interes_total)}
-                      </td>
-                      <td
-                        className="px-3 py-2 text-right font-medium"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {formatMonto(data.credito.monto_total)}
-                      </td>
-                      <td colSpan={2}></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </>
+            </div>
           )}
-        </div>
 
-        {/* Footer */}
-        <div className="px-5 py-4 flex gap-3" style={{ borderTop: "1px solid var(--border-base)" }}>
-          <Button label="Descargar PDF" variant="primary" icon={Download} onClick={descargarPDF} />
-          <Button label="Cerrar" variant="secondary" onClick={onCerrar} />
+          <DataTable
+            descripcion="Cuotas del crédito con capital, interés, saldo y estado"
+            filas={data.tabla}
+            claveFila={(f) => f.numero_cuota}
+            columnas={COLUMNAS(data)}
+            detalle={(f) =>
+              f.es_fraccionada ? (
+                <ul className="flex flex-col gap-1">
+                  {f.movimientos.map((m, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <HandCoins size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
+                      {descripcionMovimiento(m)}
+                    </li>
+                  ))}
+                </ul>
+              ) : null
+            }
+          />
         </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   )
 }
