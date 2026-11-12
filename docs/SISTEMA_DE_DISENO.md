@@ -18,7 +18,8 @@ Los valores y su medición de contraste están en `frontend/src/index.css`. Aqu�
 | Texto principal | `text-primary` | |
 | Texto de apoyo: etiquetas, descripciones | `text-secondary` | |
 | Texto auxiliar: fechas, notas, ayudas | `text-muted` | Cumple AA; se puede usar para información real |
-| Borde separador de tarjetas y filas | `border-base` | No sirve como único borde de un campo (ver T7) |
+| Borde separador de tarjetas y filas | `border-base` | Decorativo: no sirve como borde de un control |
+| Borde de campos de formulario | `border-control` | 3:1 contra las tres superficies. Lo aplica `FieldBase` |
 | Foco | `ring-focus`, `outline-focus`, `border-focus` | |
 | Relleno de la acción principal | `bg-accion-primaria`, `hover:bg-accion-primaria-hover` | Un solo botón primario por pantalla |
 | Relleno de la acción destructiva | `bg-destructivo`, `hover:bg-destructivo-hover` | |
@@ -51,7 +52,7 @@ Fuera de la escala (no usar): `-0.5`, `-1.5`, `-2.5`, `-5`, `-7`, `-10` y cualqu
 **Excepciones:**
 
 - Anchos y altos (`w-*`, `h-*`, `size-*`) no están limitados a la escala; se usan los que el contenido necesite (íconos `size-4` y `size-5`, avatares, etc.).
-- El `padding-left` que deja sitio a un ícono dentro de un campo se calcula según el ícono (hoy `pl-9`). Lo resuelve `FieldBase` en un solo lugar (T7), no cada página.
+- El hueco para un ícono dentro de un campo es `pr-9` (12 px de margen + 16 px de ícono + 8 px de separación). Lo pone `FieldBase`; las páginas no lo escriben. Los buscadores de Socios y Pagos usan `pl-9` con el ícono a la izquierda hasta que se migren.
 - Bordes de 1 px (`border`) y anillos de foco (`ring-2`) no son espaciado.
 
 ---

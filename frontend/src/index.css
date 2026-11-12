@@ -11,7 +11,7 @@
  *   text-destructivo, border-estado-ok, etc.
  * - Superficies, texto y bordes (--bg-*, --text-*, --border-*): se declaran en :root
  *   y .dark, y se exponen en @theme inline. Clases: bg-base, bg-surface, bg-surface-2,
- *   text-primary, text-secondary, text-muted, border-base, border-focus, ring-focus,
+ *   text-primary, text-secondary, text-muted, border-base, border-control, border-focus, ring-focus,
  *   outline-focus.
  *
  * Contraste (tarea T3, WCAG AA): todo color de texto y de estado da al menos 4,5:1 sobre
@@ -60,6 +60,7 @@
   --text-color-muted: var(--text-muted);
 
   --border-color-base: var(--border-base);
+  --border-color-control: var(--border-control);
   --border-color-focus: var(--border-focus);
   --ring-color-focus: var(--border-focus);
   --outline-color-focus: var(--border-focus);
@@ -74,6 +75,8 @@
   --text-secondary: #555555;
   --text-muted: #6b6b6b;
   --border-base: #e2e2dc;
+  /* Borde de campos de formulario: 3:1 contra las tres superficies (WCAG 1.4.11) */
+  --border-control: #878782;
   --border-focus: var(--color-accion-primaria);
 
   /* Solo los usa Sidebar; se reemplazan por bg-surface y text-secondary en la Etapa 3 */
@@ -98,6 +101,7 @@
   --text-secondary: #bdbdbd;
   --text-muted: #979797;
   --border-base: #3a3a3a;
+  --border-control: #797974;
   --border-focus: var(--color-accion-primaria);
 
   --sidebar-bg: #1e1e1e;
