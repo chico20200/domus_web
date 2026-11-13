@@ -10,6 +10,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage"
 import Register from "./pages/Register"
 import { CajaProvider } from "./context/CajaProvider"
 import CajasPage from "./pages/CajasPage"
+import NuevaCajaPage from "./pages/NuevaCajaPage"
 import DashboardPage from "./pages/DashboardPage"
 import SociosPage from "./pages/SociosPage"
 import AhorrosPage from "./pages/AhorrosPage"
@@ -57,6 +58,16 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <CajasPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Asistente para crear una caja (§5.1) — protegida, sin layout */}
+                <Route
+                  path="/cajas/nueva"
+                  element={
+                    <ProtectedRoute>
+                      <NuevaCajaPage />
                     </ProtectedRoute>
                   }
                 />

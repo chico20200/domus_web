@@ -4,44 +4,19 @@ import { Panel } from "../../components/Panel"
 import { Button } from "../../components/Button"
 import { Form } from "../../components/Form"
 import { TextField } from "../../components/TextField"
-import { SelectField, type SelectOption } from "../../components/SelectField"
+import { SelectField } from "../../components/SelectField"
 import { LoadingState } from "../../components/LoadingState"
 import { Badge } from "../../components/Badge"
 import { useNotif } from "../../context/NotifContext"
 import { ciclosService } from "../../api/ciclos.service"
-import { fecha } from "../../lib/format"
+import { fecha, hoyISO } from "../../lib/format"
 import { useDatos } from "../../lib/useDatos"
+import { AYUDA_CICLO, DURACIONES, MESES, OPCIONES_MES } from "../../lib/ciclo"
 
 /**
  * Periodo de la caja: fecha de fundación, mes de inicio y duración de cada ciclo.
  * Solo la ve el coordinador. Sin periodo configurado, Reportes no puede repartir intereses.
  */
-
-const MESES = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
-]
-
-const OPCIONES_MES: SelectOption[] = MESES.map((nombre, i) => ({
-  value: String(i + 1),
-  label: nombre,
-}))
-
-const DURACIONES: SelectOption[] = [
-  { value: "6", label: "6 meses" },
-  { value: "12", label: "12 meses (un año)" },
-  { value: "24", label: "24 meses (dos años)" },
-]
 
 export function PeriodoCaja({ cajaId }: { cajaId: string }) {
   const { toast } = useNotif()
@@ -70,6 +45,10 @@ export function PeriodoCaja({ cajaId }: { cajaId: string }) {
   async function guardar() {
     if (!fundacion) {
       setErrorFundacion("Indica la fecha en que se fundó la caja")
+      return
+    }
+    if (fundacion > hoyISO()) {
+      setErrorFundacion("La fecha de fundación no puede ser posterior a hoy")
       return
     }
     setGuardando(true)
@@ -192,7 +171,8 @@ export function PeriodoCaja({ cajaId }: { cajaId: string }) {
               setFundacion(e.target.value)
               setErrorFundacion("")
             }}
-            hint="Puede ser anterior a la fecha en que la caja se registró en DOMUS."
+            hint={AYUDA_CICLO.fundacion}
+            max={hoyISO()}
             error={errorFundacion}
             required
           />
@@ -201,13 +181,14 @@ export function PeriodoCaja({ cajaId }: { cajaId: string }) {
             value={mesInicio}
             onChange={(e) => setMesInicio(e.target.value)}
             options={OPCIONES_MES}
-            hint="Si eliges abril, cada ciclo va de abril a marzo del año siguiente."
+            hint={AYUDA_CICLO.mesInicio}
           />
           <SelectField
             label="Duración del ciclo"
             value={duracion}
             onChange={(e) => setDuracion(e.target.value)}
             options={opcionesDuracion}
+            hint={AYUDA_CICLO.duracion}
           />
         </Form>
       )}

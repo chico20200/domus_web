@@ -23,13 +23,12 @@ import { cajasService } from "../api/cajas.service"
 import type { MiCaja } from "../api/cajas.types"
 import { ETIQUETA_ROL, inicioDeRol, type RolCaja } from "../lib/roles"
 import { useDatos } from "../lib/useDatos"
-import { NuevaCajaModal } from "./cajas/NuevaCajaModal"
 import { UnirseModal } from "./cajas/UnirseModal"
 
 /**
  * Mis cajas: elegir la caja con la que trabajar, crear una o unirse con un código.
- * Crear y unirse tienen el mismo peso (HU004). El asistente de creación de §5.1 llega
- * en la Etapa 4; aquí solo se migró lo visual.
+ * Crear y unirse tienen el mismo peso (HU004). Crear lleva al asistente de /cajas/nueva
+ * (§5.1); unirse abre el modal del código.
  */
 
 const ICONO_ROL: Record<RolCaja, LucideIcon> = {
@@ -44,7 +43,7 @@ export default function CajasPage() {
   const { toast } = useNotif()
   const cargar = useCallback(async () => (await cajasService.getMisCajas()).cajas, [])
   const { datos, cargando, error, recargar } = useDatos(cargar)
-  const [modal, setModal] = useState<"crear" | "unirse" | null>(null)
+  const [unirse, setUnirse] = useState(false)
 
   function entrar(caja: MiCaja) {
     setCajaActiva(caja)
@@ -125,29 +124,20 @@ export default function CajasPage() {
             label="Crear una caja"
             variant="secondary"
             icon={Plus}
-            onClick={() => setModal("crear")}
+            onClick={() => navigate("/cajas/nueva")}
           />
           <Button
             label="Unirse con un código"
             variant="secondary"
             icon={KeyRound}
-            onClick={() => setModal("unirse")}
+            onClick={() => setUnirse(true)}
           />
         </div>
       )}
 
-      {modal === "crear" && (
-        <NuevaCajaModal
-          onCerrar={() => setModal(null)}
-          onCreada={(caja) => {
-            toast("exito", `${caja.nombre} quedó creada. Eres su coordinador.`)
-            entrar(caja)
-          }}
-        />
-      )}
-      {modal === "unirse" && (
+      {unirse && (
         <UnirseModal
-          onCerrar={() => setModal(null)}
+          onCerrar={() => setUnirse(false)}
           onUnido={(caja, vinculado) => {
             toast(
               "exito",
