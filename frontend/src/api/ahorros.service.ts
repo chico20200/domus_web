@@ -2,6 +2,7 @@
 import { apiClient } from "./api.client"
 import type {
   GetCuentasResponse,
+  GetMisCuentasResponse,
   GetCuentaResponse,
   CuentaCreatedResponse,
   TransaccionResponse,
@@ -10,6 +11,11 @@ import type {
 export const ahorrosService = {
   async getCuentas(cajaId: string): Promise<GetCuentasResponse> {
     return apiClient.get<GetCuentasResponse>(`/cajas/${cajaId}/cuentas`)
+  },
+
+  /** Las cuentas propias del usuario (socio) en la caja */
+  async getMisCuentas(cajaId: string): Promise<GetMisCuentasResponse> {
+    return apiClient.get<GetMisCuentasResponse>(`/cajas/${cajaId}/cuentas/mias`)
   },
 
   async getCuenta(cajaId: string, cuentaId: string): Promise<GetCuentaResponse> {

@@ -39,7 +39,24 @@ export function MiembrosCaja({ cajaId, esCoordinador }: MiembrosCajaProps) {
 
   async function cambiarRol(m: Miembro, valor: string) {
     const nuevoRol = normalizarRol(valor)
-    if (!nuevoRol || nuevoRol === normalizarRol(m.rol)) return
+    const rolActual = normalizarRol(m.rol)
+    if (!nuevoRol || nuevoRol === rolActual) return
+    // Dar o quitar el rol de coordinador cambia quién controla la caja: se confirma.
+    // Entre tesorero y socio el cambio se aplica directo. Si se cancela, la lista vuelve
+    // sola al rol de antes porque su valor sale de los datos.
+    if (nuevoRol === "coordinador" || rolActual === "coordinador") {
+      const subir = nuevoRol === "coordinador"
+      const ok = await confirm({
+        titulo: subir
+          ? `¿Hacer coordinador a ${nombreDe(m)}?`
+          : `¿Quitar el rol de coordinador a ${nombreDe(m)}?`,
+        mensaje: subir
+          ? "Tendrá control total de la caja: podrá cambiar el periodo, invitar y remover miembros y cambiar sus roles, también el tuyo."
+          : `Pasará a ser ${ETIQUETA_ROL[nuevoRol].toLowerCase()} y ya no podrá configurar la caja ni gestionar a los miembros.`,
+        labelOk: subir ? "Hacer coordinador" : "Quitar el rol",
+      })
+      if (!ok) return
+    }
     try {
       await miembrosService.cambiarRol(cajaId, m.id, nuevoRol)
       await recargar()

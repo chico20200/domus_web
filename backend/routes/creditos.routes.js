@@ -13,7 +13,7 @@ router.use(verifyToken)
 // GET /api/cajas/:cajaId/creditos
 // Lista créditos de la caja
 // ─────────────────────────────────────────────
-router.get("/", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId } = req.params
 
   const { data, error } = await supabaseAdmin
@@ -31,7 +31,7 @@ router.get("/", requierePermiso("caja.ver"), async (req, res) => {
 // GET /api/cajas/:cajaId/creditos/:creditoId
 // Detalle de un crédito y sus pagos
 // ─────────────────────────────────────────────
-router.get("/:creditoId", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/:creditoId", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
   const { data: credito, error } = await supabaseAdmin
@@ -56,7 +56,7 @@ router.get("/:creditoId", requierePermiso("caja.ver"), async (req, res) => {
 // GET /api/cajas/:cajaId/creditos/socio/:socioId
 // Créditos por socio
 // ─────────────────────────────────────────────
-router.get("/socio/:socioId", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/socio/:socioId", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, socioId } = req.params
 
   const { data, error } = await supabaseAdmin
@@ -194,7 +194,7 @@ router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), asy
 // GET /api/cajas/:cajaId/creditos/:creditoId/amortizacion
 // Tabla de amortización con estado de cada cuota
 // ─────────────────────────────────────────────
-router.get("/:creditoId/amortizacion", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/:creditoId/amortizacion", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
   const { data: credito, error } = await supabaseAdmin

@@ -9,7 +9,6 @@ import { DataTable, type Columna } from "../components/DataTable"
 import { EmptyState } from "../components/EmptyState"
 import { StatCard } from "../components/StatCard"
 import { useCaja } from "../context/CajaContext"
-import { useAuth } from "../context/AuthContext"
 import { useNotif } from "../context/NotifContext"
 import { ahorrosService } from "../api/ahorros.service"
 import { sociosService } from "../api/socios.service"
@@ -30,7 +29,6 @@ import { NuevaCuentaModal } from "./ahorros/NuevaCuentaModal"
 export default function AhorrosPage() {
   const navigate = useNavigate()
   const { cajaActiva } = useCaja()
-  const { user } = useAuth()
 
   useEffect(() => {
     if (!cajaActiva) navigate("/cajas", { replace: true })
@@ -41,7 +39,7 @@ export default function AhorrosPage() {
   return puedeOperar ? (
     <AhorrosCaja cajaId={cajaActiva.id} />
   ) : (
-    <MisAhorros cajaId={cajaActiva.id} userId={user?.id} email={user?.email} />
+    <MisAhorros cajaId={cajaActiva.id} />
   )
 }
 
@@ -135,26 +133,10 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
 
 // ── Socio ─────────────────────────────────────────────────────
 
-function MisAhorros({
-  cajaId,
-  userId,
-  email,
-}: {
-  cajaId: string
-  userId?: string
-  email?: string
-}) {
-  // La ficha del socio se busca por usuario y, si aún no está vinculada, por correo
-  const cargar = useCallback(async () => {
-    const { socios } = await sociosService.getSocios(cajaId)
-    const correo = email?.toLowerCase()
-    const miSocio = socios.find(
-      (s) => (userId && s.user_id === userId) || (correo && s.email?.toLowerCase() === correo),
-    )
-    if (!miSocio) return { vinculado: false as const }
-    const { cuentas } = await ahorrosService.getCuentasSocio(cajaId, miSocio.id)
-    return { vinculado: true as const, cuentas }
-  }, [cajaId, userId, email])
+function MisAhorros({ cajaId }: { cajaId: string }) {
+  // El servidor encuentra la ficha del socio (por usuario o por correo) y devuelve solo
+  // sus cuentas: el socio no recibe las fichas ni las cuentas de los demás
+  const cargar = useCallback(() => ahorrosService.getMisCuentas(cajaId), [cajaId])
   const { datos, cargando, error, recargar } = useDatos(cargar)
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
 

@@ -4,6 +4,7 @@ const router = express.Router()
 const supabase = require("../config/supabaseAdmin")
 const supabaseAdmin = require("../config/supabaseAdmin")
 const { POLITICAS_VERSION } = require("../utils/politicas")
+const { vincularFichaPorCorreo } = require("../utils/fichas")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { calcularCiclos, validarConfigCiclo } = require("../utils/ciclos")
@@ -145,7 +146,7 @@ router.post("/", async (req, res) => {
 // GET /api/cajas/:cajaId/resumen
 // Datos de la caja, totales y movimientos recientes — solo miembros
 // ─────────────────────────────────────────────
-router.get("/:cajaId/resumen", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId } = req.params
 
   try {
@@ -307,38 +308,15 @@ router.post("/unirse", async (req, res) => {
     return res.status(500).json({ error: errorMiembro.message })
   }
 
-  // 4. Intenta vincular con socio existente por email
+  // 4. Vincula la ficha de socio que tenga el mismo correo, sin distinguir mayúsculas
   let socioVinculado = false
   try {
-    // Obtiene el email del usuario desde Supabase Auth
-    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId)
-    const emailUsuario = authData?.user?.email
-
-    if (emailUsuario) {
-      // Busca socio con ese email en la caja que no esté vinculado aún
-      const { data: socioExistente } = await supabaseAdmin
-        .from("socios")
-        .select("id, nombre, apellido")
-        .eq("caja_id", invitacion.caja_id)
-        .eq("email", emailUsuario)
-        .is("user_id", null)
-        .single()
-
-      if (socioExistente) {
-        await supabaseAdmin
-          .from("socios")
-          .update({
-            user_id: userId,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", socioExistente.id)
-          .eq("caja_id", invitacion.caja_id)
-
-        socioVinculado = true
-      }
-    }
+    socioVinculado = Boolean(
+      await vincularFichaPorCorreo(invitacion.caja_id, userId, req.user.email),
+    )
   } catch (err) {
-    // Si falla la vinculación no es crítico — el usuario igual entra a la caja
+    // Si falla la vinculación no es crítico: el usuario igual entra a la caja, y la
+    // ficha se vincula cuando abra "Mis ahorros" (GET /cuentas/mias)
     console.error("Error al vincular socio:", err.message)
   }
 

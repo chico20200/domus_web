@@ -13,7 +13,7 @@ router.use(verifyToken)
 // GET /api/cajas/:cajaId/creditos/:creditoId/pagos
 // Lista los pagos de un crédito
 // ─────────────────────────────────────────────
-router.get("/", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
   const { data, error } = await supabaseAdmin
@@ -175,7 +175,7 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
 // GET /api/cajas/:cajaId/creditos/:creditoId/pagos/proxima-cuota
 // Devuelve exactamente cuánto falta pagar de la cuota actual
 // ─────────────────────────────────────────────
-router.get("/proxima-cuota", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/proxima-cuota", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
   const { data: credito } = await supabaseAdmin
