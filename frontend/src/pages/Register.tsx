@@ -1,7 +1,7 @@
 // src/pages/Register.tsx
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Mail } from "lucide-react"
+import { Mail, MailCheck } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { authService } from "../api/auth.service"
 import { ApiError } from "../api/api.client"
@@ -10,11 +10,13 @@ import { Form } from "../components/Form"
 import { TextField } from "../components/TextField"
 import { Button } from "../components/Button"
 import { IndicadorContrasena } from "../components/IndicadorContrasena"
+import { ReenviarConfirmacion } from "./acceso/ReenviarConfirmacion"
 import { validarContrasena, validarCorreo } from "../lib/validacion"
 
 /**
  * Crear cuenta (HU-A01). La contraseña sigue la política de 8 caracteres con letras y
- * números, con el indicador de fortaleza debajo.
+ * números, con el indicador de fortaleza debajo. La cuenta no entra hasta confirmar el
+ * correo: al registrarse se muestra "Revisa tu correo", con la opción de reenviarlo.
  */
 
 type Campo = "email" | "password" | "confirm"
@@ -29,6 +31,8 @@ export default function Register() {
   const [errores, setErrores] = useState<Partial<Record<Campo, string>>>({})
   const [error, setError] = useState("")
   const [cargando, setCargando] = useState(false)
+  // Correo al que se mandó el enlace de activación
+  const [enviadoA, setEnviadoA] = useState<string | null>(null)
 
   function limpiar(campo: Campo) {
     setErrores((e) => ({ ...e, [campo]: undefined }))
@@ -45,8 +49,12 @@ export default function Register() {
     if (Object.keys(e).length > 0) return
     setCargando(true)
     try {
-      await authService.register({ email: email.trim(), password })
-      // El registro no pide confirmar el correo, así que entra directo
+      const r = await authService.register({ email: email.trim(), password })
+      if (r.confirmacion_pendiente) {
+        setEnviadoA(email.trim())
+        return
+      }
+      // Si Supabase no pidiera confirmar el correo, se entra directo
       await login(email.trim(), password)
       navigate("/perfil", { replace: true })
     } catch (err) {
@@ -57,6 +65,32 @@ export default function Register() {
       } else setError(mensaje)
       setCargando(false)
     }
+  }
+
+  if (enviadoA) {
+    return (
+      <PaginaAcceso
+        titulo="Revisa tu correo"
+        descripcion="Falta un paso para activar tu cuenta."
+        icono={
+          <span className="mb-2 flex size-12 items-center justify-center rounded-full bg-surface-2 text-estado-ok">
+            <MailCheck size={24} aria-hidden="true" />
+          </span>
+        }
+        pie={<EnlaceAcceso a="/login">Ir a iniciar sesión</EnlaceAcceso>}
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-primary">
+            Te enviamos un enlace a <strong className="font-medium">{enviadoA}</strong>. Ábrelo para
+            activar la cuenta: hasta entonces no podrás iniciar sesión.
+          </p>
+          <p className="text-sm text-secondary">
+            Si no llega en unos minutos, revisa la carpeta de correo no deseado o pide otro.
+          </p>
+          <ReenviarConfirmacion email={enviadoA} />
+        </div>
+      </PaginaAcceso>
+    )
   }
 
   return (

@@ -34,11 +34,12 @@ La verificación la hace un solo middleware, `requierePermiso("<permiso>")` en `
 ## 1. Auth — `/api/auth`
 
 ### POST /api/auth/register
-Crea un usuario nuevo en Supabase Auth.
+Crea un usuario nuevo en Supabase Auth. Con "Confirm email" activado en Supabase, la cuenta no entra hasta abrir el enlace del correo, que vuelve a `${FRONTEND_URL}/login`. Si el correo ya tenía cuenta, la respuesta es la misma (no se revela qué correos están registrados).
 
 - Auth: No
 - Body: `{ email, password }`. La contraseña: al menos 8 caracteres, con letras y números (`utils/contrasena.js`)
-- 201: `{ message, user: { id, email } }`
+- 201: `{ message, confirmacion_pendiente, user: { id, email } }`; `confirmacion_pendiente` es `true` cuando no se abrió sesión y hay que confirmar el correo
+- 429: `{ error }` si Supabase limita el envío de correos
 - 400: `{ error, campo? }` si faltan campos, la contraseña no cumple la política (`campo: "password"`) o Supabase rechaza el registro
 
 ### POST /api/auth/login
@@ -49,14 +50,16 @@ Inicia sesión y devuelve el JWT de sesión.
 - 200: `{ message, token, user: { id, email } }`
 - 400: `{ error }` si faltan campos
 - 401: `{ error: 'Credenciales incorrectas' }`
+- 403: `{ error, codigo: 'correo_sin_confirmar' }` si la contraseña es correcta pero el correo no se confirmó
 
 ### POST /api/auth/resend-confirmation
-Reenvía el correo de confirmación de registro.
+Reenvía el correo de confirmación de registro (el enlace vuelve a `${FRONTEND_URL}/login`).
 
 - Auth: No
 - Body: `{ email }`
 - 200: `{ message }`
 - 400: `{ error }`
+- 429: `{ error }` si se pidieron demasiados correos seguidos
 
 ### POST /api/auth/forgot-password
 Envía correo de recuperación de contraseña (redirige a `${FRONTEND_URL}/reset-password`).

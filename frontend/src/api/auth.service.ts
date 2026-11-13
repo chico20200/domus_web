@@ -12,7 +12,6 @@ export const authService = {
   // POST /api/auth/login
   async login(data: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>("/auth/login", data)
-    console.log("Login successful:", response)
     // Guarda el token para que api.client lo use en futuros requests
     localStorage.setItem("token", response.token)
     return response
