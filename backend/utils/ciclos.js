@@ -1,5 +1,5 @@
 // backend/utils/ciclos.js
-const { fechaLocal } = require("./fechas")
+const { fechaLocal, leerFecha } = require("./fechas")
 
 /**
  * Calcula todos los ciclos de una caja desde su fundación hasta hoy.
@@ -70,4 +70,29 @@ function nombreMes(n) {
   return ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"][n - 1]
 }
 
-module.exports = { calcularCiclos }
+/**
+ * Valida la configuración del periodo que llega en el cuerpo de una petición (HU-C03).
+ * Devuelve { error } con el mensaje para el 400, o { config } con los valores limpios.
+ * La fecha de fundación puede ser anterior a hoy, pero no posterior.
+ */
+function validarConfigCiclo({ fecha_fundacion, mes_inicio_ciclo, duracion_ciclo }) {
+  if (!fecha_fundacion) return { error: "La fecha de fundación es requerida" }
+  const fecha = String(fecha_fundacion)
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? leerFecha(fecha) : null
+  if (!d || fechaLocal(d) !== fecha) {
+    return { error: "La fecha de fundación no es válida (AAAA-MM-DD)" }
+  }
+  if (fecha > fechaLocal()) return { error: "La fecha de fundación no puede ser posterior a hoy" }
+
+  const mes = Number(mes_inicio_ciclo)
+  if (!Number.isInteger(mes) || mes < 1 || mes > 12) {
+    return { error: "El mes de inicio debe estar entre 1 y 12" }
+  }
+  const dur = Number(duracion_ciclo ?? 12)
+  if (!Number.isInteger(dur) || dur < 1 || dur > 24) {
+    return { error: "La duración debe estar entre 1 y 24 meses" }
+  }
+  return { config: { fecha_fundacion: fecha, mes_inicio_ciclo: mes, duracion_ciclo: dur } }
+}
+
+module.exports = { calcularCiclos, validarConfigCiclo }

@@ -3,9 +3,14 @@ const express = require("express")
 const router = express.Router()
 const supabase = require("../config/supabaseAdmin")
 const supabaseAdmin = require("../config/supabaseAdmin")
+const { POLITICAS_VERSION } = require("../utils/politicas")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
-const { calcularCiclos } = require("../utils/ciclos")
+const { calcularCiclos, validarConfigCiclo } = require("../utils/ciclos")
+
+// Largos máximos de los datos de una caja (los mismos que el formulario)
+const LARGO_NOMBRE = 80
+const LARGO_DESCRIPCION = 300
 
 router.use(verifyToken)
 
@@ -51,47 +56,88 @@ router.get("/mis-cajas", async (req, res) => {
 
 // ─────────────────────────────────────────────
 // POST /api/cajas
-// Crea una nueva caja y registra al creador como coordinador
+// Crea una caja con su periodo, registra al creador como coordinador y guarda su
+// aceptación de las políticas de uso (asistente de §5.1, HU004 y HU022).
+// Cuerpo: nombre, descripcion, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo,
+// politicas_version (la versión que se le mostró y aceptó).
 // ─────────────────────────────────────────────
 router.post("/", async (req, res) => {
   const userId = req.user.id
-  const { nombre, descripcion } = req.body
+  const { nombre, descripcion, politicas_version } = req.body
 
-  if (!nombre || !nombre.trim()) {
-    return res.status(400).json({ error: "El nombre de la caja es requerido" })
+  const nombreLimpio = typeof nombre === "string" ? nombre.trim().replace(/\s+/g, " ") : ""
+  const descripcionLimpia = typeof descripcion === "string" ? descripcion.trim() : ""
+  if (!nombreLimpio) {
+    return res.status(400).json({ error: "El nombre de la caja es requerido", campo: "nombre" })
+  }
+  if (nombreLimpio.length > LARGO_NOMBRE) {
+    return res
+      .status(400)
+      .json({ error: `El nombre admite hasta ${LARGO_NOMBRE} caracteres`, campo: "nombre" })
+  }
+  if (!descripcionLimpia) {
+    return res
+      .status(400)
+      .json({ error: "La descripción de la caja es requerida", campo: "descripcion" })
+  }
+  if (descripcionLimpia.length > LARGO_DESCRIPCION) {
+    return res.status(400).json({
+      error: `La descripción admite hasta ${LARGO_DESCRIPCION} caracteres`,
+      campo: "descripcion",
+    })
+  }
+  const { error: errorCiclo, config } = validarConfigCiclo(req.body)
+  if (errorCiclo) return res.status(400).json({ error: errorCiclo })
+  if (politicas_version !== POLITICAS_VERSION) {
+    return res.status(400).json({
+      error: "Hay que aceptar la versión vigente de las políticas de uso",
+      politicas_version: POLITICAS_VERSION,
+    })
   }
 
-  // 1. Crea la caja
+  // 1. Crea la caja con su periodo
   const { data: caja, error: errorCaja } = await supabaseAdmin
     .from("cajas")
     .insert({
-      nombre: nombre.trim(),
-      descripcion: descripcion?.trim() ?? "",
+      nombre: nombreLimpio,
+      descripcion: descripcionLimpia,
       creado_por: userId,
+      ...config,
     })
-    .select()
+    .select("id, nombre, descripcion, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo")
     .single()
 
   if (errorCaja) {
     return res.status(500).json({ error: errorCaja.message })
   }
 
-  // 2. Registra al creador como coordinador
-  const { error: errorMiembro } = await supabase.from("miembros_caja").insert({
-    caja_id: caja.id,
-    user_id: userId,
-    rol: "coordinador",
-  })
+  // 2. El creador queda como coordinador. 3. Su aceptación de las políticas.
+  // Si algo falla se borra la caja (miembros_caja y aceptaciones se van en cascada)
+  // para no dejar una caja sin coordinador o sin aceptación.
+  const { error: errorMiembro } = await supabaseAdmin
+    .from("miembros_caja")
+    .insert({ caja_id: caja.id, user_id: userId, rol: "coordinador" })
+  const { error: errorAceptacion } = errorMiembro
+    ? { error: null }
+    : await supabaseAdmin
+        .from("aceptaciones_politicas")
+        .insert({ caja_id: caja.id, user_id: userId, version: POLITICAS_VERSION })
 
-  if (errorMiembro) {
-    // Si falla el miembro, elimina la caja para no dejar datos huérfanos
-    await supabase.from("cajas").delete().eq("id", caja.id)
-    return res.status(500).json({ error: errorMiembro.message })
+  if (errorMiembro || errorAceptacion) {
+    await supabaseAdmin.from("cajas").delete().eq("id", caja.id)
+    return res.status(500).json({ error: (errorMiembro ?? errorAceptacion).message })
   }
+
+  const { cicloActual } = calcularCiclos(
+    caja.fecha_fundacion,
+    caja.mes_inicio_ciclo,
+    caja.duracion_ciclo,
+  )
 
   return res.status(201).json({
     message: "Caja creada correctamente",
-    caja,
+    caja: { ...caja, rol: "coordinador" },
+    ciclo_actual: cicloActual,
   })
 })
 
@@ -360,33 +406,24 @@ router.get("/:cajaId/ciclos", requierePermiso("caja.ver"), async (req, res) => {
 router.put("/:cajaId/configuracion-ciclo", requierePermiso("caja.configurar"), async (req, res) => {
   const { cajaId } = req.params
 
-  const { fecha_fundacion, mes_inicio_ciclo, duracion_ciclo } = req.body
-
-  if (!fecha_fundacion) {
-    return res.status(400).json({ error: "La fecha de fundación es requerida" })
-  }
-  const mes = parseInt(mes_inicio_ciclo)
-  if (!mes || mes < 1 || mes > 12) {
-    return res.status(400).json({ error: "El mes de inicio debe estar entre 1 y 12" })
-  }
-  const dur = parseInt(duracion_ciclo ?? 12)
-  if (!dur || dur < 1 || dur > 24) {
-    return res.status(400).json({ error: "La duración debe estar entre 1 y 24 meses" })
-  }
+  const { error: errorCiclo, config } = validarConfigCiclo(req.body)
+  if (errorCiclo) return res.status(400).json({ error: errorCiclo })
 
   const { error } = await supabaseAdmin
     .from("cajas")
     .update({
-      fecha_fundacion: fecha_fundacion,
-      mes_inicio_ciclo: mes,
-      duracion_ciclo: dur,
+      ...config,
       updated_at: new Date().toISOString(),
     })
     .eq("id", cajaId)
 
   if (error) return res.status(500).json({ error: error.message })
 
-  const { ciclos, cicloActual } = calcularCiclos(fecha_fundacion, mes, dur)
+  const { ciclos, cicloActual } = calcularCiclos(
+    config.fecha_fundacion,
+    config.mes_inicio_ciclo,
+    config.duracion_ciclo,
+  )
 
   return res.json({
     message: "Configuración guardada correctamente",

@@ -107,12 +107,15 @@ Lista las cajas activas a las que pertenece el usuario, junto con su rol en cada
 - 200: `{ cajas: [{ id, nombre, descripcion, rol }] }`
 
 ### POST /api/cajas
-Crea una nueva caja. El creador queda registrado automáticamente como `coordinador`.
+Crea una caja con su periodo (asistente `/cajas/nueva`). El creador queda registrado como `coordinador` y se guarda su aceptación de las políticas de uso en `aceptaciones_politicas` (migración `002`).
 
-- Body: `{ nombre, descripcion? }`
-- 201: `{ message, caja }`
-- 400: `{ error }` si falta el nombre
-- 500: `{ error }` (si falla el registro del miembro, la caja creada se revierte)
+- Body: `{ nombre, descripcion, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo?, politicas_version }`
+  - `nombre`: obligatorio, hasta 80 caracteres (se quitan espacios de más). `descripcion`: obligatoria, hasta 300.
+  - `fecha_fundacion`: `AAAA-MM-DD`, no posterior a hoy. `mes_inicio_ciclo`: entero 1–12. `duracion_ciclo`: entero 1–24, 12 si no se envía. Misma validación que `PUT /configuracion-ciclo`.
+  - `politicas_version`: la versión de las políticas que se aceptó; tiene que ser la vigente (`utils/politicas.js`).
+- 201: `{ message, caja: { id, nombre, descripcion, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo, rol }, ciclo_actual }`
+- 400: `{ error, campo? }`; `campo` es `nombre` o `descripcion` cuando el fallo es de ese campo. Con una versión de políticas que no es la vigente, también `politicas_version` con la vigente
+- 500: `{ error }` (si falla el registro del miembro o de la aceptación, la caja creada se borra)
 
 ### GET /api/cajas/:cajaId/resumen
 Devuelve el detalle de la caja, el rol del usuario y un resumen de indicadores (miembros, socios, saldo total en ahorros, créditos activos, saldo pendiente, últimas 5 transacciones). Solo accesible para miembros de la caja.
