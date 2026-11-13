@@ -19,6 +19,11 @@ export function tieneRol(rol: string | null | undefined, minimo: RolCaja): boole
   return NIVEL[rol as RolCaja] >= NIVEL[minimo]
 }
 
+/** Página de inicio de cada rol dentro de una caja */
+export function inicioDeRol(rol: RolCaja): string {
+  return tieneRol(rol, "tesorero") ? "/dashboard" : "/ahorros"
+}
+
 /**
  * Lee un rol guardado de antes. "admin" es el nombre viejo de "coordinador"
  * (migración 001), y puede seguir en el localStorage de algún navegador.

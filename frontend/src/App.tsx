@@ -75,8 +75,6 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <RolRoute rolMinimo="tesorero">
-                        {" "}
-                        {/* socio → redirige a /ahorros */}
                         <DashboardPage />
                       </RolRoute>
                     </ProtectedRoute>
@@ -97,7 +95,9 @@ export default function App() {
                   path="/ahorros"
                   element={
                     <ProtectedRoute>
-                      <AhorrosPage />
+                      <RolRoute>
+                        <AhorrosPage />
+                      </RolRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -105,7 +105,9 @@ export default function App() {
                   path="/creditos"
                   element={
                     <ProtectedRoute>
-                      <CreditosPage />
+                      <RolRoute rolMinimo="tesorero">
+                        <CreditosPage />
+                      </RolRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -113,7 +115,9 @@ export default function App() {
                   path="/pagos"
                   element={
                     <ProtectedRoute>
-                      <PagosPage />
+                      <RolRoute rolMinimo="tesorero">
+                        <PagosPage />
+                      </RolRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -131,7 +135,9 @@ export default function App() {
                   path="/configuracion"
                   element={
                     <ProtectedRoute>
-                      <ConfiguracionPage />
+                      <RolRoute rolMinimo="tesorero">
+                        <ConfiguracionPage />
+                      </RolRoute>
                     </ProtectedRoute>
                   }
                 />

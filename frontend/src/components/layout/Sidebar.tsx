@@ -42,8 +42,8 @@ export function Sidebar({ abierto, onToggle }: SidebarProps) {
     { to: "/creditos", icon: CreditCard, label: "Créditos", visible: esTesorero },
     { to: "/pagos", icon: Receipt, label: "Pagos", visible: esTesorero },
     { to: "/reportes", icon: PieChart, label: "Reportes", visible: esTesorero },
-    // Visible para todos por ahora; la protección de rol de las rutas es de la Etapa 4
-    { to: "/configuracion", icon: Settings, label: "Configuración", visible: true },
+    // Mismo rol mínimo que las rutas de App.tsx (§9.4)
+    { to: "/configuracion", icon: Settings, label: "Configuración", visible: esTesorero },
   ].filter((item) => item.visible)
 
   const botonPie =
