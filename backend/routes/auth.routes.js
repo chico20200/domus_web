@@ -3,6 +3,7 @@ const express = require("express")
 const router = express.Router()
 const supabaseAuth = require("../config/supabaseAuth")
 const verifyToken = require("../middlewares/auth.middleware")
+const { validarContrasena } = require("../utils/contrasena")
 
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
@@ -11,6 +12,8 @@ router.post("/register", async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ error: "Email y contraseña son requeridos" })
   }
+  const errorContrasena = validarContrasena(password)
+  if (errorContrasena) return res.status(400).json({ error: errorContrasena, campo: "password" })
 
   const { data, error } = await supabaseAuth.auth.signUp({
     email,
@@ -99,9 +102,8 @@ router.post("/forgot-password", async (req, res) => {
 router.post("/update-password", verifyToken, async (req, res) => {
   const { password } = req.body
 
-  if (!password || password.length < 6) {
-    return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" })
-  }
+  const errorContrasena = validarContrasena(password)
+  if (errorContrasena) return res.status(400).json({ error: errorContrasena, campo: "password" })
 
   const { createClient } = require("@supabase/supabase-js")
   const userSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)

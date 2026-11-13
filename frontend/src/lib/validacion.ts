@@ -68,3 +68,37 @@ export function validarTelefonoPerfil(valor: string): string {
   if (!t) return ""
   return /^\d{10}$/.test(t) ? "" : "El teléfono tiene exactamente 10 dígitos"
 }
+
+/**
+ * Política de contraseña (HU-A01): al menos 8 caracteres, con letras y números. La misma
+ * regla valida el backend (backend/utils/contrasena.js) al registrar y al restablecer.
+ */
+export const REQUISITOS_CONTRASENA: { texto: string; cumple: (p: string) => boolean }[] = [
+  { texto: "Al menos 8 caracteres", cumple: (p) => p.length >= 8 },
+  { texto: "Una letra", cumple: (p) => /\p{L}/u.test(p) },
+  { texto: "Un número", cumple: (p) => /\d/.test(p) },
+]
+
+export function validarContrasena(valor: string): string {
+  if (!valor) return "Escribe una contraseña"
+  if (valor.length < 8) return "Usa al menos 8 caracteres"
+  if (!REQUISITOS_CONTRASENA.every((r) => r.cumple(valor))) {
+    return "Combina letras y números"
+  }
+  return ""
+}
+
+export type FuerzaContrasena = "vacia" | "debil" | "aceptable" | "fuerte"
+
+/**
+ * Qué tan difícil de adivinar es la contraseña, para el indicador. Débil: no cumple la
+ * política. Aceptable: la cumple. Fuerte: además tiene 12 caracteres o más y mezcla
+ * mayúsculas con minúsculas o lleva algún símbolo.
+ */
+export function fuerzaContrasena(valor: string): FuerzaContrasena {
+  if (!valor) return "vacia"
+  if (validarContrasena(valor)) return "debil"
+  const mezcla = /\p{Lu}/u.test(valor) && /\p{Ll}/u.test(valor)
+  const simbolo = /[^\p{L}\d]/u.test(valor)
+  return valor.length >= 12 && (mezcla || simbolo) ? "fuerte" : "aceptable"
+}

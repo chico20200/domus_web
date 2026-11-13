@@ -37,9 +37,9 @@ La verificación la hace un solo middleware, `requierePermiso("<permiso>")` en `
 Crea un usuario nuevo en Supabase Auth.
 
 - Auth: No
-- Body: `{ email, password }`
+- Body: `{ email, password }`. La contraseña: al menos 8 caracteres, con letras y números (`utils/contrasena.js`)
 - 201: `{ message, user: { id, email } }`
-- 400: `{ error }` si faltan campos o Supabase rechaza el registro
+- 400: `{ error, campo? }` si faltan campos, la contraseña no cumple la política (`campo: "password"`) o Supabase rechaza el registro
 
 ### POST /api/auth/login
 Inicia sesión y devuelve el JWT de sesión.
@@ -70,9 +70,9 @@ Envía correo de recuperación de contraseña (redirige a `${FRONTEND_URL}/reset
 Actualiza la contraseña del usuario autenticado (requiere token, incluyendo el token de recuperación recibido por correo).
 
 - Auth: Sí (Bearer token)
-- Body: `{ password }` (mínimo 6 caracteres)
+- Body: `{ password }` (al menos 8 caracteres, con letras y números)
 - 200: `{ message }`
-- 400: `{ error }` si la contraseña es muy corta o Supabase rechaza el cambio
+- 400: `{ error, campo? }` si la contraseña no cumple la política (`campo: "password"`) o Supabase rechaza el cambio
 - 401: `{ error }` si la sesión no pudo establecerse
 
 ---
