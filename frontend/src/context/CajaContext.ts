@@ -12,6 +12,8 @@ export interface Caja {
 
 export interface CajaContextType {
   cajaActiva: Caja | null
+  /** La caja vino de localStorage y su rol todavía no se comprobó con el servidor */
+  verificando: boolean
   setCajaActiva: (caja: Caja) => void
   salirDeCaja: () => void
 }

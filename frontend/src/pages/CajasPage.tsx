@@ -21,7 +21,7 @@ import { useCaja } from "../context/CajaContext"
 import { useNotif } from "../context/NotifContext"
 import { cajasService } from "../api/cajas.service"
 import type { MiCaja } from "../api/cajas.types"
-import { ETIQUETA_ROL, type RolCaja } from "../lib/roles"
+import { ETIQUETA_ROL, inicioDeRol, type RolCaja } from "../lib/roles"
 import { useDatos } from "../lib/useDatos"
 import { NuevaCajaModal } from "./cajas/NuevaCajaModal"
 import { UnirseModal } from "./cajas/UnirseModal"
@@ -48,7 +48,7 @@ export default function CajasPage() {
 
   function entrar(caja: MiCaja) {
     setCajaActiva(caja)
-    navigate("/dashboard")
+    navigate(inicioDeRol(caja.rol))
   }
 
   const cajas = datos ?? []

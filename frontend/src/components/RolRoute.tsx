@@ -1,6 +1,7 @@
 // src/components/RolRoute.tsx
 import { Navigate } from "react-router-dom"
 import { useCaja } from "../context/CajaContext"
+import { LoadingState } from "./LoadingState"
 import { inicioDeRol, tieneRol, type RolCaja } from "../lib/roles"
 
 interface RolRouteProps {
@@ -17,7 +18,10 @@ interface RolRouteProps {
  * verifica cada petición por su cuenta: esto evita pantallas rotas, no fugas.
  */
 export function RolRoute({ children, rolMinimo = "socio", redirigir }: RolRouteProps) {
-  const { cajaActiva } = useCaja()
+  const { cajaActiva, verificando } = useCaja()
+
+  // Hasta confirmar el rol guardado no se muestra ninguna pantalla de ese rol (§9.5)
+  if (verificando) return <LoadingState pantallaCompleta />
 
   if (!cajaActiva) return <Navigate to="/cajas" replace />
 
