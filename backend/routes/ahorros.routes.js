@@ -3,7 +3,8 @@ const express = require("express")
 const router = express.Router({ mergeParams: true })
 const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
-const { requierePermiso } = require("../middlewares/permisos.middleware")
+const { requierePermiso, NIVEL } = require("../middlewares/permisos.middleware")
+const { fichaDelUsuario } = require("../utils/fichas")
 const { fechaLocal } = require("../utils/fechas")
 
 router.use(verifyToken)
@@ -22,7 +23,7 @@ async function generarNumeroCuenta(cajaId) {
 // GET /api/cajas/:cajaId/cuentas
 // Lista todas las cuentas de la caja con datos del socio
 // ─────────────────────────────────────────────
-router.get("/", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId } = req.params
 
   const { data, error } = await supabaseAdmin
@@ -42,20 +43,53 @@ router.get("/", requierePermiso("caja.ver"), async (req, res) => {
 })
 
 // ─────────────────────────────────────────────
+// GET /api/cajas/:cajaId/cuentas/mias
+// Las cuentas del usuario en esta caja ("Mis ahorros" del socio). La ficha se resuelve
+// aquí: la vinculada a su cuenta o la que tiene su correo, que queda vinculada.
+// ─────────────────────────────────────────────
+router.get("/mias", requierePermiso("caja.ver"), async (req, res) => {
+  const { cajaId } = req.params
+
+  const ficha = await fichaDelUsuario(cajaId, req.user)
+  if (!ficha) return res.json({ vinculado: false, cuentas: [] })
+
+  const { data, error } = await supabaseAdmin
+    .from("cuentas_ahorro")
+    .select("*")
+    .eq("caja_id", cajaId)
+    .eq("socio_id", ficha.id)
+    .order("created_at", { ascending: false })
+
+  if (error) return res.status(500).json({ error: error.message })
+
+  return res.json({
+    vinculado: true,
+    socio: { id: ficha.id, nombre: ficha.nombre, apellido: ficha.apellido },
+    cuentas: data ?? [],
+  })
+})
+
+// ─────────────────────────────────────────────
 // GET /api/cajas/:cajaId/cuentas/:cuentaId
-// Detalle de una cuenta con sus transacciones
+// Detalle de una cuenta con sus transacciones. El tesorero y el coordinador ven
+// cualquiera; el socio, solo las suyas.
 // ─────────────────────────────────────────────
 router.get("/:cuentaId", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId, cuentaId } = req.params
 
   const { data: cuenta, error } = await supabaseAdmin
     .from("cuentas_ahorro")
-    .select(`*, socios ( nombre, apellido, cedula )`)
+    .select(`*, socios ( nombre, apellido, cedula, user_id )`)
     .eq("id", cuentaId)
     .eq("caja_id", cajaId)
     .single()
 
-  if (error || !cuenta) return res.status(404).json({ error: "Cuenta no encontrada" })
+  // Una cuenta ajena se responde igual que una que no existe
+  const esSuya = cuenta?.socios?.user_id === req.user.id
+  if (error || !cuenta || (!(NIVEL[req.rol] >= NIVEL.tesorero) && !esSuya)) {
+    return res.status(404).json({ error: "Cuenta no encontrada" })
+  }
+  delete cuenta.socios.user_id
 
   const { data: transacciones } = await supabaseAdmin
     .from("transacciones")
@@ -70,7 +104,7 @@ router.get("/:cuentaId", requierePermiso("caja.ver"), async (req, res) => {
 // GET /api/cajas/:cajaId/socios/:socioId/cuentas
 // Cuentas de un socio específico
 // ─────────────────────────────────────────────
-router.get("/socio/:socioId", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/socio/:socioId", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, socioId } = req.params
 
   const { data, error } = await supabaseAdmin

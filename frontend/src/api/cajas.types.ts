@@ -1,5 +1,6 @@
 // src/api/cajas.types.ts
 import type { RolCaja } from "../lib/roles"
+import type { Ciclo } from "./ciclos.types"
 
 export interface Caja {
   id: string
@@ -23,12 +24,22 @@ export interface GetMisCajasResponse {
 
 export interface CreateCajaRequest {
   nombre: string
-  descripcion?: string
+  descripcion: string
+  fecha_fundacion: string
+  mes_inicio_ciclo: number
+  duracion_ciclo: number
+  /** Versión de las políticas de uso que se aceptó (src/lib/politicas.ts) */
+  politicas_version: string
 }
 
 export interface CreateCajaResponse {
   message: string
-  caja: Caja
+  caja: MiCaja & {
+    fecha_fundacion: string
+    mes_inicio_ciclo: number
+    duracion_ciclo: number
+  }
+  ciclo_actual: Ciclo
 }
 
 export interface UnirseResponse {

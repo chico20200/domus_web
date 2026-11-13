@@ -8,8 +8,11 @@ const NIVEL = { socio: 1, tesorero: 2, coordinador: 3 }
 // Tabla única de permisos: el rol mínimo que pide cada acción.
 // Es la única fuente de verdad; las rutas solo nombran el permiso.
 const PERMISOS = {
-  // Consultar la caja: resumen, ciclos, miembros, socios, cuentas, créditos y pagos
+  // Entrar a la caja: el periodo y lo propio del socio (sus cuentas, con /cuentas/mias)
   "caja.ver": "socio",
+  // Consultar los datos de todos: resumen, miembros, fichas, cuentas, créditos y pagos.
+  // El socio no ve los datos de los demás socios (HU022, "lo que no sale de la caja")
+  "datos.ver": "tesorero",
 
   // Registrar socios y editar sus datos
   "socios.gestionar": "tesorero",

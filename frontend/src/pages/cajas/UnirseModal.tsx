@@ -46,7 +46,7 @@ export function UnirseModal({ onCerrar, onUnido }: Props) {
       abierto
       onCerrar={onCerrar}
       titulo="Unirse con un código"
-      descripcion="El coordinador de la caja te da el código. El código define con qué rol entras."
+      descripcion="Lo genera el coordinador de la caja a la que vas a entrar, en su Configuración. Sirve una sola vez, dura 7 días y define el rol con el que entras."
       cerrarAlClicFuera={false}
     >
       <Form

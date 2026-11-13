@@ -39,6 +39,8 @@ interface LoginResponse {
 
 interface RegisterResponse {
   message: string // "Usuario creado exitosamente"
+  /** true si hay que abrir el enlace del correo antes de poder iniciar sesión */
+  confirmacion_pendiente: boolean
   user: {
     id: string
     email: string

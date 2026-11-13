@@ -15,11 +15,12 @@ import type { TransaccionReciente } from "../api/resumen.types"
 import { fecha, moneda } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
 import { nombreSocio } from "../lib/creditos"
+import { SiguientesPasos } from "./dashboard/SiguientesPasos"
 
 /**
  * Resumen de la caja para el tesorero y el coordinador: ahorros, socios, créditos y los
- * últimos cinco movimientos. La lista de siguientes pasos para una caja recién creada
- * llega con el asistente de creación (Etapa 4, §5.1).
+ * últimos cinco movimientos. Al coordinador de una caja que recién empieza le muestra
+ * los siguientes pasos (último paso del asistente de creación, §5.1).
  */
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -30,10 +31,22 @@ export default function DashboardPage() {
   }, [cajaActiva, navigate])
 
   if (!cajaActiva) return null
-  return <Dashboard cajaId={cajaActiva.id} nombreCaja={cajaActiva.nombre} />
+  return (
+    <Dashboard
+      cajaId={cajaActiva.id}
+      nombreCaja={cajaActiva.nombre}
+      esCoordinador={cajaActiva.rol === "coordinador"}
+    />
+  )
 }
 
-function Dashboard({ cajaId, nombreCaja }: { cajaId: string; nombreCaja: string }) {
+interface DashboardProps {
+  cajaId: string
+  nombreCaja: string
+  esCoordinador: boolean
+}
+
+function Dashboard({ cajaId, nombreCaja, esCoordinador }: DashboardProps) {
   const navigate = useNavigate()
   const cargar = useCallback(() => resumenService.getResumen(cajaId), [cajaId])
   const { datos, cargando, error, recargar } = useDatos(cargar)
@@ -68,6 +81,8 @@ function Dashboard({ cajaId, nombreCaja }: { cajaId: string; nombreCaja: string 
           {caja?.descripcion || "Resumen general de la caja"}
         </p>
       </div>
+
+      {esCoordinador && <SiguientesPasos resumen={resumen} />}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

@@ -3,10 +3,13 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { CircleCheck, TriangleAlert } from "lucide-react"
 import { authService } from "../api/auth.service"
+import { ApiError } from "../api/api.client"
 import { PaginaAcceso, EnlaceAcceso } from "../components/layout/PaginaAcceso"
 import { Form } from "../components/Form"
 import { TextField } from "../components/TextField"
 import { Button } from "../components/Button"
+import { IndicadorContrasena } from "../components/IndicadorContrasena"
+import { validarContrasena } from "../lib/validacion"
 
 /**
  * Nueva contraseña desde el enlace del correo. Supabase pone el token en el hash:
@@ -44,7 +47,7 @@ export default function ResetPasswordPage() {
 
   async function cambiar() {
     const e: Partial<Record<Campo, string>> = {}
-    if (password.length < 6) e.password = "Usa al menos 6 caracteres"
+    if (validarContrasena(password)) e.password = validarContrasena(password)
     if (!e.password && password !== confirm) e.confirm = "Las contraseñas no coinciden"
     setErrores(e)
     setError("")
@@ -56,7 +59,11 @@ export default function ResetPasswordPage() {
       localStorage.removeItem("token")
       setListo(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo cambiar la contraseña")
+      const mensaje = err instanceof Error ? err.message : "No se pudo cambiar la contraseña"
+      // Si el backend rechaza la contraseña, el error va en ese campo
+      if (err instanceof ApiError && err.datos.campo === "password") {
+        setErrores({ password: mensaje })
+      } else setError(mensaje)
     } finally {
       setCargando(false)
     }
@@ -106,21 +113,24 @@ export default function ResetPasswordPage() {
         error={error}
         actions={<Button type="submit" label="Cambiar contraseña" loading={cargando} fullWidth />}
       >
-        <TextField
-          label="Nueva contraseña"
-          type="password"
-          name="new-password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => {
-            setPassword(e.target.value)
-            setErrores((x) => ({ ...x, password: undefined }))
-          }}
-          hint="Al menos 6 caracteres."
-          error={errores.password}
-          required
-          autoFocus
-        />
+        <div className="flex flex-col gap-2">
+          <TextField
+            label="Nueva contraseña"
+            type="password"
+            name="new-password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              setErrores((x) => ({ ...x, password: undefined }))
+            }}
+            hint="Al menos 8 caracteres, con letras y números."
+            error={errores.password}
+            required
+            autoFocus
+          />
+          <IndicadorContrasena password={password} />
+        </div>
         <TextField
           label="Confirmar contraseña"
           type="password"

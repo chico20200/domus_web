@@ -25,6 +25,13 @@ export interface Transaccion {
   created_at: string
 }
 
+/** GET /cuentas/mias: la ficha la resuelve el servidor por usuario o por correo */
+export interface GetMisCuentasResponse {
+  vinculado: boolean
+  socio?: { id: string; nombre: string; apellido: string }
+  cuentas: CuentaAhorro[]
+}
+
 export interface GetCuentasResponse {
   cuentas: CuentaAhorro[]
 }

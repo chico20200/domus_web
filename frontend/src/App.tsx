@@ -10,6 +10,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage"
 import Register from "./pages/Register"
 import { CajaProvider } from "./context/CajaProvider"
 import CajasPage from "./pages/CajasPage"
+import NuevaCajaPage from "./pages/NuevaCajaPage"
 import DashboardPage from "./pages/DashboardPage"
 import SociosPage from "./pages/SociosPage"
 import AhorrosPage from "./pages/AhorrosPage"
@@ -61,6 +62,16 @@ export default function App() {
                   }
                 />
 
+                {/* Asistente para crear una caja (§5.1) — protegida, sin layout */}
+                <Route
+                  path="/cajas/nueva"
+                  element={
+                    <ProtectedRoute>
+                      <NuevaCajaPage />
+                    </ProtectedRoute>
+                  }
+                />
+
                 {/* Rutas dentro de una caja */}
                 <Route
                   path="/perfil"
@@ -75,8 +86,6 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <RolRoute rolMinimo="tesorero">
-                        {" "}
-                        {/* socio → redirige a /ahorros */}
                         <DashboardPage />
                       </RolRoute>
                     </ProtectedRoute>
@@ -97,7 +106,9 @@ export default function App() {
                   path="/ahorros"
                   element={
                     <ProtectedRoute>
-                      <AhorrosPage />
+                      <RolRoute>
+                        <AhorrosPage />
+                      </RolRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -105,7 +116,9 @@ export default function App() {
                   path="/creditos"
                   element={
                     <ProtectedRoute>
-                      <CreditosPage />
+                      <RolRoute rolMinimo="tesorero">
+                        <CreditosPage />
+                      </RolRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -113,7 +126,9 @@ export default function App() {
                   path="/pagos"
                   element={
                     <ProtectedRoute>
-                      <PagosPage />
+                      <RolRoute rolMinimo="tesorero">
+                        <PagosPage />
+                      </RolRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -131,7 +146,9 @@ export default function App() {
                   path="/configuracion"
                   element={
                     <ProtectedRoute>
-                      <ConfiguracionPage />
+                      <RolRoute rolMinimo="tesorero">
+                        <ConfiguracionPage />
+                      </RolRoute>
                     </ProtectedRoute>
                   }
                 />

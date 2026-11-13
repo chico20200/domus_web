@@ -12,7 +12,7 @@ router.use(verifyToken)
 // GET /api/cajas/:cajaId/socios
 // Lista todos los socios de la caja
 // ─────────────────────────────────────────────
-router.get("/", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId } = req.params
 
   const { data, error } = await supabaseAdmin
@@ -30,7 +30,7 @@ router.get("/", requierePermiso("caja.ver"), async (req, res) => {
 // GET /api/cajas/:cajaId/socios/:socioId
 // Detalle de un socio
 // ─────────────────────────────────────────────
-router.get("/:socioId", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/:socioId", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, socioId } = req.params
 
   const { data, error } = await supabaseAdmin

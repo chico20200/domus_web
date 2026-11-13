@@ -23,7 +23,7 @@ function generarCodigo() {
 // GET /api/cajas/:cajaId/miembros
 // Lista miembros de la caja
 // ─────────────────────────────────────────────
-router.get("/", requierePermiso("caja.ver"), async (req, res) => {
+router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId } = req.params
 
   // 1. Trae los miembros con su user_id
