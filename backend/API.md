@@ -133,11 +133,11 @@ Edita nombre/descripción de la caja.
 - 403: `{ error: 'Tu rol no permite esta acción' }`
 
 ### POST /api/cajas/unirse
-El usuario se une a una caja mediante un código de invitación. Si existe un socio en la caja con el mismo email y sin `user_id` vinculado, se vincula automáticamente.
+El usuario se une a una caja mediante un código de invitación. Quien fue removido de la caja vuelve a entrar con el rol del código nuevo. Si existe un socio en la caja con el mismo email y sin `user_id` vinculado, se vincula automáticamente.
 
 - Body: `{ codigo }`
 - 200: `{ message, socioVinculado, caja: { id, nombre, rol } }`
-- 400: `{ error }` si falta el código o ya es miembro
+- 400: `{ error }` si falta el código o ya es miembro activo
 - 404: `{ error: 'Código inválido o expirado' }`
 
 ---

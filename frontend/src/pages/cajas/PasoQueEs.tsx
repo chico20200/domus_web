@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import { Building2, Lock, Shield, type LucideIcon } from "lucide-react"
 import { Button } from "../../components/Button"
 import { PasoAsistente } from "./PasoAsistente"
@@ -48,7 +49,14 @@ export function PasoQueEs({ onContinuar, onCancelar }: Props) {
       </ul>
       <p className="rounded-lg bg-surface-2 p-4 text-sm text-secondary">
         Si tu organización ya usa DOMUS, no crees otra caja: pide al coordinador el código de
-        invitación y únete desde Mis cajas.
+        invitación y{" "}
+        <Link
+          to="/cajas?unirse"
+          className="font-medium text-accion-texto underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+        >
+          únete con el código
+        </Link>
+        .
       </p>
       <div className="flex flex-wrap gap-3">
         <Button label="Continuar" onClick={onContinuar} />

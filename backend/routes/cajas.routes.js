@@ -277,24 +277,31 @@ router.post("/unirse", async (req, res) => {
     return res.status(404).json({ error: "Código inválido o expirado" })
   }
 
-  // 2. Verifica que no sea ya miembro
-  const { data: yaEsMiembro } = await supabaseAdmin
+  // 2. Verifica que no sea ya miembro. Quien fue removido (activo: false) conserva su
+  // fila: con un código nuevo vuelve a entrar con el rol del código.
+  const { data: miembroPrevio } = await supabaseAdmin
     .from("miembros_caja")
-    .select("id")
+    .select("id, activo")
     .eq("caja_id", invitacion.caja_id)
     .eq("user_id", userId)
-    .single()
+    .maybeSingle()
 
-  if (yaEsMiembro) {
+  if (miembroPrevio?.activo) {
     return res.status(400).json({ error: "Ya perteneces a esta caja" })
   }
 
-  // 3. Agrega como miembro de la caja
-  const { error: errorMiembro } = await supabaseAdmin.from("miembros_caja").insert({
-    caja_id: invitacion.caja_id,
-    user_id: userId,
-    rol: invitacion.rol,
-  })
+  // 3. Agrega como miembro de la caja, o reactiva al que fue removido
+  const { error: errorMiembro } = miembroPrevio
+    ? await supabaseAdmin
+        .from("miembros_caja")
+        .update({ activo: true, rol: invitacion.rol })
+        .eq("id", miembroPrevio.id)
+        .eq("caja_id", invitacion.caja_id)
+    : await supabaseAdmin.from("miembros_caja").insert({
+        caja_id: invitacion.caja_id,
+        user_id: userId,
+        rol: invitacion.rol,
+      })
 
   if (errorMiembro) {
     return res.status(500).json({ error: errorMiembro.message })

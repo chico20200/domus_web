@@ -1,6 +1,6 @@
 // src/pages/CajasPage.tsx
 import { useCallback, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import {
   Briefcase,
   Building2,
@@ -37,13 +37,51 @@ const ICONO_ROL: Record<RolCaja, LucideIcon> = {
   socio: Users,
 }
 
+/**
+ * Crear y unirse: dos tarjetas iguales, una al lado de la otra (HU-C02, §5.4). Ninguna
+ * es la acción principal: depende de si la organización ya usa DOMUS.
+ */
+function OpcionCaja({
+  icono: Icono,
+  titulo,
+  texto,
+  onClick,
+}: {
+  icono: LucideIcon
+  titulo: string
+  texto: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-start gap-3 rounded-xl border border-base bg-surface p-4 text-left transition-colors hover:border-accion-texto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+    >
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-accion-texto">
+        <Icono size={20} aria-hidden="true" />
+      </span>
+      <span className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-primary">{titulo}</span>
+        <span className="text-sm text-secondary">{texto}</span>
+      </span>
+    </button>
+  )
+}
+
 export default function CajasPage() {
   const navigate = useNavigate()
   const { setCajaActiva } = useCaja()
   const { toast } = useNotif()
   const cargar = useCallback(async () => (await cajasService.getMisCajas()).cajas, [])
   const { datos, cargando, error, recargar } = useDatos(cargar)
-  const [unirse, setUnirse] = useState(false)
+  // /cajas?unirse abre directo el modal del código (enlace del asistente de creación)
+  const [params, setParams] = useSearchParams()
+  const [unirse, setUnirseState] = useState(() => params.has("unirse"))
+  function setUnirse(abierto: boolean) {
+    setUnirseState(abierto)
+    if (!abierto && params.has("unirse")) setParams({}, { replace: true })
+  }
 
   function entrar(caja: MiCaja) {
     setCajaActiva(caja)
@@ -119,20 +157,25 @@ export default function CajasPage() {
       )}
 
       {!cargando && !error && (
-        <div className="flex flex-wrap gap-3">
-          <Button
-            label="Crear una caja"
-            variant="secondary"
-            icon={Plus}
-            onClick={() => navigate("/cajas/nueva")}
-          />
-          <Button
-            label="Unirse con un código"
-            variant="secondary"
-            icon={KeyRound}
-            onClick={() => setUnirse(true)}
-          />
-        </div>
+        <section aria-labelledby="otra-caja" className="flex flex-col gap-3">
+          <h2 id="otra-caja" className="text-sm font-medium text-secondary">
+            {cajas.length > 0 ? "¿Otra caja?" : "Para empezar"}
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <OpcionCaja
+              icono={Plus}
+              titulo="Crear una caja"
+              texto="Para una organización que todavía no usa DOMUS. Quedas como su coordinador."
+              onClick={() => navigate("/cajas/nueva")}
+            />
+            <OpcionCaja
+              icono={KeyRound}
+              titulo="Unirse con un código"
+              texto="El coordinador de la caja genera el código en Configuración y te lo entrega. El código define tu rol."
+              onClick={() => setUnirse(true)}
+            />
+          </div>
+        </section>
       )}
 
       {unirse && (
