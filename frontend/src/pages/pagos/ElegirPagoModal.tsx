@@ -5,6 +5,7 @@ import { Button } from "../../components/Button"
 import type { TipoPago } from "../../api/pagos.types"
 import { moneda } from "../../lib/format"
 import { TIPO_PAGO } from "../../lib/creditos"
+import { AYUDA } from "../../lib/ayuda"
 
 /**
  * Primer paso de un pago desde Pagos: elegir si se cubre la cuota completa, solo el
@@ -29,6 +30,7 @@ export function ElegirPagoModal({ nombreSocio, cuotaMensual, onCerrar, onContinu
       abierto
       onCerrar={onCerrar}
       titulo="Registrar pago"
+      ayuda={AYUDA.abonoPrepago}
       descripcion={`Crédito de ${nombreSocio}. Cuota mensual de ${moneda(cuotaMensual)}.`}
     >
       <Form

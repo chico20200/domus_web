@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "../../context/ThemeContext"
 import { BotonIcono } from "./BotonIcono"
+import { InfoTip, type TextoAyuda } from "../InfoTip"
 
 /**
  * Contenedor de las páginas con sesión iniciada pero sin caja elegida, que no tienen
@@ -13,12 +14,14 @@ import { BotonIcono } from "./BotonIcono"
 interface Props {
   titulo: string
   descripcion?: string
+  /** Ayuda en contexto junto al título (§8) */
+  ayuda?: TextoAyuda
   /** Botones a la derecha de la barra superior, como "Mi perfil" */
   acciones?: ReactNode
   children: ReactNode
 }
 
-export function PaginaSinMenu({ titulo, descripcion, acciones, children }: Props) {
+export function PaginaSinMenu({ titulo, descripcion, ayuda, acciones, children }: Props) {
   const { isDark, toggleTheme } = useTheme()
   return (
     <div className="min-h-screen bg-base">
@@ -38,7 +41,10 @@ export function PaginaSinMenu({ titulo, descripcion, acciones, children }: Props
       </header>
       <main className="mx-auto flex w-full max-w-formulario flex-col gap-8 px-4 py-12">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold text-primary">{titulo}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-primary">{titulo}</h1>
+            {ayuda && <InfoTip ayuda={ayuda} />}
+          </div>
           {descripcion && <p className="text-sm text-secondary">{descripcion}</p>}
         </div>
         {children}

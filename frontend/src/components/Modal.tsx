@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from "react"
 import { X } from "lucide-react"
+import { InfoTip, type TextoAyuda } from "./InfoTip"
 
 /**
  * Ventana modal (especificaciones §3, Modal).
@@ -12,7 +13,8 @@ import { X } from "lucide-react"
  * Además:
  * - Clic afuera (en el fondo oscuro) cierra, salvo `cerrarAlClicFuera={false}`. Un arrastre
  *   que empieza adentro y termina afuera (seleccionar texto) no cierra.
- * - Al abrir, el foco va al primer campo o botón del cuerpo; si no hay, al botón Cerrar.
+ * - Al abrir, el foco va al primer campo del cuerpo; si no hay, al primer botón, y si
+ *   tampoco, al botón Cerrar.
  * - Al cerrar, el foco vuelve al elemento que abrió el modal.
  * - aria-modal, y título y descripción enlazados con aria-labelledby y aria-describedby.
  *
@@ -33,6 +35,8 @@ interface ModalProps {
   titulo: string
   /** Una línea bajo el título que explica para qué es el modal */
   descripcion?: string
+  /** Ayuda en contexto junto al título (§8) */
+  ayuda?: TextoAyuda
   /**
    * Botones del pie, en fila a la derecha. La acción principal va al final (la más a la
    * derecha) y Cancelar o Cerrar antes. En `Form`, que alinea a la izquierda, es al revés
@@ -50,6 +54,9 @@ const ANCHOS: Record<AnchoModal, string> = {
   amplio: "max-w-3xl",
 }
 
+// Al abrir, el foco va primero a un campo; si no hay, a cualquier cosa enfocable. Sin esa
+// preferencia, el ícono de ayuda de una etiqueta (InfoTip) se llevaría el foco del campo.
+const CAMPOS = "input:not([disabled]), select:not([disabled]), textarea:not([disabled])"
 const ENFOCABLES =
   'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
 
@@ -58,6 +65,7 @@ export function Modal({
   onCerrar,
   titulo,
   descripcion,
+  ayuda,
   acciones,
   ancho = "normal",
   cerrarAlClicFuera = true,
@@ -84,7 +92,9 @@ export function Modal({
     if (abierto && !dialog.open) {
       anterior.current = document.activeElement as HTMLElement | null
       dialog.showModal()
-      const primero = cuerpoRef.current?.querySelector<HTMLElement>(ENFOCABLES)
+      const cuerpo = cuerpoRef.current
+      const primero =
+        cuerpo?.querySelector<HTMLElement>(CAMPOS) ?? cuerpo?.querySelector<HTMLElement>(ENFOCABLES)
       primero?.focus()
     } else if (!abierto && dialog.open) {
       dialog.close()
@@ -154,9 +164,12 @@ export function Modal({
             className={`flex items-start justify-between gap-4 p-6 ${children ? "pb-4" : ""}`}
           >
             <div className="flex flex-col gap-1">
-              <h2 id={tituloId} className="text-base font-semibold text-primary">
-                {titulo}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 id={tituloId} className="text-base font-semibold text-primary">
+                  {titulo}
+                </h2>
+                {ayuda && <InfoTip ayuda={ayuda} />}
+              </div>
               {descripcion && (
                 <p id={descripcionId} className="text-sm text-secondary">
                   {descripcion}

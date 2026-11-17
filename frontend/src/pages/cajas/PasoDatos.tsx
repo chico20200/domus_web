@@ -11,6 +11,7 @@ import { AYUDA_CICLO, DURACIONES, OPCIONES_MES } from "../../lib/ciclo"
 import { hoyISO } from "../../lib/format"
 import { POLITICAS_VERSION } from "../../lib/politicas"
 import { PasoAsistente } from "./PasoAsistente"
+import { AYUDA } from "../../lib/ayuda"
 
 /**
  * Paso 3: datos de la caja y su periodo (HU004). Reemplaza la configuración inicial que
@@ -150,6 +151,7 @@ export function PasoDatos({ datos, onCambiar, onCreada, onAtras }: Props) {
           onChange={(e) => cambiar("duracion", e.target.value)}
           options={DURACIONES}
           hint={AYUDA_CICLO.duracion}
+          ayuda={AYUDA.cicloCaja}
         />
       </Form>
     </PasoAsistente>

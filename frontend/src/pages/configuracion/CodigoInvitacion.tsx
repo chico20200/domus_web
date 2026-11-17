@@ -3,6 +3,7 @@ import { Check, Copy, RefreshCw } from "lucide-react"
 import { Panel } from "../../components/Panel"
 import { Button } from "../../components/Button"
 import { SelectField } from "../../components/SelectField"
+import { AYUDA } from "../../lib/ayuda"
 import { LoadingState } from "../../components/LoadingState"
 import { useNotif } from "../../context/NotifContext"
 import { miembrosService } from "../../api/miembros.service"
@@ -62,6 +63,7 @@ export function CodigoInvitacion({ cajaId }: { cajaId: string }) {
   return (
     <Panel
       titulo="Código de invitación"
+      ayuda={AYUDA.codigoInvitacion}
       descripcion="Comparte el código con la persona que quieres agregar. Lo usa en «Unirse a una caja» y entra con el rol que elijas aquí. Dura 7 días o hasta que alguien lo use."
     >
       {cargando && <LoadingState texto="Buscando el código vigente…" />}

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { IdCard, Mail, Phone } from "lucide-react"
 import { Modal } from "../../components/Modal"
+import { AYUDA } from "../../lib/ayuda"
 import { Form } from "../../components/Form"
 import { Button } from "../../components/Button"
 import { TextField } from "../../components/TextField"
@@ -103,6 +104,7 @@ export function SocioModal({ cajaId, socio, onCerrar, onGuardado }: Props) {
       abierto
       onCerrar={onCerrar}
       titulo={editando ? `Editar a ${socio.nombre} ${socio.apellido}` : "Registrar socio"}
+      ayuda={editando ? undefined : AYUDA.crearSocio}
       descripcion={
         editando
           ? undefined

@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Modal } from "../../components/Modal"
+import { AYUDA } from "../../lib/ayuda"
 import { Form } from "../../components/Form"
 import { Button } from "../../components/Button"
 import { TextField } from "../../components/TextField"
@@ -46,6 +47,7 @@ export function UnirseModal({ onCerrar, onUnido }: Props) {
       abierto
       onCerrar={onCerrar}
       titulo="Unirse con un código"
+      ayuda={AYUDA.codigoInvitacion}
       descripcion="Lo genera el coordinador de la caja a la que vas a entrar, en su Configuración. Sirve una sola vez, dura 7 días y define el rol con el que entras."
       cerrarAlClicFuera={false}
     >

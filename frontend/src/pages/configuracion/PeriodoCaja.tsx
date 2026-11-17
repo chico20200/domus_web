@@ -5,6 +5,7 @@ import { Button } from "../../components/Button"
 import { Form } from "../../components/Form"
 import { TextField } from "../../components/TextField"
 import { SelectField } from "../../components/SelectField"
+import { AYUDA } from "../../lib/ayuda"
 import { LoadingState } from "../../components/LoadingState"
 import { Badge } from "../../components/Badge"
 import { useNotif } from "../../context/NotifContext"
@@ -80,6 +81,7 @@ export function PeriodoCaja({ cajaId }: { cajaId: string }) {
   return (
     <Panel
       titulo="Periodo de la caja"
+      ayuda={AYUDA.cicloCaja}
       descripcion="Cada ciclo es el tiempo entre dos cortes de cuentas. Al cerrarse un ciclo se reparten los intereses entre los socios. El sistema calcula en qué ciclo está la caja."
     >
       {cargando && <LoadingState texto="Cargando el periodo…" />}

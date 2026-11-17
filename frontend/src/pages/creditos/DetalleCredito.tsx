@@ -17,6 +17,8 @@ import type { PagoCredito, TipoPago } from "../../api/pagos.types"
 import { fecha, moneda, porcentaje } from "../../lib/format"
 import { useDatos } from "../../lib/useDatos"
 import { estadoCredito, nombreSocio } from "../../lib/creditos"
+import { InfoTip } from "../../components/InfoTip"
+import { AYUDA } from "../../lib/ayuda"
 
 /**
  * Detalle de un crédito: cifras, aprobación, pagos, prepago e historial.
@@ -189,12 +191,15 @@ export function DetalleCredito({
         </dl>
         <div className="flex flex-wrap gap-3">
           {c.estado === "pendiente" && puedeOperar && (
-            <Button
-              label="Aprobar y desembolsar"
-              icon={CircleCheck}
-              loading={procesando}
-              onClick={aprobar}
-            />
+            <span className="flex items-center gap-2">
+              <Button
+                label="Aprobar y desembolsar"
+                icon={CircleCheck}
+                loading={procesando}
+                onClick={aprobar}
+              />
+              <InfoTip ayuda={AYUDA.aprobarCredito} />
+            </span>
           )}
           <Button
             label="Ver tabla de amortización"

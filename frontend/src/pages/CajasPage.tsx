@@ -23,6 +23,7 @@ import { cajasService } from "../api/cajas.service"
 import type { MiCaja } from "../api/cajas.types"
 import { ETIQUETA_ROL, inicioDeRol, type RolCaja } from "../lib/roles"
 import { useDatos } from "../lib/useDatos"
+import { AYUDA } from "../lib/ayuda"
 import { UnirseModal } from "./cajas/UnirseModal"
 
 /**
@@ -93,6 +94,7 @@ export default function CajasPage() {
   return (
     <PaginaSinMenu
       titulo="Mis cajas de ahorro"
+      ayuda={AYUDA.rolMembresia}
       descripcion={
         cargando || error
           ? undefined

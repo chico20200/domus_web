@@ -28,6 +28,7 @@ import { DataTable, type Columna } from "../../components/DataTable"
 import { StatCard } from "../../components/StatCard"
 import { Panel } from "../../components/Panel"
 import { InfoTip } from "../../components/InfoTip"
+import { AYUDA } from "../../lib/ayuda"
 import { useTheme } from "../../context/ThemeContext"
 import { useNotif } from "../../context/NotifContext"
 import { fecha, fechaHora, moneda, porcentaje } from "../../lib/format"
@@ -376,6 +377,7 @@ export default function ComponentesPage() {
           onCerrar={() => setModal("")}
           titulo="Registrar depósito"
           descripcion="El monto se suma al saldo de la cuenta."
+          ayuda={AYUDA.abrirCuenta}
           cerrarAlClicFuera={false}
         >
           <Form
@@ -394,6 +396,7 @@ export default function ComponentesPage() {
               onChange={(e) => setDeposito(e.target.value)}
               step="0.01"
               min={0}
+              ayuda={AYUDA.cicloCaja}
             />
           </Form>
         </Modal>

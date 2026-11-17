@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { InfoTip, type TextoAyuda } from "./InfoTip"
 
 /**
  * Contenedor genérico (especificaciones §3.1, división de Card). Reemplaza el
@@ -17,13 +18,22 @@ import type { ReactNode } from "react"
 interface PanelProps {
   titulo?: string
   descripcion?: string
+  /** Ayuda en contexto junto al título (§8) */
+  ayuda?: TextoAyuda
   /** Botones a la derecha del título */
   acciones?: ReactNode
   sinRelleno?: boolean
   children: ReactNode
 }
 
-export function Panel({ titulo, descripcion, acciones, sinRelleno = false, children }: PanelProps) {
+export function Panel({
+  titulo,
+  descripcion,
+  ayuda,
+  acciones,
+  sinRelleno = false,
+  children,
+}: PanelProps) {
   const conCabecera = titulo || descripcion || acciones
   return (
     <section
@@ -40,7 +50,12 @@ export function Panel({ titulo, descripcion, acciones, sinRelleno = false, child
           ].join(" ")}
         >
           <div className="flex min-w-0 flex-col gap-1">
-            {titulo && <h2 className="text-base font-semibold text-primary">{titulo}</h2>}
+            {titulo && (
+              <h2 className="flex items-center gap-2 text-base font-semibold text-primary">
+                {titulo}
+                {ayuda && <InfoTip ayuda={ayuda} />}
+              </h2>
+            )}
             {descripcion && <p className="text-sm text-secondary">{descripcion}</p>}
           </div>
           {acciones && <div className="flex shrink-0 flex-wrap gap-3">{acciones}</div>}
