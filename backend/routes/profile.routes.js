@@ -3,11 +3,18 @@ const express = require("express")
 const router = express.Router()
 const supabase = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
+const {
+  esAdminSistema,
+  contarCajasActivas,
+  calcularEstadoCuenta,
+} = require("../utils/cuentaSistema")
 
 router.use(verifyToken)
 
 // GET /api/profiles/me
-// Devuelve el perfil del usuario autenticado
+// Devuelve el perfil del usuario autenticado, el estado de su cuenta (HU-A03) y si
+// administra DOMUS. Una cuenta bloqueada no llega aquí (verifyToken la detiene), así que
+// el estado que se ve en el perfil es activa o inactiva
 
 router.get("/me", async (req, res) => {
   const userId = req.user.id
@@ -18,7 +25,25 @@ router.get("/me", async (req, res) => {
     return res.status(404).json({ error: "Perfil no encontrado" })
   }
 
-  return res.json({ profile: data })
+  let cajasActivas, admin
+  try {
+    ;[cajasActivas, admin] = await Promise.all([contarCajasActivas(userId), esAdminSistema(userId)])
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+
+  return res.json({
+    profile: data,
+    estado_cuenta: {
+      ...calcularEstadoCuenta({
+        confirmada: Boolean(req.user.email_confirmed_at),
+        bloqueo: null,
+        cajasActivas,
+      }),
+      cajas_activas: cajasActivas,
+    },
+    es_admin_sistema: admin,
+  })
 })
 
 // PUT /api/profiles/me

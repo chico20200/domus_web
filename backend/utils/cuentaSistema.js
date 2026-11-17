@@ -29,6 +29,33 @@ async function esAdminSistema(userId) {
   return Boolean(data)
 }
 
+/** Cuántas cajas tiene activas la cuenta (filas activas de miembros_caja). Lanza si falla */
+async function contarCajasActivas(userId) {
+  const { count, error } = await supabaseAdmin
+    .from("miembros_caja")
+    .select("caja_id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("activo", true)
+  if (error) throw error
+  return count ?? 0
+}
+
+/**
+ * Estado de la cuenta de usuario (Figura 1.2, HU-A03). Solo el bloqueo se guarda; el
+ * resto se calcula, en este orden de prioridad:
+ *   bloqueada  la administración la bloqueó (motivo y fecha del bloqueo)
+ *   pendiente  el correo no está confirmado
+ *   activa     es miembro de al menos una caja
+ *   inactiva   no pertenece a ninguna caja
+ */
+function calcularEstadoCuenta({ confirmada, bloqueo, cajasActivas }) {
+  if (bloqueo) {
+    return { estado: "bloqueada", motivo: bloqueo.motivo, desde: bloqueo.bloqueada_en }
+  }
+  if (!confirmada) return { estado: "pendiente", motivo: null, desde: null }
+  return { estado: cajasActivas > 0 ? "activa" : "inactiva", motivo: null, desde: null }
+}
+
 /**
  * Respuesta para una cuenta bloqueada: 403 con `codigo: "cuenta_bloqueada"` y el motivo,
  * para que el login lo muestre y el frontend cierre una sesión abierta.
@@ -42,4 +69,10 @@ function responderBloqueada(res, bloqueo) {
   })
 }
 
-module.exports = { leerBloqueo, esAdminSistema, responderBloqueada }
+module.exports = {
+  leerBloqueo,
+  esAdminSistema,
+  contarCajasActivas,
+  calcularEstadoCuenta,
+  responderBloqueada,
+}

@@ -96,7 +96,10 @@ Todas requieren Auth (Bearer token).
 
 ### GET /api/profiles/me
 
-Devuelve el perfil del usuario autenticado.
+Devuelve el perfil del usuario autenticado, el estado de su cuenta y si administra DOMUS.
+
+- 200: `{ profile, estado_cuenta: { estado, motivo, desde, cajas_activas }, es_admin_sistema }`
+- `estado`: `'activa'` (miembro de al menos una caja) o `'inactiva'` (de ninguna). Los otros dos estados, `'pendiente'` (correo sin confirmar) y `'bloqueada'` (con `motivo` y `desde`), no llegan aquí porque esas cuentas no pasan la autenticación; se ven en el login y en el panel de administración.
 
 - 200: `{ profile }`
 - 404: `{ error: 'Perfil no encontrado' }`
