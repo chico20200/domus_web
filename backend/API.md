@@ -16,6 +16,9 @@ Respuestas de error de autenticación:
 
 - `401 { error: 'Token no proporcionado' }` — falta el header `Authorization`.
 - `403 { error: 'Token inválido o expirado' }` — el token no es válido.
+- `403 { error, codigo: 'cuenta_bloqueada', motivo, bloqueada_en }` — la administración de DOMUS bloqueó la cuenta (tabla `bloqueos_cuenta`, migración 003). Vale también para una sesión abierta antes del bloqueo.
+
+Las rutas de administración del sistema usan además `requiereAdminSistema` (`middlewares/adminSistema.middleware.js`), que solo deja pasar a las cuentas de la tabla `administradores_sistema` y responde `403 { error }` a las demás.
 
 ## Roles y permisos por caja
 
@@ -54,6 +57,7 @@ Inicia sesión y devuelve el JWT de sesión.
 - 400: `{ error }` si faltan campos
 - 401: `{ error: 'Credenciales incorrectas' }`
 - 403: `{ error, codigo: 'correo_sin_confirmar' }` si la contraseña es correcta pero el correo no se confirmó
+- 403: `{ error, codigo: 'cuenta_bloqueada', motivo, bloqueada_en }` si la contraseña es correcta pero la cuenta está bloqueada; no se entrega el token
 
 ### POST /api/auth/resend-confirmation
 
