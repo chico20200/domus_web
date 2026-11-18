@@ -8,7 +8,8 @@ import { InfoTip, type TextoAyuda } from "../InfoTip"
  * Contenedor de las páginas con sesión iniciada pero sin caja elegida, que no tienen
  * barra lateral (hoy, "Mis cajas"). Es el equivalente de `PageShell` para ellas:
  * barra superior con el logo, el cambio de tema y `acciones`, y el contenido centrado
- * con el ancho `formulario` (640 px). El título va como <h1> sobre el contenido.
+ * con el ancho `formulario` (640 px), o `completo` (1200 px) para tablas, como el panel de
+ * administración. El título va como <h1> sobre el contenido.
  */
 
 interface Props {
@@ -16,12 +17,21 @@ interface Props {
   descripcion?: string
   /** Ayuda en contexto junto al título (§8) */
   ayuda?: TextoAyuda
+  /** formulario: 640 px (por defecto). completo: 1200 px, para tablas */
+  ancho?: "formulario" | "completo"
   /** Botones a la derecha de la barra superior, como "Mi perfil" */
   acciones?: ReactNode
   children: ReactNode
 }
 
-export function PaginaSinMenu({ titulo, descripcion, ayuda, acciones, children }: Props) {
+export function PaginaSinMenu({
+  titulo,
+  descripcion,
+  ayuda,
+  ancho = "formulario",
+  acciones,
+  children,
+}: Props) {
   const { isDark, toggleTheme } = useTheme()
   return (
     <div className="min-h-screen bg-base">
@@ -39,7 +49,9 @@ export function PaginaSinMenu({ titulo, descripcion, ayuda, acciones, children }
           />
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-formulario flex-col gap-8 px-4 py-12">
+      <main
+        className={`mx-auto flex w-full flex-col gap-8 px-4 py-12 ${ancho === "completo" ? "max-w-completo" : "max-w-formulario"}`}
+      >
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold text-primary">{titulo}</h1>

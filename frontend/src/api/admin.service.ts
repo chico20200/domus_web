@@ -1,6 +1,6 @@
 // src/api/admin.service.ts
 import { apiClient } from "./api.client"
-import type { AceptarAcuerdoResponse, EstadoAcuerdo } from "./admin.types"
+import type { AceptarAcuerdoResponse, CajaAdmin, CuentaAdmin, EstadoAcuerdo } from "./admin.types"
 
 export const adminService = {
   // GET /api/admin/acuerdo
@@ -11,5 +11,15 @@ export const adminService = {
   // POST /api/admin/acuerdo
   aceptarAcuerdo(version: string): Promise<AceptarAcuerdoResponse> {
     return apiClient.post<AceptarAcuerdoResponse>("/admin/acuerdo", { version })
+  },
+
+  // GET /api/admin/cajas
+  async getCajas(): Promise<CajaAdmin[]> {
+    return (await apiClient.get<{ cajas: CajaAdmin[] }>("/admin/cajas")).cajas
+  },
+
+  // GET /api/admin/cuentas
+  async getCuentas(): Promise<CuentaAdmin[]> {
+    return (await apiClient.get<{ cuentas: CuentaAdmin[] }>("/admin/cuentas")).cuentas
   },
 }

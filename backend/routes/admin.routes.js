@@ -5,6 +5,7 @@ const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 const requiereAdminSistema = require("../middlewares/adminSistema.middleware")
 const { ACUERDO_VERSION } = require("../utils/confidencialidad")
+const { calcularEstadoCuenta } = require("../utils/cuentaSistema")
 
 // Panel de administración del sistema (HU019 a HU021). Solo para las cuentas de
 // administradores_sistema; nada de aquí depende de una caja ni de sus roles.
@@ -78,6 +79,116 @@ router.use(async (req, res, next) => {
     return res.status(500).json({ error: err.message })
   }
   next()
+})
+
+// ── Panel (HU019, HU-S01) ─────────────────────────────────────────────────────
+// Solo nombres, cuentas, estados y conteos. Ningún monto, saldo ni dato personal de un
+// socio sale de estas rutas (acuerdo de confidencialidad, políticas de uso §3).
+
+/** Lee todas las filas de una consulta; lanza si falla */
+async function leer(consulta) {
+  const { data, error } = await consulta
+  if (error) throw error
+  return data ?? []
+}
+
+/** Cuenta filas por caja_id */
+function contarPorCaja(filas) {
+  const conteo = {}
+  for (const f of filas) conteo[f.caja_id] = (conteo[f.caja_id] ?? 0) + 1
+  return conteo
+}
+
+// Créditos que siguen en curso: por aprobar, al día o en mora
+const CREDITO_VIGENTE = ["pendiente", "activo", "mora"]
+
+// GET /api/admin/cajas
+// Cada caja con sus conteos: miembros con acceso, fichas de socio activas y créditos vigentes
+router.get("/cajas", async (req, res) => {
+  try {
+    const [cajas, miembros, socios, creditos] = await Promise.all([
+      leer(supabaseAdmin.from("cajas").select("id, nombre, created_at").order("nombre")),
+      leer(supabaseAdmin.from("miembros_caja").select("caja_id").eq("activo", true)),
+      leer(supabaseAdmin.from("socios").select("caja_id").eq("activo", true)),
+      leer(supabaseAdmin.from("creditos").select("caja_id").in("estado", CREDITO_VIGENTE)),
+    ])
+    const nMiembros = contarPorCaja(miembros)
+    const nSocios = contarPorCaja(socios)
+    const nCreditos = contarPorCaja(creditos)
+    return res.json({
+      cajas: cajas.map((c) => ({
+        id: c.id,
+        nombre: c.nombre,
+        creada_en: c.created_at,
+        miembros: nMiembros[c.id] ?? 0,
+        socios: nSocios[c.id] ?? 0,
+        creditos_vigentes: nCreditos[c.id] ?? 0,
+      })),
+    })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+/** Todas las cuentas de Supabase Auth, página por página */
+async function listarUsuarios() {
+  const porPagina = 1000
+  const usuarios = []
+  for (let page = 1; ; page++) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: porPagina })
+    if (error) throw error
+    usuarios.push(...data.users)
+    if (data.users.length < porPagina) return usuarios
+  }
+}
+
+// GET /api/admin/cuentas
+// Cada cuenta de usuario con su estado (Figura 1.2), sus cajas con el rol, y si administra
+router.get("/cuentas", async (req, res) => {
+  try {
+    const [usuarios, perfiles, bloqueos, admins, miembros, cajas] = await Promise.all([
+      listarUsuarios(),
+      leer(supabaseAdmin.from("profiles").select("id, nombre")),
+      leer(supabaseAdmin.from("bloqueos_cuenta").select("user_id, motivo, bloqueada_en")),
+      leer(supabaseAdmin.from("administradores_sistema").select("user_id")),
+      leer(supabaseAdmin.from("miembros_caja").select("user_id, caja_id, rol").eq("activo", true)),
+      leer(supabaseAdmin.from("cajas").select("id, nombre")),
+    ])
+    const nombre = Object.fromEntries(perfiles.map((p) => [p.id, p.nombre]))
+    const bloqueo = Object.fromEntries(bloqueos.map((b) => [b.user_id, b]))
+    const esAdmin = new Set(admins.map((a) => a.user_id))
+    const nombreCaja = Object.fromEntries(cajas.map((c) => [c.id, c.nombre]))
+    const cajasDe = {}
+    for (const m of miembros) {
+      ;(cajasDe[m.user_id] ??= []).push({
+        caja_id: m.caja_id,
+        nombre: nombreCaja[m.caja_id] ?? "Caja sin nombre",
+        rol: m.rol,
+      })
+    }
+
+    const cuentas = usuarios.map((u) => {
+      const susCajas = (cajasDe[u.id] ?? []).sort((a, b) => a.nombre.localeCompare(b.nombre))
+      return {
+        id: u.id,
+        correo: u.email,
+        nombre: nombre[u.id] || null,
+        creada_en: u.created_at,
+        ultimo_ingreso: u.last_sign_in_at ?? null,
+        es_admin_sistema: esAdmin.has(u.id),
+        cajas: susCajas,
+        ...calcularEstadoCuenta({
+          confirmada: Boolean(u.email_confirmed_at),
+          bloqueo: bloqueo[u.id] ?? null,
+          cajasActivas: susCajas.length,
+        }),
+      }
+    })
+    cuentas.sort((a, b) => (a.correo ?? "").localeCompare(b.correo ?? ""))
+    return res.json({ cuentas })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
 })
 
 module.exports = router

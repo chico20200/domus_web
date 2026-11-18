@@ -12,6 +12,7 @@ import { ApiError } from "../api/api.client"
 import { fechaHora } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
 import { AcuerdoConfidencialidad } from "./admin/AcuerdoConfidencialidad"
+import { PanelAdministracion } from "./admin/PanelAdministracion"
 
 /**
  * Panel de administración del sistema (HU019 a HU021). Fuera de las cajas: no tiene barra
@@ -33,7 +34,12 @@ export default function AdminPage() {
   return (
     <PaginaSinMenu
       titulo="Administración de DOMUS"
-      descripcion={datos?.permitido ? "Soporte a las cajas y bloqueo de cuentas." : undefined}
+      descripcion={
+        datos?.permitido && datos.acuerdo.aceptado
+          ? `Soporte a las cajas y bloqueo de cuentas. Aceptaste el acuerdo de confidencialidad el ${fechaHora(datos.acuerdo.aceptado_en)}.`
+          : undefined
+      }
+      ancho={datos?.permitido && datos.acuerdo.aceptado ? "completo" : "formulario"}
       acciones={<Button label="Mis cajas" variant="ghost" onClick={() => navigate("/cajas")} />}
     >
       {cargando ? (
@@ -56,11 +62,7 @@ export default function AdminPage() {
       ) : !datos.acuerdo.aceptado ? (
         <AcuerdoConfidencialidad onAceptado={recargar} />
       ) : (
-        <Panel titulo="Panel de administración">
-          <p className="text-sm text-secondary">
-            Aceptaste el acuerdo de confidencialidad el {fechaHora(datos.acuerdo.aceptado_en)}.
-          </p>
-        </Panel>
+        <PanelAdministracion />
       )}
     </PaginaSinMenu>
   )
