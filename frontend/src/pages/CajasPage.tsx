@@ -8,6 +8,7 @@ import {
   KeyRound,
   Plus,
   Shield,
+  ShieldCheck,
   UserRound,
   Users,
   type LucideIcon,
@@ -20,6 +21,7 @@ import { LoadingState } from "../components/LoadingState"
 import { useCaja } from "../context/CajaContext"
 import { useNotif } from "../context/NotifContext"
 import { cajasService } from "../api/cajas.service"
+import { profileService } from "../api/profile.service"
 import type { MiCaja } from "../api/cajas.types"
 import { ETIQUETA_ROL, inicioDeRol, type RolCaja } from "../lib/roles"
 import { useDatos } from "../lib/useDatos"
@@ -76,6 +78,10 @@ export default function CajasPage() {
   const { toast } = useNotif()
   const cargar = useCallback(async () => (await cajasService.getMisCajas()).cajas, [])
   const { datos, cargando, error, recargar } = useDatos(cargar)
+  // El enlace al panel de administración solo para quien administra DOMUS. Si el perfil
+  // no carga, simplemente no aparece: el panel igual valida en el servidor
+  const cargarPerfil = useCallback(() => profileService.getMe(), [])
+  const { datos: perfil } = useDatos(cargarPerfil)
   // /cajas?unirse abre directo el modal del código (enlace del asistente de creación)
   const [params, setParams] = useSearchParams()
   const [unirse, setUnirseState] = useState(() => params.has("unirse"))
@@ -103,12 +109,22 @@ export default function CajasPage() {
             : "Crea una caja para tu organización o únete a una con el código que te dieron."
       }
       acciones={
-        <Button
-          label="Mi perfil"
-          variant="ghost"
-          icon={UserRound}
-          onClick={() => navigate("/perfil")}
-        />
+        <>
+          {perfil?.es_admin_sistema && (
+            <Button
+              label="Administración"
+              variant="ghost"
+              icon={ShieldCheck}
+              onClick={() => navigate("/admin")}
+            />
+          )}
+          <Button
+            label="Mi perfil"
+            variant="ghost"
+            icon={UserRound}
+            onClick={() => navigate("/perfil")}
+          />
+        </>
       }
     >
       {cargando ? (

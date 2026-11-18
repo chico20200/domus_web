@@ -1,4 +1,5 @@
 // src/lib/politicas.ts
+import type { SeccionTexto } from "../components/TextoSecciones"
 
 /**
  * Políticas de uso y tratamiento de datos de una caja (HU022, §5.1 paso 2).
@@ -9,13 +10,7 @@
  */
 export const POLITICAS_VERSION = "2026-11-13"
 
-export interface SeccionPolitica {
-  titulo: string
-  parrafos: string[]
-  puntos?: string[]
-}
-
-export const POLITICAS: SeccionPolitica[] = [
+export const POLITICAS: SeccionTexto[] = [
   {
     titulo: "Para qué existe DOMUS",
     parrafos: [

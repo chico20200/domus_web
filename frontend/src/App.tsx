@@ -20,6 +20,7 @@ import PagosPage from "./pages/PagosPage"
 import { RolRoute } from "./components/RolRoute"
 import { NotifProvider } from "./context/NotifProvider"
 import ReportesPage from "./pages/ReportesPage"
+import AdminPage from "./pages/AdminPage"
 import { lazy, Suspense } from "react"
 import { LoadingState } from "./components/LoadingState"
 
@@ -68,6 +69,16 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <NuevaCajaPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Panel de administración del sistema (HU019) — protegida, sin layout */}
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute>
+                      <AdminPage />
                     </ProtectedRoute>
                   }
                 />

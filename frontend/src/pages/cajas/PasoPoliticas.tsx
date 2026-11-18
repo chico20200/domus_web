@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Form } from "../../components/Form"
 import { Button } from "../../components/Button"
 import { CheckboxField } from "../../components/CheckboxField"
+import { TextoSecciones } from "../../components/TextoSecciones"
 import { POLITICAS, POLITICAS_VERSION } from "../../lib/politicas"
 import { fecha } from "../../lib/format"
 import { PasoAsistente } from "./PasoAsistente"
@@ -26,27 +27,7 @@ export function PasoPoliticas({ aceptadas, onCambiar, onContinuar, onAtras }: Pr
       titulo="Políticas de uso y tratamiento de datos"
       descripcion={`Léelas antes de continuar. Versión del ${fecha(POLITICAS_VERSION)}.`}
     >
-      <div className="flex flex-col gap-6">
-        {POLITICAS.map((s, i) => (
-          <section key={s.titulo} className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold text-primary">
-              {i + 1}. {s.titulo}
-            </h3>
-            {s.parrafos.map((p) => (
-              <p key={p} className="text-sm text-secondary">
-                {p}
-              </p>
-            ))}
-            {s.puntos && (
-              <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-secondary">
-                {s.puntos.map((p) => (
-                  <li key={p}>{p}</li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ))}
-      </div>
+      <TextoSecciones secciones={POLITICAS} />
       <Form
         onSubmit={() => {
           if (!aceptadas) return setError("Para crear la caja tienes que aceptar las políticas")

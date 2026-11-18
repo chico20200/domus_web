@@ -436,6 +436,28 @@ Registra el pago de una cuota y actualiza el saldo pendiente del crédito (pasa 
 
 ---
 
+## 9. Administración del sistema — `/api/admin`
+
+Solo para las cuentas de la tabla `administradores_sistema` (`verifyToken` + `requiereAdminSistema`). No depende de ninguna caja.
+
+### GET /api/admin/acuerdo
+
+Versión vigente del acuerdo de confidencialidad (HU021) y si esta cuenta la aceptó.
+
+- 200: `{ version, aceptado, aceptado_en }`
+
+### POST /api/admin/acuerdo
+
+Registra la aceptación del acuerdo (HU-S03). Aceptar dos veces no duplica la fila.
+
+- Body: `{ version }`, que tiene que ser la vigente (`utils/confidencialidad.js`)
+- 201: `{ version, aceptado_en }` (200 si ya estaba aceptada)
+- 400: `{ error, version }` si la versión no es la vigente
+
+Todas las demás rutas de `/api/admin` exigen la versión vigente aceptada; sin ella responden `403 { error, codigo: 'acuerdo_pendiente', version }`.
+
+---
+
 ## Resumen de montaje de rutas (`server.js`)
 
 ```
@@ -447,4 +469,5 @@ Registra el pago de una cuota y actualiza el saldo pendiente del crédito (pasa 
 /api/cajas/:cajaId/miembros    → miembros.routes.js
 /api/cajas/:cajaId/creditos    → creditos.routes.js
 /api/cajas/:cajaId/pagos       → pagos.routes.js
+/api/admin                     → admin.routes.js
 ```
