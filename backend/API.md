@@ -123,7 +123,7 @@ Todas requieren Auth (Bearer token).
 
 Lista las cajas activas a las que pertenece el usuario, junto con su rol en cada una.
 
-- 200: `{ cajas: [{ id, nombre, descripcion, rol }] }`
+- 200: `{ cajas: [{ id, nombre, descripcion, rol, politicas_aceptadas }] }`. `politicas_aceptadas`: si aceptó la versión vigente de las políticas de esa caja (HU-S04)
 
 ### POST /api/cajas
 
@@ -136,6 +136,15 @@ Crea una caja con su periodo (asistente `/cajas/nueva`). El creador queda regist
 - 201: `{ message, caja: { id, nombre, descripcion, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo, rol }, ciclo_actual }`
 - 400: `{ error, campo? }`; `campo` es `nombre` o `descripcion` cuando el fallo es de ese campo. Con una versión de políticas que no es la vigente, también `politicas_version` con la vigente
 - 500: `{ error }` (si falla el registro del miembro o de la aceptación, la caja creada se borra)
+
+### POST /api/cajas/:cajaId/politicas
+
+Registra la aceptación de las políticas de uso de la caja (HU-S04). Aceptar dos veces no duplica la fila.
+
+- Rol mínimo: `socio`
+- Body: `{ version }`, que tiene que ser la vigente (`utils/politicas.js`)
+- 201: `{ version, aceptada_en }` (200 si ya estaba aceptada)
+- 400: `{ error, version }` si la versión no es la vigente
 
 ### GET /api/cajas/:cajaId/resumen
 

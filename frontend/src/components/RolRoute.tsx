@@ -14,7 +14,8 @@ interface RolRouteProps {
 
 /**
  * Protege una ruta que vive dentro de una caja (§9.4). Sin caja activa lleva a /cajas;
- * con un rol menor al pedido lleva a la página de inicio de ese rol. El backend
+ * sin las políticas de la caja aceptadas, a /politicas (HU-S04); con un rol menor al
+ * pedido, a la página de inicio de ese rol. El backend
  * verifica cada petición por su cuenta: esto evita pantallas rotas, no fugas.
  */
 export function RolRoute({ children, rolMinimo = "socio", redirigir }: RolRouteProps) {
@@ -24,6 +25,7 @@ export function RolRoute({ children, rolMinimo = "socio", redirigir }: RolRouteP
   if (verificando) return <LoadingState pantallaCompleta />
 
   if (!cajaActiva) return <Navigate to="/cajas" replace />
+  if (!cajaActiva.politicas_aceptadas) return <Navigate to="/politicas" replace />
 
   if (!tieneRol(cajaActiva.rol, rolMinimo)) {
     return <Navigate to={redirigir ?? inicioDeRol(cajaActiva.rol)} replace />

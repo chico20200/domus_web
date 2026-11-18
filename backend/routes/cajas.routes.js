@@ -17,7 +17,8 @@ router.use(verifyToken)
 
 // ─────────────────────────────────────────────
 // GET /api/cajas/mis-cajas
-// Devuelve todas las cajas del usuario autenticado con su rol
+// Devuelve todas las cajas del usuario autenticado con su rol, y si aceptó la versión
+// vigente de sus políticas de uso (HU-S04): sin ella el frontend las pide antes de entrar
 // ─────────────────────────────────────────────
 router.get("/mis-cajas", async (req, res) => {
   const userId = req.user.id
@@ -42,6 +43,16 @@ router.get("/mis-cajas", async (req, res) => {
     return res.status(500).json({ error: error.message })
   }
 
+  const { data: aceptaciones, error: errorAceptaciones } = await supabaseAdmin
+    .from("aceptaciones_politicas")
+    .select("caja_id")
+    .eq("user_id", userId)
+    .eq("version", POLITICAS_VERSION)
+  if (errorAceptaciones) {
+    return res.status(500).json({ error: errorAceptaciones.message })
+  }
+  const aceptadas = new Set((aceptaciones ?? []).map((a) => a.caja_id))
+
   // Transforma el resultado para aplanar la estructura
   const cajas = data
     .filter((m) => m.cajas && m.cajas.activa)
@@ -50,6 +61,7 @@ router.get("/mis-cajas", async (req, res) => {
       nombre: m.cajas.nombre,
       descripcion: m.cajas.descripcion ?? "",
       rol: m.rol,
+      politicas_aceptadas: aceptadas.has(m.cajas.id),
     }))
 
   return res.json({ cajas })
@@ -346,6 +358,36 @@ router.post("/unirse", async (req, res) => {
 // GET /api/cajas/:cajaId/ciclos
 // Lista todos los ciclos de la caja
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// POST /api/cajas/:cajaId/politicas  { version }
+// Registra que el miembro aceptó las políticas de uso de la caja (HU-S04), al entrar por
+// primera vez o después de un cambio de versión. Aceptar dos veces no duplica la fila.
+// ─────────────────────────────────────────────
+router.post("/:cajaId/politicas", requierePermiso("caja.ver"), async (req, res) => {
+  if (req.body?.version !== POLITICAS_VERSION) {
+    return res.status(400).json({
+      error: "Las políticas cambiaron. Recarga la página para leer la versión vigente.",
+      version: POLITICAS_VERSION,
+    })
+  }
+  const fila = { user_id: req.user.id, caja_id: req.params.cajaId, version: POLITICAS_VERSION }
+  const { data: previa, error: errorPrevia } = await supabaseAdmin
+    .from("aceptaciones_politicas")
+    .select("aceptada_en")
+    .match(fila)
+    .maybeSingle()
+  if (errorPrevia) return res.status(500).json({ error: errorPrevia.message })
+  if (previa) return res.json({ version: POLITICAS_VERSION, aceptada_en: previa.aceptada_en })
+
+  const { data, error } = await supabaseAdmin
+    .from("aceptaciones_politicas")
+    .insert(fila)
+    .select("aceptada_en")
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  return res.status(201).json({ version: POLITICAS_VERSION, aceptada_en: data.aceptada_en })
+})
+
 router.get("/:cajaId/ciclos", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId } = req.params
 

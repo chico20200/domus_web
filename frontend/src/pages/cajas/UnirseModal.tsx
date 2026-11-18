@@ -32,6 +32,9 @@ export function UnirseModal({ onCerrar, onUnido }: Props) {
           nombre: res.caja.nombre,
           descripcion: res.caja.descripcion ?? "",
           rol: res.caja.rol,
+          // Recién unido: las políticas se piden al entrar (/politicas). Si ya las había
+          // aceptado antes de salir de la caja, aceptarlas otra vez no duplica nada
+          politicas_aceptadas: false,
         },
         res.socioVinculado,
       )
