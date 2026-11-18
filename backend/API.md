@@ -16,6 +16,9 @@ Respuestas de error de autenticación:
 
 - `401 { error: 'Token no proporcionado' }` — falta el header `Authorization`.
 - `403 { error: 'Token inválido o expirado' }` — el token no es válido.
+- `403 { error, codigo: 'cuenta_bloqueada', motivo, bloqueada_en }` — la administración de DOMUS bloqueó la cuenta (tabla `bloqueos_cuenta`, migración 003). Vale también para una sesión abierta antes del bloqueo.
+
+Las rutas de administración del sistema usan además `requiereAdminSistema` (`middlewares/adminSistema.middleware.js`), que solo deja pasar a las cuentas de la tabla `administradores_sistema` y responde `403 { error }` a las demás.
 
 ## Roles y permisos por caja
 
@@ -54,6 +57,7 @@ Inicia sesión y devuelve el JWT de sesión.
 - 400: `{ error }` si faltan campos
 - 401: `{ error: 'Credenciales incorrectas' }`
 - 403: `{ error, codigo: 'correo_sin_confirmar' }` si la contraseña es correcta pero el correo no se confirmó
+- 403: `{ error, codigo: 'cuenta_bloqueada', motivo, bloqueada_en }` si la contraseña es correcta pero la cuenta está bloqueada; no se entrega el token
 
 ### POST /api/auth/resend-confirmation
 
@@ -92,7 +96,10 @@ Todas requieren Auth (Bearer token).
 
 ### GET /api/profiles/me
 
-Devuelve el perfil del usuario autenticado.
+Devuelve el perfil del usuario autenticado, el estado de su cuenta y si administra DOMUS.
+
+- 200: `{ profile, estado_cuenta: { estado, motivo, desde, cajas_activas }, es_admin_sistema }`
+- `estado`: `'activa'` (miembro de al menos una caja) o `'inactiva'` (de ninguna). Los otros dos estados, `'pendiente'` (correo sin confirmar) y `'bloqueada'` (con `motivo` y `desde`), no llegan aquí porque esas cuentas no pasan la autenticación; se ven en el login y en el panel de administración.
 
 - 200: `{ profile }`
 - 404: `{ error: 'Perfil no encontrado' }`
@@ -116,7 +123,7 @@ Todas requieren Auth (Bearer token).
 
 Lista las cajas activas a las que pertenece el usuario, junto con su rol en cada una.
 
-- 200: `{ cajas: [{ id, nombre, descripcion, rol }] }`
+- 200: `{ cajas: [{ id, nombre, descripcion, rol, politicas_aceptadas }] }`. `politicas_aceptadas`: si aceptó la versión vigente de las políticas de esa caja (HU-S04)
 
 ### POST /api/cajas
 
@@ -129,6 +136,15 @@ Crea una caja con su periodo (asistente `/cajas/nueva`). El creador queda regist
 - 201: `{ message, caja: { id, nombre, descripcion, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo, rol }, ciclo_actual }`
 - 400: `{ error, campo? }`; `campo` es `nombre` o `descripcion` cuando el fallo es de ese campo. Con una versión de políticas que no es la vigente, también `politicas_version` con la vigente
 - 500: `{ error }` (si falla el registro del miembro o de la aceptación, la caja creada se borra)
+
+### POST /api/cajas/:cajaId/politicas
+
+Registra la aceptación de las políticas de uso de la caja (HU-S04). Aceptar dos veces no duplica la fila.
+
+- Rol mínimo: `socio`
+- Body: `{ version }`, que tiene que ser la vigente (`utils/politicas.js`)
+- 201: `{ version, aceptada_en }` (200 si ya estaba aceptada)
+- 400: `{ error, version }` si la versión no es la vigente
 
 ### GET /api/cajas/:cajaId/resumen
 
@@ -429,6 +445,62 @@ Registra el pago de una cuota y actualiza el saldo pendiente del crédito (pasa 
 
 ---
 
+## 9. Administración del sistema — `/api/admin`
+
+Solo para las cuentas de la tabla `administradores_sistema` (`verifyToken` + `requiereAdminSistema`). No depende de ninguna caja.
+
+### GET /api/admin/acuerdo
+
+Versión vigente del acuerdo de confidencialidad (HU021) y si esta cuenta la aceptó.
+
+- 200: `{ version, aceptado, aceptado_en }`
+
+### POST /api/admin/acuerdo
+
+Registra la aceptación del acuerdo (HU-S03). Aceptar dos veces no duplica la fila.
+
+- Body: `{ version }`, que tiene que ser la vigente (`utils/confidencialidad.js`)
+- 201: `{ version, aceptado_en }` (200 si ya estaba aceptada)
+- 400: `{ error, version }` si la versión no es la vigente
+
+Todas las demás rutas de `/api/admin` exigen la versión vigente aceptada; sin ella responden `403 { error, codigo: 'acuerdo_pendiente', version }`.
+
+### GET /api/admin/cajas
+
+Cada caja con sus conteos, sin montos (HU-S01).
+
+- 200: `{ cajas: [{ id, nombre, creada_en, miembros, socios, creditos_vigentes }] }`. `miembros`: cuentas con acceso activo; `socios`: fichas activas; `creditos_vigentes`: en estado `pendiente`, `activo` o `mora`.
+
+### GET /api/admin/cuentas
+
+Cada cuenta de Supabase Auth con su estado, sus cajas y su rol en cada una.
+
+- 200: `{ cuentas: [{ id, correo, nombre, creada_en, ultimo_ingreso, es_admin_sistema, cajas: [{ caja_id, nombre, rol }], estado, motivo, desde }] }`. `estado`: `pendiente`, `activa`, `inactiva` o `bloqueada`; `motivo` y `desde` solo con `bloqueada`.
+
+### POST /api/admin/cuentas/:id/bloqueo
+
+Bloquea una cuenta (HU-S02) y lo anota en la bitácora. Si la bitácora falla, el bloqueo se deshace.
+
+- Body: `{ motivo }`, de 10 a 500 caracteres
+- 201: `{ bloqueo: { motivo, bloqueada_en } }`
+- 400: motivo inválido (`campo: 'motivo'`), la propia cuenta o la de otro administrador
+- 404: la cuenta no existe · 409: ya estaba bloqueada
+
+### POST /api/admin/cuentas/:id/restablecimiento
+
+Quita el bloqueo y lo anota en la bitácora. Si la bitácora falla, el bloqueo vuelve.
+
+- Body: `{ motivo }`, de 10 a 500 caracteres
+- 200: `{ message }` · 400: motivo inválido · 404: la cuenta no existe · 409: no estaba bloqueada
+
+### GET /api/admin/bitacora
+
+Las últimas 200 acciones, la más reciente primero.
+
+- 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, motivo, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer`.
+
+---
+
 ## Resumen de montaje de rutas (`server.js`)
 
 ```
@@ -440,4 +512,5 @@ Registra el pago de una cuota y actualiza el saldo pendiente del crédito (pasa 
 /api/cajas/:cajaId/miembros    → miembros.routes.js
 /api/cajas/:cajaId/creditos    → creditos.routes.js
 /api/cajas/:cajaId/pagos       → pagos.routes.js
+/api/admin                     → admin.routes.js
 ```

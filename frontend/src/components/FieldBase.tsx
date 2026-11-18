@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
+import { InfoTip, type TextoAyuda } from "./InfoTip"
 
 /**
  * Base común de los campos de formulario (especificaciones §3.1, Field).
@@ -35,6 +36,8 @@ export interface FieldBaseProps {
   id?: string
   /** Texto de ayuda bajo el campo. Si hay error, se muestra el error en su lugar */
   hint?: string
+  /** Ayuda en contexto junto a la etiqueta (§8) */
+  ayuda?: TextoAyuda
   error?: string
   required?: boolean
   disabled?: boolean
@@ -64,6 +67,7 @@ export function FieldBase({
   ocultarEtiqueta = false,
   id,
   hint,
+  ayuda,
   error,
   required = false,
   disabled = false,
@@ -97,17 +101,20 @@ export function FieldBase({
 
   return (
     <div className="flex flex-col gap-1">
-      <label
-        htmlFor={controlId}
-        className={`text-sm font-medium text-primary ${ocultarEtiqueta ? "sr-only" : ""}`}
-      >
-        {label}
-        {required && (
-          <span className="ml-1 text-destructivo" aria-hidden="true">
-            *
-          </span>
-        )}
-      </label>
+      <div className="flex items-center gap-2">
+        <label
+          htmlFor={controlId}
+          className={`text-sm font-medium text-primary ${ocultarEtiqueta ? "sr-only" : ""}`}
+        >
+          {label}
+          {required && (
+            <span className="ml-1 text-destructivo" aria-hidden="true">
+              *
+            </span>
+          )}
+        </label>
+        {ayuda && !ocultarEtiqueta && <InfoTip ayuda={ayuda} />}
+      </div>
 
       <div className="relative">
         {children(control)}

@@ -8,6 +8,7 @@ import { Form } from "../components/Form"
 import { TextField } from "../components/TextField"
 import { Button } from "../components/Button"
 import { ApiError } from "../api/api.client"
+import { conPunto } from "../lib/texto"
 import { ReenviarConfirmacion } from "./acceso/ReenviarConfirmacion"
 
 /**
@@ -15,9 +16,18 @@ import { ReenviarConfirmacion } from "./acceso/ReenviarConfirmacion"
  * de activación vuelve aquí con el resultado en la dirección.
  *   ok:    /login#access_token=…&type=signup
  *   error: /login#error=access_denied&error_code=otp_expired&error_description=…
+ * Una sesión que se cerró porque la cuenta fue bloqueada llega como /login?bloqueada
+ * (api.client.ts). Una cuenta bloqueada tampoco entra: el error dice el motivo (HU-A03).
  */
 function avisoDelEnlace(): { ok: boolean; texto: string } | null {
   const p = new URLSearchParams(location.hash.slice(1) || location.search.slice(1))
+  if (p.has("bloqueada")) {
+    return {
+      ok: false,
+      texto:
+        "Se cerró tu sesión porque la administración de DOMUS bloqueó tu cuenta. Inicia sesión para ver el motivo.",
+    }
+  }
   if (p.get("error_code") || p.get("error")) {
     return {
       ok: false,
@@ -68,7 +78,13 @@ export default function LoginPage() {
       // qué cuentas existen); el mensaje va para el formulario entero
       if (err instanceof ApiError && err.status === 401)
         setError("El correo o la contraseña no son correctos")
-      else if (err instanceof ApiError && err.datos.codigo === "correo_sin_confirmar") {
+      else if (err instanceof ApiError && err.datos.codigo === "cuenta_bloqueada") {
+        // La contraseña es correcta pero la administración bloqueó la cuenta
+        const motivo = typeof err.datos.motivo === "string" ? err.datos.motivo : ""
+        setError(
+          `Tu cuenta está bloqueada por la administración de DOMUS.${motivo ? ` Motivo: ${conPunto(motivo)}` : ""} Si crees que es un error, escribe a la administración.`,
+        )
+      } else if (err instanceof ApiError && err.datos.codigo === "correo_sin_confirmar") {
         // La contraseña es correcta pero la cuenta no está activada: se ofrece reenviar
         setError(err.message)
         setSinConfirmar(email.trim())
@@ -93,7 +109,8 @@ export default function LoginPage() {
         </div>
       }
     >
-      {aviso && (
+      {/* Un solo mensaje por fallo (HU-A02): si ya hay un error, el aviso sobra */}
+      {aviso && !error && (
         <div
           role="status"
           className={`flex gap-3 rounded-lg border-l-[3px] bg-surface-2 p-4 ${aviso.ok ? "border-estado-ok" : "border-estado-alerta"}`}

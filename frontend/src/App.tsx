@@ -20,6 +20,8 @@ import PagosPage from "./pages/PagosPage"
 import { RolRoute } from "./components/RolRoute"
 import { NotifProvider } from "./context/NotifProvider"
 import ReportesPage from "./pages/ReportesPage"
+import AdminPage from "./pages/AdminPage"
+import PoliticasCajaPage from "./pages/PoliticasCajaPage"
 import { lazy, Suspense } from "react"
 import { LoadingState } from "./components/LoadingState"
 
@@ -68,6 +70,26 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <NuevaCajaPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Políticas de la caja activa antes de entrar (HU-S04) — protegida, sin layout */}
+                <Route
+                  path="/politicas"
+                  element={
+                    <ProtectedRoute>
+                      <PoliticasCajaPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Panel de administración del sistema (HU019) — protegida, sin layout */}
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute>
+                      <AdminPage />
                     </ProtectedRoute>
                   }
                 />

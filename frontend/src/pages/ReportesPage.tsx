@@ -15,6 +15,8 @@ import {
 import { PageShell } from "../components/layout/PageShell"
 import { Button } from "../components/Button"
 import { SelectField } from "../components/SelectField"
+import { InfoTip } from "../components/InfoTip"
+import { AYUDA } from "../lib/ayuda"
 import { StatCard } from "../components/StatCard"
 import { DataTable, type Columna } from "../components/DataTable"
 import { EmptyState } from "../components/EmptyState"
@@ -181,7 +183,10 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
     <PageShell titulo="Reportes" ancho="completo">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold text-primary">Distribución de intereses</h2>
+          <h2 className="flex items-center gap-2 text-xl font-semibold text-primary">
+            Distribución de intereses
+            <InfoTip ayuda={AYUDA.distribucionIntereses} />
+          </h2>
           <p className="text-sm text-secondary">
             Ciclo {dist.ciclo.numero} · {dist.ciclo.label}
           </p>

@@ -27,6 +27,8 @@ import { Badge } from "../../components/Badge"
 import { DataTable, type Columna } from "../../components/DataTable"
 import { StatCard } from "../../components/StatCard"
 import { Panel } from "../../components/Panel"
+import { InfoTip } from "../../components/InfoTip"
+import { AYUDA } from "../../lib/ayuda"
 import { useTheme } from "../../context/ThemeContext"
 import { useNotif } from "../../context/NotifContext"
 import { fecha, fechaHora, moneda, porcentaje } from "../../lib/format"
@@ -375,6 +377,7 @@ export default function ComponentesPage() {
           onCerrar={() => setModal("")}
           titulo="Registrar depósito"
           descripcion="El monto se suma al saldo de la cuenta."
+          ayuda={AYUDA.abrirCuenta}
           cerrarAlClicFuera={false}
         >
           <Form
@@ -393,6 +396,7 @@ export default function ComponentesPage() {
               onChange={(e) => setDeposito(e.target.value)}
               step="0.01"
               min={0}
+              ayuda={AYUDA.cicloCaja}
             />
           </Form>
         </Modal>
@@ -438,6 +442,36 @@ export default function ComponentesPage() {
             label="Advertencia"
             onClick={() => toast("advertencia", "El ciclo termina en 5 días.")}
           />
+        </div>
+      </Seccion>
+
+      <Seccion
+        titulo="InfoTip"
+        nota="Abre con pulsación. Escape, clic afuera o abrir otro lo cierran. Junto a un título o una etiqueta."
+      >
+        <div className="flex flex-wrap items-center justify-between gap-6">
+          <h3 className="flex items-center gap-2 text-base font-semibold text-primary">
+            Ciclo de la caja
+            <InfoTip
+              ayuda={{
+                titulo: "Ciclo de la caja",
+                que: "El periodo entre dos cortes de cuentas.",
+                pasa: "Al cerrarlo se reparten los intereses ganados entre los socios.",
+                necesitas: "La fecha de fundación, el mes de inicio y la duración en meses.",
+              }}
+            />
+          </h3>
+          <span className="flex items-center gap-2 text-sm text-primary">
+            Pegado al borde derecho
+            <InfoTip
+              ayuda={{
+                titulo: "Prueba de borde",
+                que: "El panel no se sale de la pantalla aunque el ícono esté a la derecha.",
+                pasa: "Se corre hacia la izquierda lo necesario.",
+                necesitas: "Nada.",
+              }}
+            />
+          </span>
         </div>
       </Seccion>
 

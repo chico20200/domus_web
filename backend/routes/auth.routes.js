@@ -4,6 +4,7 @@ const router = express.Router()
 const supabaseAuth = require("../config/supabaseAuth")
 const verifyToken = require("../middlewares/auth.middleware")
 const { validarContrasena } = require("../utils/contrasena")
+const { leerBloqueo, responderBloqueada } = require("../utils/cuentaSistema")
 
 const LIMITE_CORREOS =
   "Se enviaron demasiados correos seguidos. Espera un minuto y vuelve a intentarlo."
@@ -73,6 +74,16 @@ router.post("/login", async (req, res) => {
     }
     return res.status(401).json({ error: "Credenciales incorrectas" })
   }
+
+  // La contraseña es correcta: solo entonces se dice que la cuenta está bloqueada, igual
+  // que con el correo sin confirmar. El token emitido no se entrega
+  let bloqueo
+  try {
+    bloqueo = await leerBloqueo(data.user.id)
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+  if (bloqueo) return responderBloqueada(res, bloqueo)
 
   return res.json({
     message: "Login exitoso",

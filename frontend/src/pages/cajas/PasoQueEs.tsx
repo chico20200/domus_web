@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { Building2, Lock, Shield, type LucideIcon } from "lucide-react"
 import { Button } from "../../components/Button"
 import { PasoAsistente } from "./PasoAsistente"
+import { AYUDA } from "../../lib/ayuda"
 
 /** Paso 1: qué es una caja, antes de pedir ningún dato (§5.1, §8 "Crear una caja") */
 
@@ -33,7 +34,7 @@ interface Props {
 
 export function PasoQueEs({ onContinuar, onCancelar }: Props) {
   return (
-    <PasoAsistente titulo="Qué es una caja" enfocar={false}>
+    <PasoAsistente titulo="Qué es una caja" ayuda={AYUDA.crearCaja} enfocar={false}>
       <ul className="flex flex-col gap-4">
         {PUNTOS.map(({ icono: Icono, titulo, texto }) => (
           <li key={titulo} className="flex gap-4">

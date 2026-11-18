@@ -8,6 +8,12 @@ export interface Caja {
   nombre: string
   descripcion: string
   rol: RolCaja
+  /**
+   * Si aceptó la versión vigente de las políticas de la caja (HU-S04). Sin él, RolRoute
+   * lleva a /politicas. Puede faltar en una caja guardada de antes; la revalidación
+   * contra /cajas/mis-cajas lo completa.
+   */
+  politicas_aceptadas?: boolean
 }
 
 export interface CajaContextType {

@@ -16,6 +16,8 @@ export interface MiCaja {
   nombre: string
   descripcion: string
   rol: RolCaja
+  /** Si aceptó la versión vigente de las políticas de esta caja (HU-S04) */
+  politicas_aceptadas: boolean
 }
 
 export interface GetMisCajasResponse {

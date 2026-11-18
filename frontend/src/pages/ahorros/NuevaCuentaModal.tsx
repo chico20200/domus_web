@@ -3,6 +3,7 @@ import { Modal } from "../../components/Modal"
 import { Form } from "../../components/Form"
 import { Button } from "../../components/Button"
 import { SelectField } from "../../components/SelectField"
+import { AYUDA } from "../../lib/ayuda"
 import { ahorrosService } from "../../api/ahorros.service"
 import type { Socio } from "../../api/socios.types"
 
@@ -40,6 +41,7 @@ export function NuevaCuentaModal({ cajaId, socios, onCerrar, onCreada }: Props) 
       abierto
       onCerrar={onCerrar}
       titulo="Abrir cuenta de ahorro"
+      ayuda={AYUDA.abrirCuenta}
       descripcion="La cuenta es la libreta de ahorro de un socio dentro de esta caja. Empieza con saldo $0,00 y un socio puede tener más de una."
       cerrarAlClicFuera={false}
     >

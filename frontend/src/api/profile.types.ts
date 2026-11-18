@@ -6,11 +6,24 @@ export interface Profile {
   nombre: string
   telefono: string
   foto_url: string
-  // si tu compañero tiene más campos en la tabla los agregas aquí
+}
+
+/** Estado de la cuenta de usuario (Figura 1.2). Ver `lib/cuentaUsuario.ts` */
+export type EstadoCuentaUsuario = "pendiente" | "activa" | "inactiva" | "bloqueada"
+
+export interface EstadoCuenta {
+  estado: EstadoCuentaUsuario
+  /** Solo en una cuenta bloqueada: el motivo que escribió la administración */
+  motivo: string | null
+  /** Solo en una cuenta bloqueada: desde cuándo */
+  desde: string | null
+  cajas_activas: number
 }
 
 export interface GetProfileResponse {
   profile: Profile
+  estado_cuenta: EstadoCuenta
+  es_admin_sistema: boolean
 }
 
 // Lo que envías en PUT /api/profiles/me

@@ -33,6 +33,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   // Si la respuesta no es 2xx, lanza un error con el mensaje del backend
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}))
+    // La administración bloqueó la cuenta con la sesión abierta: se cierra la sesión y se
+    // vuelve al login, que lo avisa. Al iniciar sesión otra vez se ve el motivo.
+    if (token && response.status === 403 && errorData.codigo === "cuenta_bloqueada") {
+      localStorage.removeItem("token")
+      window.location.replace("/login?bloqueada")
+    }
     throw new ApiError(errorData.error || `Error ${response.status}`, response.status, errorData)
   }
 

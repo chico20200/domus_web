@@ -17,6 +17,11 @@ export const cajasService = {
   },
 
   /** Entra a una caja con un código de invitación; el código fija el rol */
+  // POST /api/cajas/:cajaId/politicas
+  aceptarPoliticas(cajaId: string, version: string): Promise<unknown> {
+    return apiClient.post(`/cajas/${cajaId}/politicas`, { version })
+  },
+
   async unirse(codigo: string): Promise<UnirseResponse> {
     return apiClient.post<UnirseResponse>("/cajas/unirse", { codigo })
   },

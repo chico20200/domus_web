@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Modal } from "../../components/Modal"
+import { AYUDA } from "../../lib/ayuda"
 import { Form } from "../../components/Form"
 import { Button } from "../../components/Button"
 import { TextField } from "../../components/TextField"
@@ -31,6 +32,9 @@ export function UnirseModal({ onCerrar, onUnido }: Props) {
           nombre: res.caja.nombre,
           descripcion: res.caja.descripcion ?? "",
           rol: res.caja.rol,
+          // Recién unido: las políticas se piden al entrar (/politicas). Si ya las había
+          // aceptado antes de salir de la caja, aceptarlas otra vez no duplica nada
+          politicas_aceptadas: false,
         },
         res.socioVinculado,
       )
@@ -46,6 +50,7 @@ export function UnirseModal({ onCerrar, onUnido }: Props) {
       abierto
       onCerrar={onCerrar}
       titulo="Unirse con un código"
+      ayuda={AYUDA.codigoInvitacion}
       descripcion="Lo genera el coordinador de la caja a la que vas a entrar, en su Configuración. Sirve una sola vez, dura 7 días y define el rol con el que entras."
       cerrarAlClicFuera={false}
     >

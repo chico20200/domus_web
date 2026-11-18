@@ -4,6 +4,7 @@ import { Form } from "../../components/Form"
 import { Button } from "../../components/Button"
 import { TextField } from "../../components/TextField"
 import { SelectField } from "../../components/SelectField"
+import { AYUDA } from "../../lib/ayuda"
 import { creditosService } from "../../api/creditos.service"
 import type { Socio } from "../../api/socios.types"
 import { moneda } from "../../lib/format"
@@ -83,6 +84,7 @@ export function NuevaSolicitudModal({ cajaId, socios, onCerrar, onCreado }: Prop
       abierto
       onCerrar={onCerrar}
       titulo="Nueva solicitud de crédito"
+      ayuda={AYUDA.crearCredito}
       descripcion="Se otorga solo a socios de esta caja. Queda pendiente hasta que se apruebe y desembolse."
       cerrarAlClicFuera={false}
     >

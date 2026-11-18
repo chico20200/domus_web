@@ -70,7 +70,14 @@ export default function NuevaCajaPage() {
           creada={creada}
           onIrAlDashboard={() => {
             const { id, nombre, descripcion } = creada.caja
-            setCajaActiva({ id, nombre, descripcion, rol: "coordinador" })
+            setCajaActiva({
+              id,
+              nombre,
+              descripcion,
+              rol: "coordinador",
+              // Las aceptó en el paso 2 y se guardaron al crear la caja
+              politicas_aceptadas: true,
+            })
             navigate("/dashboard", { replace: true })
           }}
         />
