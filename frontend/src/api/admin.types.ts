@@ -40,3 +40,15 @@ export interface CuentaAdmin {
   motivo: string | null
   desde: string | null
 }
+
+/** GET /api/admin/bitacora */
+export interface RegistroBitacora {
+  id: string
+  accion: "bloquear" | "restablecer"
+  cuenta_id: string | null
+  cuenta_correo: string
+  motivo: string
+  fecha: string
+  /** null si la cuenta del administrador ya no existe */
+  admin_correo: string | null
+}

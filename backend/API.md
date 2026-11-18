@@ -456,6 +456,40 @@ Registra la aceptación del acuerdo (HU-S03). Aceptar dos veces no duplica la fi
 
 Todas las demás rutas de `/api/admin` exigen la versión vigente aceptada; sin ella responden `403 { error, codigo: 'acuerdo_pendiente', version }`.
 
+### GET /api/admin/cajas
+
+Cada caja con sus conteos, sin montos (HU-S01).
+
+- 200: `{ cajas: [{ id, nombre, creada_en, miembros, socios, creditos_vigentes }] }`. `miembros`: cuentas con acceso activo; `socios`: fichas activas; `creditos_vigentes`: en estado `pendiente`, `activo` o `mora`.
+
+### GET /api/admin/cuentas
+
+Cada cuenta de Supabase Auth con su estado, sus cajas y su rol en cada una.
+
+- 200: `{ cuentas: [{ id, correo, nombre, creada_en, ultimo_ingreso, es_admin_sistema, cajas: [{ caja_id, nombre, rol }], estado, motivo, desde }] }`. `estado`: `pendiente`, `activa`, `inactiva` o `bloqueada`; `motivo` y `desde` solo con `bloqueada`.
+
+### POST /api/admin/cuentas/:id/bloqueo
+
+Bloquea una cuenta (HU-S02) y lo anota en la bitácora. Si la bitácora falla, el bloqueo se deshace.
+
+- Body: `{ motivo }`, de 10 a 500 caracteres
+- 201: `{ bloqueo: { motivo, bloqueada_en } }`
+- 400: motivo inválido (`campo: 'motivo'`), la propia cuenta o la de otro administrador
+- 404: la cuenta no existe · 409: ya estaba bloqueada
+
+### POST /api/admin/cuentas/:id/restablecimiento
+
+Quita el bloqueo y lo anota en la bitácora. Si la bitácora falla, el bloqueo vuelve.
+
+- Body: `{ motivo }`, de 10 a 500 caracteres
+- 200: `{ message }` · 400: motivo inválido · 404: la cuenta no existe · 409: no estaba bloqueada
+
+### GET /api/admin/bitacora
+
+Las últimas 200 acciones, la más reciente primero.
+
+- 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, motivo, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer`.
+
 ---
 
 ## Resumen de montaje de rutas (`server.js`)

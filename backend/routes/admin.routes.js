@@ -5,7 +5,7 @@ const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 const requiereAdminSistema = require("../middlewares/adminSistema.middleware")
 const { ACUERDO_VERSION } = require("../utils/confidencialidad")
-const { calcularEstadoCuenta } = require("../utils/cuentaSistema")
+const { calcularEstadoCuenta, esAdminSistema, leerBloqueo } = require("../utils/cuentaSistema")
 
 // Panel de administración del sistema (HU019 a HU021). Solo para las cuentas de
 // administradores_sistema; nada de aquí depende de una caja ni de sus roles.
@@ -186,6 +186,139 @@ router.get("/cuentas", async (req, res) => {
     })
     cuentas.sort((a, b) => (a.correo ?? "").localeCompare(b.correo ?? ""))
     return res.json({ cuentas })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Bloquear y restablecer (HU020, HU-S02) ──────────────────────────────────────
+// Motivo obligatorio y una fila en la bitácora por cada acción. La base de datos exige al
+// menos 10 caracteres; aquí se valida antes para dar un mensaje claro.
+
+const LARGO_MOTIVO = { min: 10, max: 500 }
+
+function leerMotivo(body) {
+  const motivo = typeof body?.motivo === "string" ? body.motivo.trim() : ""
+  if (motivo.length < LARGO_MOTIVO.min) {
+    return { error: `Escribe el motivo, con al menos ${LARGO_MOTIVO.min} caracteres` }
+  }
+  if (motivo.length > LARGO_MOTIVO.max) {
+    return { error: `El motivo no puede pasar de ${LARGO_MOTIVO.max} caracteres` }
+  }
+  return { motivo }
+}
+
+/** La cuenta de Auth a la que apunta :id, o null si no existe */
+async function leerCuenta(id) {
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(id)
+  if (error || !data?.user) return null
+  return data.user
+}
+
+async function anotarBitacora({ adminId, accion, cuenta, motivo }) {
+  const { error } = await supabaseAdmin.from("bitacora_administracion").insert({
+    admin_id: adminId,
+    accion,
+    usuario_id: cuenta.id,
+    usuario_correo: cuenta.email ?? "",
+    motivo,
+  })
+  if (error) throw error
+}
+
+// POST /api/admin/cuentas/:id/bloqueo  { motivo }
+// No se bloquea la propia cuenta ni la de otro administrador (primero hay que quitarlo de
+// administradores_sistema): así el panel nunca se queda sin quien lo use.
+router.post("/cuentas/:id/bloqueo", async (req, res) => {
+  const { motivo, error: errorMotivo } = leerMotivo(req.body)
+  if (errorMotivo) return res.status(400).json({ error: errorMotivo, campo: "motivo" })
+  if (req.params.id === req.user.id) {
+    return res.status(400).json({ error: "No puedes bloquear tu propia cuenta" })
+  }
+  try {
+    const cuenta = await leerCuenta(req.params.id)
+    if (!cuenta) return res.status(404).json({ error: "La cuenta no existe" })
+    if (await esAdminSistema(cuenta.id)) {
+      return res.status(400).json({ error: "No se puede bloquear a otro administrador de DOMUS" })
+    }
+    if (await leerBloqueo(cuenta.id)) {
+      return res.status(409).json({ error: "La cuenta ya está bloqueada" })
+    }
+
+    const { data: bloqueo, error } = await supabaseAdmin
+      .from("bloqueos_cuenta")
+      .insert({ user_id: cuenta.id, motivo, bloqueada_por: req.user.id })
+      .select("motivo, bloqueada_en")
+      .single()
+    if (error) throw error
+
+    try {
+      await anotarBitacora({ adminId: req.user.id, accion: "bloquear", cuenta, motivo })
+    } catch (err) {
+      // Sin registro en la bitácora no hay bloqueo (HU-S02)
+      await supabaseAdmin.from("bloqueos_cuenta").delete().eq("user_id", cuenta.id)
+      throw err
+    }
+    return res.status(201).json({ bloqueo })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/admin/cuentas/:id/restablecimiento  { motivo }
+// Quita el bloqueo. La cuenta vuelve al estado que le corresponda (activa, inactiva o
+// pendiente); la historia queda en la bitácora.
+router.post("/cuentas/:id/restablecimiento", async (req, res) => {
+  const { motivo, error: errorMotivo } = leerMotivo(req.body)
+  if (errorMotivo) return res.status(400).json({ error: errorMotivo, campo: "motivo" })
+  try {
+    const cuenta = await leerCuenta(req.params.id)
+    if (!cuenta) return res.status(404).json({ error: "La cuenta no existe" })
+    const bloqueo = await leerBloqueo(cuenta.id)
+    if (!bloqueo) return res.status(409).json({ error: "La cuenta no está bloqueada" })
+
+    const { error } = await supabaseAdmin.from("bloqueos_cuenta").delete().eq("user_id", cuenta.id)
+    if (error) throw error
+
+    try {
+      await anotarBitacora({ adminId: req.user.id, accion: "restablecer", cuenta, motivo })
+    } catch (err) {
+      // Sin registro en la bitácora no hay restablecimiento: se devuelve el bloqueo
+      await supabaseAdmin.from("bloqueos_cuenta").insert({ user_id: cuenta.id, ...bloqueo })
+      throw err
+    }
+    return res.json({ message: "Cuenta restablecida" })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/admin/bitacora
+// Las últimas 200 acciones, la más reciente primero, con el correo de quien las hizo
+router.get("/bitacora", async (req, res) => {
+  try {
+    const filas = await leer(
+      supabaseAdmin
+        .from("bitacora_administracion")
+        .select("id, admin_id, accion, usuario_id, usuario_correo, motivo, creado_en")
+        .order("creado_en", { ascending: false })
+        .limit(200),
+    )
+    const ids = [...new Set(filas.map((f) => f.admin_id).filter(Boolean))]
+    const correos = Object.fromEntries(
+      await Promise.all(ids.map(async (id) => [id, (await leerCuenta(id))?.email ?? null])),
+    )
+    return res.json({
+      registros: filas.map((f) => ({
+        id: f.id,
+        accion: f.accion,
+        cuenta_id: f.usuario_id,
+        cuenta_correo: f.usuario_correo,
+        motivo: f.motivo,
+        fecha: f.creado_en,
+        admin_correo: f.admin_id ? correos[f.admin_id] : null,
+      })),
+    })
   } catch (err) {
     return res.status(500).json({ error: err.message })
   }

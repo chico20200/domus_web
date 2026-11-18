@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react"
-import { Building2, Search, ShieldCheck, Users, UserX } from "lucide-react"
+import { Building2, NotebookText, Search, ShieldCheck, Users, UserX } from "lucide-react"
 import { Tabs } from "../../components/Tabs"
 import { DataTable, type Columna } from "../../components/DataTable"
 import { StatCard } from "../../components/StatCard"
@@ -12,21 +12,25 @@ import { Panel } from "../../components/Panel"
 import { SelectField } from "../../components/SelectField"
 import { TextField } from "../../components/TextField"
 import { adminService } from "../../api/admin.service"
-import type { CajaAdmin, CuentaAdmin } from "../../api/admin.types"
+import type { CajaAdmin, CuentaAdmin, RegistroBitacora } from "../../api/admin.types"
 import type { EstadoCuentaUsuario } from "../../api/profile.types"
 import { AYUDA } from "../../lib/ayuda"
 import { ESTADO_USUARIO } from "../../lib/cuentaUsuario"
-import { fecha } from "../../lib/format"
+import { fecha, fechaHora } from "../../lib/format"
 import { ETIQUETA_ROL } from "../../lib/roles"
 import { conPunto, normalizar } from "../../lib/texto"
 import { useDatos } from "../../lib/useDatos"
+import { useAuth } from "../../context/AuthContext"
+import { useNotif } from "../../context/NotifContext"
+import { BloqueoModal, type AccionBloqueo } from "./BloqueoModal"
 
 /**
  * Panel del administrador del sistema (HU019, HU-S01): las cajas con sus conteos y las
- * cuentas de usuario con su estado. Sin montos: el backend no los envía.
+ * cuentas de usuario con su estado, bloquear y restablecer cuentas con motivo (HU-S02) y la
+ * bitácora de esas acciones. Sin montos: el backend no los envía.
  */
 
-type Vista = "cajas" | "cuentas"
+type Vista = "cajas" | "cuentas" | "bitacora"
 type FiltroEstado = "" | EstadoCuentaUsuario
 
 const OPCIONES_ESTADO = [
@@ -40,8 +44,12 @@ const OPCIONES_ESTADO = [
 export function PanelAdministracion() {
   const [vista, setVista] = useState<Vista>("cajas")
   const cargar = useCallback(async () => {
-    const [cajas, cuentas] = await Promise.all([adminService.getCajas(), adminService.getCuentas()])
-    return { cajas, cuentas }
+    const [cajas, cuentas, bitacora] = await Promise.all([
+      adminService.getCajas(),
+      adminService.getCuentas(),
+      adminService.getBitacora(),
+    ])
+    return { cajas, cuentas, bitacora }
   }, [])
   const { datos, cargando, error, recargar } = useDatos(cargar)
 
@@ -74,12 +82,15 @@ export function PanelAdministracion() {
         pestanas={[
           { id: "cajas", titulo: "Cajas" },
           { id: "cuentas", titulo: "Cuentas" },
+          { id: "bitacora", titulo: "Bitácora" },
         ]}
       >
         {vista === "cajas" ? (
           <TablaCajas cajas={datos.cajas} />
+        ) : vista === "cuentas" ? (
+          <TablaCuentas cuentas={datos.cuentas} onCambio={recargar} />
         ) : (
-          <TablaCuentas cuentas={datos.cuentas} />
+          <TablaBitacora registros={datos.bitacora} />
         )}
       </Tabs>
     </>
@@ -110,7 +121,16 @@ function TablaCajas({ cajas }: { cajas: CajaAdmin[] }) {
   )
 }
 
-function TablaCuentas({ cuentas }: { cuentas: CuentaAdmin[] }) {
+function TablaCuentas({
+  cuentas,
+  onCambio,
+}: {
+  cuentas: CuentaAdmin[]
+  onCambio: () => Promise<void>
+}) {
+  const { user } = useAuth()
+  const { toast } = useNotif()
+  const [accion, setAccion] = useState<{ cuenta: CuentaAdmin; tipo: AccionBloqueo } | null>(null)
   const [busqueda, setBusqueda] = useState("")
   const [estado, setEstado] = useState<FiltroEstado>("")
 
@@ -186,6 +206,27 @@ function TablaCuentas({ cuentas }: { cuentas: CuentaAdmin[] }) {
       celda: (c) =>
         c.ultimo_ingreso ? fecha(c.ultimo_ingreso) : <span className="text-muted">Nunca</span>,
     },
+    {
+      clave: "acciones",
+      encabezado: <span className="sr-only">Acciones</span>,
+      alinear: "derecha",
+      // La propia cuenta y las de otros administradores no se bloquean desde aquí (el
+      // backend tampoco lo permite)
+      celda: (c) =>
+        c.estado === "bloqueada" ? (
+          <Button
+            label="Restablecer"
+            variant="secondary"
+            onClick={() => setAccion({ cuenta: c, tipo: "restablecer" })}
+          />
+        ) : c.id === user?.id || c.es_admin_sistema ? null : (
+          <Button
+            label="Bloquear"
+            variant="ghost"
+            onClick={() => setAccion({ cuenta: c, tipo: "bloquear" })}
+          />
+        ),
+    },
   ]
 
   return (
@@ -221,6 +262,71 @@ function TablaCuentas({ cuentas }: { cuentas: CuentaAdmin[] }) {
           />
         }
       />
+      {accion && (
+        <BloqueoModal
+          cuenta={accion.cuenta}
+          accion={accion.tipo}
+          onCerrar={() => setAccion(null)}
+          onHecho={async () => {
+            const { cuenta, tipo } = accion
+            await onCambio()
+            setAccion(null)
+            toast(
+              "exito",
+              tipo === "bloquear"
+                ? `Se bloqueó la cuenta ${cuenta.correo}`
+                : `Se restableció la cuenta ${cuenta.correo}`,
+            )
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+/** Bitácora de bloqueos y restablecimientos (HU-S02), la acción más reciente primero */
+function TablaBitacora({ registros }: { registros: RegistroBitacora[] }) {
+  const columnas: Columna<RegistroBitacora>[] = [
+    { clave: "fecha", encabezado: "Fecha", celda: (r) => fechaHora(r.fecha) },
+    {
+      clave: "accion",
+      encabezado: "Acción",
+      celda: (r) =>
+        r.accion === "bloquear" ? (
+          <Badge label="Bloqueo" tono="destructivo" />
+        ) : (
+          <Badge label="Restablecimiento" tono="ok" />
+        ),
+    },
+    { clave: "cuenta", encabezado: "Cuenta", celda: (r) => r.cuenta_correo },
+    {
+      clave: "motivo",
+      encabezado: "Motivo",
+      celda: (r) => (
+        <span className="block max-w-80 whitespace-normal text-secondary">
+          {conPunto(r.motivo)}
+        </span>
+      ),
+    },
+    {
+      clave: "admin",
+      encabezado: "Por",
+      celda: (r) => r.admin_correo ?? <span className="text-muted">Cuenta eliminada</span>,
+    },
+  ]
+  return (
+    <DataTable<RegistroBitacora>
+      descripcion="Bloqueos y restablecimientos de cuentas, con su motivo y quién los hizo"
+      filas={registros}
+      claveFila={(r) => r.id}
+      columnas={columnas}
+      vacio={
+        <EmptyState
+          icono={NotebookText}
+          titulo="Aún no hay acciones registradas"
+          descripcion="Cada bloqueo y cada restablecimiento quedan aquí con su motivo."
+        />
+      }
+    />
   )
 }

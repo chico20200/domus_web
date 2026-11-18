@@ -1,6 +1,12 @@
 // src/api/admin.service.ts
 import { apiClient } from "./api.client"
-import type { AceptarAcuerdoResponse, CajaAdmin, CuentaAdmin, EstadoAcuerdo } from "./admin.types"
+import type {
+  AceptarAcuerdoResponse,
+  CajaAdmin,
+  CuentaAdmin,
+  EstadoAcuerdo,
+  RegistroBitacora,
+} from "./admin.types"
 
 export const adminService = {
   // GET /api/admin/acuerdo
@@ -21,5 +27,20 @@ export const adminService = {
   // GET /api/admin/cuentas
   async getCuentas(): Promise<CuentaAdmin[]> {
     return (await apiClient.get<{ cuentas: CuentaAdmin[] }>("/admin/cuentas")).cuentas
+  },
+
+  // POST /api/admin/cuentas/:id/bloqueo
+  bloquear(cuentaId: string, motivo: string): Promise<unknown> {
+    return apiClient.post(`/admin/cuentas/${cuentaId}/bloqueo`, { motivo })
+  },
+
+  // POST /api/admin/cuentas/:id/restablecimiento
+  restablecer(cuentaId: string, motivo: string): Promise<unknown> {
+    return apiClient.post(`/admin/cuentas/${cuentaId}/restablecimiento`, { motivo })
+  },
+
+  // GET /api/admin/bitacora
+  async getBitacora(): Promise<RegistroBitacora[]> {
+    return (await apiClient.get<{ registros: RegistroBitacora[] }>("/admin/bitacora")).registros
   },
 }
