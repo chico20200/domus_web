@@ -30,7 +30,9 @@ router.get("/mis-cajas", async (req, res) => {
         id,
         nombre,
         descripcion,
-        activa
+        activa,
+        estado,
+        estado_motivo
       )
     `,
     )
@@ -53,13 +55,17 @@ router.get("/mis-cajas", async (req, res) => {
 
   // Transforma el resultado para aplanar la estructura
   const cajas = data
-    .filter((m) => m.cajas && m.cajas.activa)
+    // Las bloqueadas por el administrador se listan con su motivo: sus miembros siguen
+    // viendo sus datos (T10). Las eliminadas quedan para la Etapa 7.
+    .filter((m) => m.cajas && m.cajas.activa && m.cajas.estado !== "eliminada")
     .map((m) => ({
       id: m.cajas.id,
       nombre: m.cajas.nombre,
       descripcion: m.cajas.descripcion ?? "",
       rol: m.rol,
       politicas_aceptadas: aceptadas.has(m.cajas.id),
+      estado: m.cajas.estado ?? "activa",
+      estado_motivo: m.cajas.estado_motivo ?? null,
     }))
 
   // Cuántas cajas creó y el máximo (T9), para avisar antes del asistente. Si falla, la

@@ -21,6 +21,13 @@ export interface CajaAdmin {
   id: string
   nombre: string
   creada_en: string
+  fecha_fundacion: string | null
+  /** El ciclo en curso, como "Abril 2025 – Marzo 2026" */
+  ciclo_vigente: string | null
+  estado: "activa" | "bloqueada"
+  /** Solo si está bloqueada */
+  estado_motivo: string | null
+  estado_cambiado_en: string | null
   miembros: number
   socios: number
   creditos_vigentes: number
@@ -44,9 +51,13 @@ export interface CuentaAdmin {
 /** GET /api/admin/bitacora */
 export interface RegistroBitacora {
   id: string
-  accion: "bloquear" | "restablecer"
+  accion: "bloquear" | "restablecer" | "bloquear_caja" | "restablecer_caja"
   cuenta_id: string | null
-  cuenta_correo: string
+  /** null en las acciones sobre una caja */
+  cuenta_correo: string | null
+  caja_id: string | null
+  /** El nombre al momento de la acción; null en las acciones sobre una cuenta */
+  caja_nombre: string | null
   motivo: string
   fecha: string
   /** null si la cuenta del administrador ya no existe */

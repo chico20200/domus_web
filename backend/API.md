@@ -510,9 +510,17 @@ Todas las demás rutas de `/api/admin` exigen la versión vigente aceptada; sin 
 
 ### GET /api/admin/cajas
 
-Cada caja con sus conteos, sin montos (HU-S01).
+Cada caja con su estado, fundación, ciclo vigente y conteos, sin montos (HU019, HU-S01). Las eliminadas no se listan.
 
-- 200: `{ cajas: [{ id, nombre, creada_en, miembros, socios, creditos_vigentes }] }`. `miembros`: cuentas con acceso activo; `socios`: fichas activas; `creditos_vigentes`: en estado `pendiente`, `activo` o `mora`.
+- 200: `{ cajas: [{ id, nombre, creada_en, fecha_fundacion, ciclo_vigente, estado, estado_motivo, estado_cambiado_en, miembros, socios, creditos_vigentes }] }`. `estado`: `activa` o `bloqueada`; `estado_motivo` solo con `bloqueada`. `ciclo_vigente`: el ciclo en curso, como `"abr 2026 – mar 2027"`, o `null` sin fecha de fundación. `miembros`: cuentas con acceso activo; `socios`: fichas activas; `creditos_vigentes`: en estado `pendiente`, `activo` o `vencido`.
+
+### POST /api/admin/cajas/:id/bloqueo · POST /api/admin/cajas/:id/restablecimiento
+
+Bloquea o restablece una caja (HU020) y lo anota en la bitácora, en la misma transacción (`admin_estado_caja`, migración 006). Una caja bloqueada se sigue leyendo, pero nadie registra nada en ella, ni su coordinador puede desbloquearla (migración 004). Sus miembros ven el motivo en Mis cajas y dentro de la caja.
+
+- Body: `{ motivo }`, de 10 a 500 caracteres
+- 201 (bloqueo) / 200 (restablecimiento): `{ caja: { id, estado, estado_motivo, estado_cambiado_en } }`
+- 400: motivo inválido (`campo: 'motivo'`) · 404: la caja no existe · 409: ya estaba bloqueada, no estaba bloqueada o fue eliminada
 
 ### GET /api/admin/cuentas
 
@@ -540,7 +548,7 @@ Quita el bloqueo y lo anota en la bitácora. Si la bitácora falla, el bloqueo v
 
 Las últimas 200 acciones, la más reciente primero.
 
-- 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, motivo, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer`.
+- 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, caja_id, caja_nombre, motivo, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer` (sobre una cuenta: `cuenta_correo`) o `bloquear_caja` o `restablecer_caja` (sobre una caja: `caja_nombre`, el nombre al momento de la acción).
 
 ---
 

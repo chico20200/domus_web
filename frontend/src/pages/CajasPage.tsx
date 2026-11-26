@@ -6,6 +6,7 @@ import {
   Building2,
   ChevronRight,
   KeyRound,
+  Lock,
   Plus,
   Shield,
   ShieldCheck,
@@ -26,6 +27,7 @@ import type { MiCaja } from "../api/cajas.types"
 import { ETIQUETA_ROL, inicioDeRol, type RolCaja } from "../lib/roles"
 import { useDatos } from "../lib/useDatos"
 import { AYUDA } from "../lib/ayuda"
+import { conPunto } from "../lib/texto"
 import { UnirseModal } from "./cajas/UnirseModal"
 
 /**
@@ -167,13 +169,22 @@ export default function CajasPage() {
                   {caja.descripcion && (
                     <span className="truncate text-sm text-secondary">{caja.descripcion}</span>
                   )}
-                  <span>
+                  <span className="flex flex-wrap items-center gap-2">
                     <Badge
                       tono="neutral"
                       icon={ICONO_ROL[caja.rol] ?? Users}
                       label={ETIQUETA_ROL[caja.rol] ?? caja.rol}
                     />
+                    {caja.estado === "bloqueada" && (
+                      <Badge tono="destructivo" icon={Lock} label="Bloqueada" />
+                    )}
                   </span>
+                  {caja.estado === "bloqueada" && (
+                    <span className="text-sm text-secondary">
+                      Solo consulta: el administrador de DOMUS la bloqueó.
+                      {caja.estado_motivo && ` Motivo: ${conPunto(caja.estado_motivo)}`}
+                    </span>
+                  )}
                 </span>
                 <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden="true" />
               </button>

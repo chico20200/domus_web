@@ -18,6 +18,10 @@ export interface MiCaja {
   rol: RolCaja
   /** Si aceptó la versión vigente de las políticas de esta caja (HU-S04) */
   politicas_aceptadas: boolean
+  /** "bloqueada": el administrador de DOMUS la bloqueó; se lee pero no se registra (T10).
+   *  Opcional porque una caja guardada antes de T10 no lo trae hasta revalidarse. */
+  estado?: "activa" | "bloqueada"
+  estado_motivo?: string | null
 }
 
 export interface GetMisCajasResponse {

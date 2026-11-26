@@ -6,6 +6,8 @@ const verifyToken = require("../middlewares/auth.middleware")
 const requiereAdminSistema = require("../middlewares/adminSistema.middleware")
 const { ACUERDO_VERSION } = require("../utils/confidencialidad")
 const { calcularEstadoCuenta, esAdminSistema, leerBloqueo } = require("../utils/cuentaSistema")
+const { calcularCiclos } = require("../utils/ciclos")
+const { responderError } = require("../utils/errores")
 
 // Panel de administración del sistema (HU019 a HU021). Solo para las cuentas de
 // administradores_sistema; nada de aquí depende de una caja ni de sus roles.
@@ -104,12 +106,30 @@ function contarPorCaja(filas) {
 // el enum, como "mora", hace fallar toda la consulta.
 const CREDITO_VIGENTE = ["pendiente", "activo", "vencido"]
 
+/** El ciclo en curso de una caja, como "Abril 2025 – Marzo 2026", o null sin fundación */
+function cicloVigente(c) {
+  if (!c.fecha_fundacion || !c.mes_inicio_ciclo || !c.duracion_ciclo) return null
+  return (
+    calcularCiclos(c.fecha_fundacion, c.mes_inicio_ciclo, c.duracion_ciclo).cicloActual?.label ??
+    null
+  )
+}
+
 // GET /api/admin/cajas
-// Cada caja con sus conteos: miembros con acceso, fichas de socio activas y créditos vigentes
+// Cada caja con su estado, fundación y ciclo vigente (HU019), y sus conteos: miembros con
+// acceso, fichas de socio activas y créditos vigentes. Las eliminadas no se listan.
 router.get("/cajas", async (req, res) => {
   try {
     const [cajas, miembros, socios, creditos] = await Promise.all([
-      leer(supabaseAdmin.from("cajas").select("id, nombre, created_at").order("nombre")),
+      leer(
+        supabaseAdmin
+          .from("cajas")
+          .select(
+            "id, nombre, created_at, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo, estado, estado_motivo, estado_cambiado_en",
+          )
+          .neq("estado", "eliminada")
+          .order("nombre"),
+      ),
       leer(supabaseAdmin.from("miembros_caja").select("caja_id").eq("activo", true)),
       leer(supabaseAdmin.from("socios").select("caja_id").eq("activo", true)),
       leer(supabaseAdmin.from("creditos").select("caja_id").in("estado", CREDITO_VIGENTE)),
@@ -122,6 +142,11 @@ router.get("/cajas", async (req, res) => {
         id: c.id,
         nombre: c.nombre,
         creada_en: c.created_at,
+        fecha_fundacion: c.fecha_fundacion ?? null,
+        ciclo_vigente: cicloVigente(c),
+        estado: c.estado,
+        estado_motivo: c.estado_motivo ?? null,
+        estado_cambiado_en: c.estado_cambiado_en ?? null,
         miembros: nMiembros[c.id] ?? 0,
         socios: nSocios[c.id] ?? 0,
         creditos_vigentes: nCreditos[c.id] ?? 0,
@@ -295,6 +320,27 @@ router.post("/cuentas/:id/restablecimiento", async (req, res) => {
   }
 })
 
+// POST /api/admin/cajas/:id/bloqueo  { motivo }
+// POST /api/admin/cajas/:id/restablecimiento  { motivo }
+// Una caja bloqueada se sigue leyendo, pero nadie registra nada en ella (migración 004).
+// El cambio de estado y la fila de la bitácora van juntos en admin_estado_caja (006).
+function cambiarEstadoCaja(bloquear) {
+  return async (req, res) => {
+    const { motivo, error: errorMotivo } = leerMotivo(req.body)
+    if (errorMotivo) return res.status(400).json({ error: errorMotivo, campo: "motivo" })
+    const { data, error } = await supabaseAdmin.rpc("admin_estado_caja", {
+      p_caja: req.params.id,
+      p_bloquear: bloquear,
+      p_motivo: motivo,
+      p_admin: req.user.id,
+    })
+    if (error) return responderError(res, error)
+    return res.status(bloquear ? 201 : 200).json({ caja: data })
+  }
+}
+router.post("/cajas/:id/bloqueo", cambiarEstadoCaja(true))
+router.post("/cajas/:id/restablecimiento", cambiarEstadoCaja(false))
+
 // GET /api/admin/bitacora
 // Las últimas 200 acciones, la más reciente primero, con el correo de quien las hizo
 router.get("/bitacora", async (req, res) => {
@@ -302,7 +348,9 @@ router.get("/bitacora", async (req, res) => {
     const filas = await leer(
       supabaseAdmin
         .from("bitacora_administracion")
-        .select("id, admin_id, accion, usuario_id, usuario_correo, motivo, creado_en")
+        .select(
+          "id, admin_id, accion, usuario_id, usuario_correo, caja_id, caja_nombre, motivo, creado_en",
+        )
         .order("creado_en", { ascending: false })
         .limit(200),
     )
@@ -315,7 +363,9 @@ router.get("/bitacora", async (req, res) => {
         id: f.id,
         accion: f.accion,
         cuenta_id: f.usuario_id,
-        cuenta_correo: f.usuario_correo,
+        cuenta_correo: f.usuario_correo || null,
+        caja_id: f.caja_id ?? null,
+        caja_nombre: f.caja_nombre ?? null,
         motivo: f.motivo,
         fecha: f.creado_en,
         admin_correo: f.admin_id ? correos[f.admin_id] : null,

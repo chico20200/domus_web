@@ -14,6 +14,13 @@ export interface Caja {
    * contra /cajas/mis-cajas lo completa.
    */
   politicas_aceptadas?: boolean
+  /**
+   * "bloqueada" si el administrador de DOMUS la bloqueó (T10): AppLayout muestra el aviso.
+   * Se toma al revalidar la caja, una vez por sesión; si la bloquean a mitad de sesión,
+   * cada registro responde "La caja no admite registros nuevos".
+   */
+  estado?: "activa" | "bloqueada"
+  estado_motivo?: string | null
 }
 
 export interface CajaContextType {
