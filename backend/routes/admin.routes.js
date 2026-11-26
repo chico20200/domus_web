@@ -99,8 +99,10 @@ function contarPorCaja(filas) {
   return conteo
 }
 
-// Créditos que siguen en curso: por aprobar, al día o en mora
-const CREDITO_VIGENTE = ["pendiente", "activo", "mora"]
+// Créditos que siguen en curso: por aprobar, al día o vencidos. Son los valores del enum
+// estado_credito de la base (pendiente, activo, pagado, vencido): un valor que no está en
+// el enum, como "mora", hace fallar toda la consulta.
+const CREDITO_VIGENTE = ["pendiente", "activo", "vencido"]
 
 // GET /api/admin/cajas
 // Cada caja con sus conteos: miembros con acceso, fichas de socio activas y créditos vigentes
