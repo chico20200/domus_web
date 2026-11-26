@@ -16,7 +16,7 @@ import { pagosService } from "../../api/pagos.service"
 import type { PagoCredito, TipoPago } from "../../api/pagos.types"
 import { fecha, moneda, porcentaje } from "../../lib/format"
 import { useDatos } from "../../lib/useDatos"
-import { estadoCredito, nombreSocio } from "../../lib/creditos"
+import { EN_CURSO, estadoCredito, nombreSocio } from "../../lib/creditos"
 import { InfoTip } from "../../components/InfoTip"
 import { AYUDA } from "../../lib/ayuda"
 
@@ -78,10 +78,10 @@ export function DetalleCredito({
 
   const { credito: c, pagos, proxima } = datos
   const socio = nombreSocio(c.socios)
-  const estado = estadoCredito(c.estado)
+  const estado = estadoCredito(c)
   const totalCapital = pagos.reduce((s, p) => s + Number(p.monto_capital), 0)
   const totalInteres = pagos.reduce((s, p) => s + Number(p.monto_interes), 0)
-  const activo = c.estado === "activo"
+  const activo = EN_CURSO.includes(c.estado)
 
   async function aprobar() {
     const ok = await confirm({

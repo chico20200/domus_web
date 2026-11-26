@@ -17,12 +17,12 @@ import type { Credito } from "../api/creditos.types"
 import type { TipoPago } from "../api/pagos.types"
 import { moneda, porcentaje } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
-import { estadoCredito, nombreSocio } from "../lib/creditos"
+import { EN_CURSO, estadoCredito, nombreSocio } from "../lib/creditos"
 import { normalizar } from "../lib/texto"
 import { ElegirPagoModal } from "./pagos/ElegirPagoModal"
 
 /**
- * Cobranza: los créditos que aceptan pagos (activos y en mora) y, para cada uno,
+ * Cobranza: los créditos que aceptan pagos (activos y vencidos, en mora primero) y, para cada uno,
  * "Registrar pago". El pago va en dos pasos: elegir qué se paga y confirmar el desglose.
  * Abono y prepago siguen en el detalle del crédito, en Créditos.
  */
@@ -38,19 +38,18 @@ export default function PagosPage() {
   return <Pagos cajaId={cajaActiva.id} />
 }
 
-// Los únicos estados que reciben pagos; mora primero porque es lo urgente
-const COBRABLES = ["mora", "activo"]
+// Primero lo urgente: más cuotas atrasadas arriba; después por nombre
+const atraso = (c: Credito) => c.mora?.cuotas_vencidas ?? 0
 
 function Pagos({ cajaId }: { cajaId: string }) {
   const { toast } = useNotif()
   const cargar = useCallback(async () => {
     const { creditos } = await creditosService.getCreditos(cajaId)
     return creditos
-      .filter((c) => COBRABLES.includes(c.estado))
+      .filter((c) => EN_CURSO.includes(c.estado))
       .sort(
         (a, b) =>
-          COBRABLES.indexOf(a.estado) - COBRABLES.indexOf(b.estado) ||
-          nombreSocio(a.socios).localeCompare(nombreSocio(b.socios), "es"),
+          atraso(b) - atraso(a) || nombreSocio(a.socios).localeCompare(nombreSocio(b.socios), "es"),
       )
   }, [cajaId])
   const { datos, cargando, error, recargar } = useDatos(cargar)
@@ -115,7 +114,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
         </div>
       ) : (
         <DataTable<Credito>
-          descripcion="Créditos activos y en mora, con su cuota, saldo y estado"
+          descripcion="Créditos desembolsados sin terminar de pagar, los atrasados primero, con su cuota, saldo y estado"
           cargando={cargando}
           textoCargando="Cargando créditos…"
           filas={filtrados}
@@ -164,7 +163,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
               clave: "estado",
               encabezado: "Estado",
               celda: (c) => {
-                const e = estadoCredito(c.estado)
+                const e = estadoCredito(c)
                 return <Badge tono={e.tono} label={e.etiqueta} />
               },
             },

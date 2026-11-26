@@ -1,22 +1,42 @@
 import type { BadgeTono } from "../components/Badge"
-import type { EstadoCredito } from "../api/creditos.types"
+import type { EstadoCredito, MoraCredito } from "../api/creditos.types"
 import type { TipoPago } from "../api/pagos.types"
 
 /**
  * Etiqueta y tono de Badge de cada estado de crédito. Un solo lugar para Créditos, Pagos
- * y el Dashboard. El tono sigue el significado de Badge: pendiente pide atención, activo
- * está al día, mora y castigado son problemas, pagado ya no tiene carga.
+ * y el Dashboard. Son los estados de la base; el tono sigue el significado de Badge:
+ * pendiente pide atención, activo está al día, vencido es un problema, pagado ya no
+ * tiene carga.
  */
 export const ESTADO_CREDITO: Record<EstadoCredito, { etiqueta: string; tono: BadgeTono }> = {
   pendiente: { etiqueta: "Pendiente", tono: "alerta" },
   activo: { etiqueta: "Activo", tono: "ok" },
   pagado: { etiqueta: "Pagado", tono: "neutral" },
-  mora: { etiqueta: "En mora", tono: "destructivo" },
-  castigado: { etiqueta: "Castigado", tono: "destructivo" },
+  vencido: { etiqueta: "Vencido", tono: "destructivo" },
 }
 
-export function estadoCredito(estado: string) {
-  return ESTADO_CREDITO[estado as EstadoCredito] ?? { etiqueta: estado, tono: "neutral" as const }
+/** Activos y vencidos: desembolsados, sin terminar de pagar y los únicos que reciben pagos */
+export const EN_CURSO: EstadoCredito[] = ["activo", "vencido"]
+
+/**
+ * Lo que muestra el Badge de un crédito. La mora (una cuota vencida sin pagar, calculada
+ * por el backend al leer) manda sobre el estado guardado: un crédito activo con una
+ * cuota atrasada se ve "En mora", no "Activo".
+ */
+export function estadoCredito(credito: { estado: string; mora?: MoraCredito | null }) {
+  if (credito.mora) {
+    const n = credito.mora.cuotas_vencidas
+    return {
+      etiqueta: `En mora · ${n} ${n === 1 ? "cuota" : "cuotas"}`,
+      tono: "destructivo" as const,
+    }
+  }
+  return (
+    ESTADO_CREDITO[credito.estado as EstadoCredito] ?? {
+      etiqueta: credito.estado,
+      tono: "neutral" as const,
+    }
+  )
 }
 
 export function nombreSocio(socio?: { nombre: string; apellido: string } | null) {

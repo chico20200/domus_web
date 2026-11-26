@@ -6,7 +6,7 @@ import type { LucideIcon } from "lucide-react"
  * El tono sale del significado, no del gusto:
  * - ok: al día, activo, vigente, pagado a tiempo.
  * - alerta: pendiente, por vencer, requiere atención.
- * - destructivo: en mora, castigado, rechazado, bloqueado.
+ * - destructivo: en mora, vencido, rechazado, bloqueado.
  * - neutral: roles (socio, tesorero), cerrado, sin estado especial.
  *
  * Contorno sin relleno: con la paleta AA de T3, cualquier fondo teñido baja el contraste

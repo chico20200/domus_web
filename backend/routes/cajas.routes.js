@@ -6,6 +6,7 @@ const { responderError } = require("../utils/errores")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { calcularCiclos, validarConfigCiclo } = require("../utils/ciclos")
+const { EN_CURSO, agregarMora } = require("../utils/mora")
 
 // Largos máximos de los datos de una caja (los mismos que el formulario)
 const LARGO_NOMBRE = 80
@@ -174,9 +175,11 @@ router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) =>
 
     const { data: creditos, error: errorCreditos } = await req.db
       .from("creditos")
-      .select("saldo_pendiente")
+      .select(
+        "id, estado, monto_solicitado, tasa_interes, plazo_meses, fecha_desembolso, saldo_pendiente",
+      )
       .eq("caja_id", cajaId)
-      .eq("estado", "activo")
+      .in("estado", EN_CURSO)
 
     const { data: transacciones, error: errorTx } = await req.db
       .from("transacciones")
@@ -200,6 +203,10 @@ router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) =>
       errorCaja || errorMiembros || errorSocios || errorCuentas || errorCreditos || errorTx
     if (errorConsulta) throw errorConsulta
 
+    // Activos y vencidos están desembolsados y sin pagar; la mora se calcula al leer (T13)
+    const conMora = await agregarMora(req.db, creditos)
+    if (conMora.error) throw conMora.error
+
     const saldoTotal = (cuentas ?? []).reduce((sum, c) => sum + parseFloat(c.saldo ?? 0), 0)
     const saldoPendiente = (creditos ?? []).reduce(
       (sum, c) => sum + parseFloat(c.saldo_pendiente ?? 0),
@@ -214,6 +221,7 @@ router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) =>
         totalSocios: totalSocios ?? 0,
         saldoTotal,
         creditosActivos: creditos?.length ?? 0,
+        creditosEnMora: conMora.creditos.filter((c) => c.mora).length,
         saldoPendiente,
       },
       transaccionesRecientes: transacciones ?? [],

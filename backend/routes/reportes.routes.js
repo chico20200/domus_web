@@ -6,6 +6,7 @@ const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { calcularDistribucionInteres } = require("../utils/reportes")
 const { calcularCiclos } = require("../utils/ciclos")
+const { EN_CURSO, agregarMora } = require("../utils/mora")
 
 router.use(verifyToken)
 
@@ -151,10 +152,15 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
   // 3. Créditos — estado actual de la cartera
   const { data: creditos } = await req.db
     .from("creditos")
-    .select("estado, monto_solicitado, saldo_pendiente, interes_condonado")
+    .select(
+      "id, estado, monto_solicitado, tasa_interes, plazo_meses, fecha_desembolso, saldo_pendiente, interes_condonado",
+    )
     .eq("caja_id", cajaId)
 
-  const activos = (creditos ?? []).filter((c) => c.estado === "activo")
+  // Por cobrar: desembolsados y sin terminar de pagar, al día o atrasados (T13)
+  const activos = (creditos ?? []).filter((c) => EN_CURSO.includes(c.estado))
+  const conMora = await agregarMora(req.db, activos)
+  if (conMora.error) return responderError(res, conMora.error)
   const porCobrar = +activos.reduce((s, c) => s + parseFloat(c.saldo_pendiente), 0).toFixed(2)
 
   const condonado = +(creditos ?? [])
@@ -209,6 +215,7 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
       pagados: (creditos ?? []).filter((c) => c.estado === "pagado").length,
       pendientes: (creditos ?? []).filter((c) => c.estado === "pendiente").length,
       vencidos: (creditos ?? []).filter((c) => c.estado === "vencido").length,
+      en_mora: conMora.creditos.filter((c) => c.mora).length,
     },
   })
 })

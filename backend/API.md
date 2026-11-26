@@ -193,7 +193,7 @@ Registra la aceptación de las políticas de uso de la caja (HU-S04). Aceptar do
 
 Devuelve el detalle de la caja, el rol del usuario y un resumen de indicadores (miembros, socios, saldo total en ahorros, créditos activos, saldo pendiente, últimas 5 transacciones). Rol mínimo: `tesorero` (permiso `datos.ver`).
 
-- 200: `{ caja, rol, resumen: { totalMiembros, totalSocios, saldoTotal, creditosActivos, saldoPendiente }, transaccionesRecientes }`
+- 200: `{ caja, rol, resumen: { totalMiembros, totalSocios, saldoTotal, creditosActivos, creditosEnMora, saldoPendiente }, transaccionesRecientes }`. `creditosActivos` y `saldoPendiente` cuentan los créditos `activo` y `vencido` (desembolsados y sin terminar de pagar); `creditosEnMora`, los que de esos tienen una cuota vencida sin pagar.
 - 403: `{ error: 'Sin acceso a esta caja' }`
 
 ### PUT /api/cajas/:cajaId
@@ -392,14 +392,15 @@ Todas requieren Auth.
 Lista los créditos de la caja con datos del socio.
 
 - Rol mínimo: `tesorero` (permiso `datos.ver`: el socio no ve los datos de los demás)
-- 200: `{ creditos }`
+- 200: `{ creditos }`. Cada crédito trae `mora`, calculada al leer (no se guarda): `{ cuotas_vencidas, monto_vencido, desde }` si tiene al menos una cuota vencida sin pagar, o `null` si está al día o no está en curso. Una cuota vence el último día de su mes y está vencida desde el mes siguiente; `desde` es el vencimiento de la más antigua. Solo los créditos `activo` o `vencido` pueden estar en mora.
+- `estado` es el de la base: `pendiente`, `activo`, `pagado` o `vencido`. La mora no es un estado: un crédito `activo` puede estar en mora.
 
 ### GET /api/cajas/:cajaId/creditos/:creditoId
 
 Detalle de un crédito y sus pagos asociados.
 
 - Rol mínimo: `tesorero` (permiso `datos.ver`: el socio no ve los datos de los demás)
-- 200: `{ credito, pagos }`
+- 200: `{ credito, pagos }`; `credito.mora` como en el listado
 - 404: `{ error: 'Crédito no encontrado' }`
 
 ### GET /api/cajas/:cajaId/creditos/socio/:socioId
@@ -407,7 +408,7 @@ Detalle de un crédito y sus pagos asociados.
 Créditos de un socio específico.
 
 - Rol mínimo: `tesorero` (permiso `datos.ver`: el socio no ve los datos de los demás)
-- 200: `{ creditos }`
+- 200: `{ creditos }`, con `mora` como en el listado
 
 ### POST /api/cajas/:cajaId/creditos
 

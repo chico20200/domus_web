@@ -183,7 +183,7 @@ function Creditos({
               clave: "estado",
               encabezado: "Estado",
               celda: (c) => {
-                const e = estadoCredito(c.estado)
+                const e = estadoCredito(c)
                 return <Badge tono={e.tono} label={e.etiqueta} />
               },
             },

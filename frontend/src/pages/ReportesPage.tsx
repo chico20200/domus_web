@@ -264,7 +264,7 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
           <StatCard
             etiqueta="Por cobrar"
             valor={moneda(estado.por_cobrar)}
-            detalle={`${estado.creditos.activos} ${estado.creditos.activos === 1 ? "crédito activo" : "créditos activos"}`}
+            detalle={`${estado.creditos.activos} ${estado.creditos.activos === 1 ? "crédito en curso" : "créditos en curso"}${estado.creditos.en_mora > 0 ? `, ${estado.creditos.en_mora} en mora` : ""}`}
             icono={CreditCard}
           />
           <StatCard

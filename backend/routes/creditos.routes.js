@@ -7,6 +7,7 @@ const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal, leerFecha } = require("../utils/fechas")
 const { errorMonto, errorEntero } = require("../utils/validacion")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
+const { agregarMora, calcularMora } = require("../utils/mora")
 
 router.use(verifyToken)
 
@@ -25,7 +26,11 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
 
   if (error) return responderError(res, error)
 
-  return res.json({ creditos: data ?? [] })
+  // Cada crédito con su mora calculada al leer (T13)
+  const conMora = await agregarMora(req.db, data)
+  if (conMora.error) return responderError(res, conMora.error)
+
+  return res.json({ creditos: conMora.creditos })
 })
 
 // ─────────────────────────────────────────────
@@ -50,7 +55,10 @@ router.get("/:creditoId", requierePermiso("datos.ver"), async (req, res) => {
     .eq("credito_id", creditoId)
     .order("created_at", { ascending: false })
 
-  return res.json({ credito, pagos: pagos ?? [] })
+  return res.json({
+    credito: { ...credito, mora: calcularMora(credito, pagos ?? []) },
+    pagos: pagos ?? [],
+  })
 })
 
 // ─────────────────────────────────────────────
@@ -69,7 +77,10 @@ router.get("/socio/:socioId", requierePermiso("datos.ver"), async (req, res) => 
 
   if (error) return responderError(res, error)
 
-  return res.json({ creditos: data ?? [] })
+  const conMora = await agregarMora(req.db, data)
+  if (conMora.error) return responderError(res, conMora.error)
+
+  return res.json({ creditos: conMora.creditos })
 })
 
 // ─────────────────────────────────────────────
