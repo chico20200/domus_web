@@ -279,6 +279,25 @@ Desactiva (soft delete) un socio.
 - Rol mínimo: `coordinador`
 - 200: `{ message: 'Socio desactivado correctamente' }`
 
+### GET /api/cajas/:cajaId/socios/:socioId/correcciones-ingreso
+
+Correcciones de la fecha de ingreso del socio, la más reciente primero (Etapa 6, T14; migración `009`).
+
+- Rol mínimo: `tesorero` (permiso `datos.ver`)
+- 200: `{ correcciones: [{ id, fecha_anterior, fecha_nueva, motivo, corregido_por_nombre, creado_en }] }`
+
+### POST /api/cajas/:cajaId/socios/:socioId/correcciones-ingreso
+
+Corrige la fecha de ingreso. Es la única forma de cambiarla: `PUT /socios/:id` no la toca y la base no deja editar la columna.
+
+- Rol mínimo: `coordinador` (permiso `socios.corregir_ingreso`)
+- Body: `{ fecha_ingreso: 'AAAA-MM-DD', motivo }`
+- 201: `{ message, id, fecha_anterior, fecha_ingreso }`
+- 400: fecha mal escrita, motivo de menos de 10 caracteres, fecha futura, la misma fecha, o fecha nueva anterior al inicio del ciclo en curso ("La fecha nueva cae en un ciclo cerrado. Usa una fecha desde el 01/01/2026")
+- 404: la ficha no es de esta caja
+- 409: la fecha actual ya está en un ciclo cerrado (se usó para repartir intereses), o la caja está bloqueada
+- La base (`corregir_fecha_ingreso`) cambia la fecha y registra la corrección en `correcciones_fecha_ingreso` en una sola transacción. Sin periodo configurado no hay ciclos cerrados.
+
 ---
 
 ## 5. Cuentas de ahorro — `/api/cajas/:cajaId/cuentas`

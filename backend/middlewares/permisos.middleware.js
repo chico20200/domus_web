@@ -27,6 +27,8 @@ const PERMISOS = {
   // Cambiar roles, quitar miembros e invitar
   "miembros.gestionar": "coordinador",
   "socios.eliminar": "coordinador",
+  // Corregir la fecha de ingreso, con motivo (T14, migración 009)
+  "socios.corregir_ingreso": "coordinador",
   "cuentas.cambiar_estado": "coordinador",
   "creditos.cambiar_estado": "coordinador",
 }

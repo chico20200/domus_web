@@ -200,7 +200,8 @@ export function SocioModal({ cajaId, socio, onCerrar, onGuardado }: Props) {
             <div className="flex flex-col gap-1 text-sm">
               <span className="font-medium text-primary">Fecha de ingreso</span>
               <span className="text-secondary">
-                {fecha(socio.fecha_ingreso)}. No se cambia después del registro.
+                {fecha(socio.fecha_ingreso)}. Solo el coordinador la corrige, con un motivo, desde
+                el botón del calendario en la lista de socios.
               </span>
             </div>
           ) : (

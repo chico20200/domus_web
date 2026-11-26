@@ -146,4 +146,73 @@ router.delete("/:socioId", requierePermiso("socios.eliminar"), async (req, res) 
   return res.json({ message: "Socio desactivado correctamente" })
 })
 
+// ─────────────────────────────────────────────
+// GET /api/cajas/:cajaId/socios/:socioId/correcciones-ingreso
+// Correcciones de la fecha de ingreso de un socio, la más reciente primero (T14)
+// ─────────────────────────────────────────────
+router.get("/:socioId/correcciones-ingreso", requierePermiso("datos.ver"), async (req, res) => {
+  const { cajaId, socioId } = req.params
+
+  const { data, error } = await req.db
+    .from("correcciones_fecha_ingreso")
+    .select("id, fecha_anterior, fecha_nueva, motivo, corregido_por, creado_en")
+    .eq("caja_id", cajaId)
+    .eq("socio_id", socioId)
+    .order("creado_en", { ascending: false })
+
+  if (error) return responderError(res, error)
+
+  // Quién corrigió, por nombre: los perfiles de los miembros de la caja se pueden leer
+  const ids = [...new Set((data ?? []).map((c) => c.corregido_por))]
+  let nombres = {}
+  if (ids.length > 0) {
+    const { data: perfiles } = await req.db.from("profiles").select("id, nombre").in("id", ids)
+    nombres = Object.fromEntries((perfiles ?? []).map((p) => [p.id, p.nombre]))
+  }
+
+  return res.json({
+    correcciones: (data ?? []).map(({ corregido_por, ...c }) => ({
+      ...c,
+      corregido_por_nombre: nombres[corregido_por] ?? null,
+    })),
+  })
+})
+
+// ─────────────────────────────────────────────
+// POST /api/cajas/:cajaId/socios/:socioId/correcciones-ingreso  { fecha_ingreso, motivo }
+// Corrige la fecha de ingreso — solo coordinador. La base revisa el motivo, que no sea
+// futura y que ni la fecha anterior ni la nueva caigan en un ciclo cerrado, y deja el
+// registro de la corrección (corregir_fecha_ingreso, migración 009).
+// ─────────────────────────────────────────────
+router.post(
+  "/:socioId/correcciones-ingreso",
+  requierePermiso("socios.corregir_ingreso"),
+  async (req, res) => {
+    const { cajaId, socioId } = req.params
+    const { fecha_ingreso, motivo } = req.body ?? {}
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha_ingreso ?? ""))) {
+      return res.status(400).json({ error: "Indica la fecha de ingreso (AAAA-MM-DD)" })
+    }
+
+    // La ficha tiene que ser de esta caja
+    const { data: socio } = await req.db
+      .from("socios")
+      .select("id")
+      .eq("id", socioId)
+      .eq("caja_id", cajaId)
+      .maybeSingle()
+    if (!socio) return res.status(404).json({ error: "Socio no encontrado" })
+
+    const { data, error } = await req.db.rpc("corregir_fecha_ingreso", {
+      p_socio: socioId,
+      p_fecha: fecha_ingreso,
+      p_motivo: motivo ?? "",
+    })
+    if (error) return responderError(res, error)
+
+    return res.status(201).json({ message: "Fecha de ingreso corregida", ...data })
+  },
+)
+
 module.exports = router
