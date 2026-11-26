@@ -13,16 +13,23 @@ import { useCaja } from "../context/CajaContext"
 import { useNotif } from "../context/NotifContext"
 import { creditosService } from "../api/creditos.service"
 import { pagosService } from "../api/pagos.service"
+import { adjuntarTrasRegistrar } from "../api/comprobantes.service"
 import type { Credito } from "../api/creditos.types"
 import type { TipoPago } from "../api/pagos.types"
 import { moneda, porcentaje } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
-import { estadoCredito, nombreSocio } from "../lib/creditos"
+import {
+  EN_CURSO,
+  coincideCredito,
+  estadoCredito,
+  nombreSocio,
+  numeroCredito,
+} from "../lib/creditos"
 import { normalizar } from "../lib/texto"
 import { ElegirPagoModal } from "./pagos/ElegirPagoModal"
 
 /**
- * Cobranza: los créditos que aceptan pagos (activos y en mora) y, para cada uno,
+ * Cobranza: los créditos que aceptan pagos (activos y vencidos, en mora primero) y, para cada uno,
  * "Registrar pago". El pago va en dos pasos: elegir qué se paga y confirmar el desglose.
  * Abono y prepago siguen en el detalle del crédito, en Créditos.
  */
@@ -38,19 +45,18 @@ export default function PagosPage() {
   return <Pagos cajaId={cajaActiva.id} />
 }
 
-// Los únicos estados que reciben pagos; mora primero porque es lo urgente
-const COBRABLES = ["mora", "activo"]
+// Primero lo urgente: más cuotas atrasadas arriba; después por nombre
+const atraso = (c: Credito) => c.mora?.cuotas_vencidas ?? 0
 
 function Pagos({ cajaId }: { cajaId: string }) {
   const { toast } = useNotif()
   const cargar = useCallback(async () => {
     const { creditos } = await creditosService.getCreditos(cajaId)
     return creditos
-      .filter((c) => COBRABLES.includes(c.estado))
+      .filter((c) => EN_CURSO.includes(c.estado))
       .sort(
         (a, b) =>
-          COBRABLES.indexOf(a.estado) - COBRABLES.indexOf(b.estado) ||
-          nombreSocio(a.socios).localeCompare(nombreSocio(b.socios), "es"),
+          atraso(b) - atraso(a) || nombreSocio(a.socios).localeCompare(nombreSocio(b.socios), "es"),
       )
   }, [cajaId])
   const { datos, cargando, error, recargar } = useDatos(cargar)
@@ -61,25 +67,29 @@ function Pagos({ cajaId }: { cajaId: string }) {
 
   const creditos = datos ?? []
   const q = normalizar(busqueda.trim())
-  const filtrados = creditos.filter(
-    (c) => !q || normalizar(`${nombreSocio(c.socios)} ${c.socios?.cedula ?? ""}`).includes(q),
-  )
+  const filtrados = creditos.filter((c) => coincideCredito(c, q))
 
-  async function registrar() {
+  async function registrar(foto: Blob | null) {
     if (!pago?.tipo) return
     const { credito, tipo } = pago
     const nombre = nombreSocio(credito.socios)
     setProcesando(true)
     try {
       const res = await pagosService.registrarPago(cajaId, credito.id, tipo)
+      const aviso = await adjuntarTrasRegistrar(
+        { tipo: "pago", cajaId, creditoId: credito.id, id: res.pago.id },
+        foto,
+      )
       setPago(null)
       await recargar()
-      toast(
-        "exito",
-        res.credito_pagado
-          ? `Crédito de ${nombre} pagado por completo`
-          : `Pago de ${nombre} registrado: ${moneda(res.desglose.total)}. Saldo pendiente: ${moneda(res.saldo_pendiente)}`,
-      )
+      if (aviso) toast("advertencia", aviso)
+      else
+        toast(
+          "exito",
+          res.credito_pagado
+            ? `Crédito de ${nombre} pagado por completo`
+            : `Pago de ${nombre} registrado: ${moneda(res.desglose.total)}. Saldo pendiente: ${moneda(res.saldo_pendiente)}`,
+        )
     } catch (err) {
       toast("error", err instanceof Error ? err.message : "No se pudo registrar el pago")
     } finally {
@@ -96,7 +106,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por socio o cédula"
+          placeholder="Buscar por socio, cédula o número"
           icon={Search}
         />
         {!cargando && !error && (
@@ -115,7 +125,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
         </div>
       ) : (
         <DataTable<Credito>
-          descripcion="Créditos activos y en mora, con su cuota, saldo y estado"
+          descripcion="Créditos desembolsados sin terminar de pagar, los atrasados primero, con su cuota, saldo y estado"
           cargando={cargando}
           textoCargando="Cargando créditos…"
           filas={filtrados}
@@ -125,7 +135,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
               <EmptyState
                 icono={Search}
                 titulo="Ningún crédito coincide con la búsqueda"
-                descripcion="Prueba con otra parte del nombre o con la cédula."
+                descripcion="Prueba con otra parte del nombre, con la cédula o con el número del crédito."
               />
             ) : (
               <EmptyState
@@ -143,7 +153,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
                 <div className="flex flex-col">
                   <span className="font-medium text-primary">{nombreSocio(c.socios)}</span>
                   <span className="text-xs text-secondary">
-                    {c.plazo_meses} meses · {porcentaje(c.tasa_interes)}
+                    {numeroCredito(c.numero)} · {c.plazo_meses} meses · {porcentaje(c.tasa_interes)}
                   </span>
                 </div>
               ),
@@ -164,7 +174,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
               clave: "estado",
               encabezado: "Estado",
               celda: (c) => {
-                const e = estadoCredito(c.estado)
+                const e = estadoCredito(c)
                 return <Badge tono={e.tono} label={e.etiqueta} />
               },
             },

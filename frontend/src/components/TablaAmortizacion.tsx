@@ -12,7 +12,7 @@ import { creditosService } from "../api/creditos.service"
 import type { FilaAmortizacion, GetAmortizacionResponse } from "../api/amortizacion.types"
 import { fecha, moneda, porcentaje } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
-import { nombreSocio } from "../lib/creditos"
+import { nombreSocio, numeroCredito } from "../lib/creditos"
 
 /**
  * Tabla de amortización de un crédito, con sus pagos y abonos por cuota y descarga en PDF.
@@ -88,7 +88,7 @@ function descargarPDF(data: GetAmortizacionResponse, nombreCaja: string) {
   doc.setFontSize(9)
   doc.setTextColor(0)
   const y = 34
-  doc.text(`Socio: ${socio}`, 14, y)
+  doc.text(`Socio: ${socio} · Crédito ${numeroCredito(credito.numero)}`, 14, y)
   if (credito.socio?.cedula) doc.text(`Cédula: ${credito.socio.cedula}`, 14, y + 5)
   doc.text(`Total a pagar: ${moneda(credito.monto_total)}`, 14, y + 10)
   if (credito.fecha_desembolso) {
@@ -131,7 +131,7 @@ function descargarPDF(data: GetAmortizacionResponse, nombreCaja: string) {
   doc.setTextColor(85)
   doc.text(`Generado el ${fecha(new Date())} · DOMUS`, 14, doc.internal.pageSize.height - 10)
 
-  doc.save(`amortizacion-${socio.replace(/\s+/g, "-")}.pdf`)
+  doc.save(`amortizacion-credito-${credito.numero}-${socio.replace(/\s+/g, "-")}.pdf`)
 }
 
 const COLUMNAS = (data: GetAmortizacionResponse): Columna<FilaAmortizacion>[] => [
@@ -198,7 +198,11 @@ export function TablaAmortizacion({ cajaId, creditoId, nombreCaja, onCerrar }: P
       abierto
       onCerrar={onCerrar}
       titulo="Tabla de amortización"
-      descripcion={data ? nombreSocio(data.credito.socio) : undefined}
+      descripcion={
+        data
+          ? `${nombreSocio(data.credito.socio)} · Crédito ${numeroCredito(data.credito.numero)}`
+          : undefined
+      }
       ancho="amplio"
       acciones={
         <>

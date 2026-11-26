@@ -1,9 +1,9 @@
 // backend/routes/miembros.routes.js
 const express = require("express")
 const router = express.Router({ mergeParams: true })
-const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso, NIVEL } = require("../middlewares/permisos.middleware")
+const { responderError } = require("../utils/errores")
 
 const ROLES_VALIDOS = Object.keys(NIVEL)
 
@@ -27,7 +27,7 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId } = req.params
 
   // 1. Trae los miembros con su user_id
-  const { data: miembros, error } = await supabaseAdmin
+  const { data: miembros, error } = await req.db
     .from("miembros_caja")
     .select("id, user_id, rol, activo, created_at")
     .eq("caja_id", cajaId)
@@ -36,7 +36,7 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
 
   if (error) {
     console.error("Error al leer miembros:", error.message)
-    return res.status(500).json({ error: error.message })
+    return responderError(res, error)
   }
 
   if (!miembros || miembros.length === 0) {
@@ -46,28 +46,23 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   // 2. Trae los perfiles de esos usuarios
   const userIds = miembros.map((m) => m.user_id)
 
-  const { data: perfiles } = await supabaseAdmin
-    .from("profiles")
-    .select("id, nombre, telefono, foto_url")
-    .in("id", userIds)
+  const { data: perfiles } = await req.db.from("profiles").select("id, nombre").in("id", userIds)
 
   const perfilPorId = {}
   ;(perfiles ?? []).forEach((p) => {
     perfilPorId[p.id] = p
   })
 
-  // 3. Trae los emails desde auth.users
+  // 3. Los correos están en auth.users, que la clave pública no lee: los da la función
+  // correos_miembros (migración 004), solo a quien ve los miembros de la caja
+  const { data: correos, error: errorCorreos } = await req.db.rpc("correos_miembros", {
+    p_caja: cajaId,
+  })
+  if (errorCorreos) return responderError(res, errorCorreos)
   const emailPorId = {}
-  await Promise.all(
-    userIds.map(async (uid) => {
-      try {
-        const { data } = await supabaseAdmin.auth.admin.getUserById(uid)
-        emailPorId[uid] = data?.user?.email ?? ""
-      } catch {
-        emailPorId[uid] = ""
-      }
-    }),
-  )
+  ;(correos ?? []).forEach((c) => {
+    emailPorId[c.user_id] = c.email ?? ""
+  })
 
   // 4. Arma la respuesta
   const resultado = miembros.map((m) => ({
@@ -97,7 +92,7 @@ router.put("/:userId", requierePermiso("miembros.gestionar"), async (req, res) =
     return res.status(400).json({ error: "No puedes cambiar tu propio rol" })
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("miembros_caja")
     .update({ rol: nuevoRol })
     .eq("caja_id", cajaId)
@@ -105,7 +100,7 @@ router.put("/:userId", requierePermiso("miembros.gestionar"), async (req, res) =
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.json({ message: "Rol actualizado correctamente", miembro: data })
 })
@@ -121,13 +116,13 @@ router.delete("/:userId", requierePermiso("miembros.gestionar"), async (req, res
     return res.status(400).json({ error: "No puedes removerte a ti mismo" })
   }
 
-  const { error } = await supabaseAdmin
+  const { error } = await req.db
     .from("miembros_caja")
     .update({ activo: false })
     .eq("caja_id", cajaId)
     .eq("user_id", userId)
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.json({ message: "Miembro removido correctamente" })
 })
@@ -145,7 +140,7 @@ router.post("/invitaciones", requierePermiso("miembros.gestionar"), async (req, 
   }
 
   // Desactiva códigos anteriores no usados de esta caja
-  await supabaseAdmin
+  await req.db
     .from("invitaciones_caja")
     .update({ activo: false })
     .eq("caja_id", cajaId)
@@ -156,7 +151,7 @@ router.post("/invitaciones", requierePermiso("miembros.gestionar"), async (req, 
   const expiraAt = new Date()
   expiraAt.setDate(expiraAt.getDate() + 7) // expira en 7 días
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("invitaciones_caja")
     .insert({
       caja_id: cajaId,
@@ -168,7 +163,7 @@ router.post("/invitaciones", requierePermiso("miembros.gestionar"), async (req, 
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.status(201).json({
     message: "Código generado correctamente",
@@ -185,7 +180,7 @@ router.post("/invitaciones", requierePermiso("miembros.gestionar"), async (req, 
 router.get("/invitaciones", requierePermiso("miembros.gestionar"), async (req, res) => {
   const { cajaId } = req.params
 
-  const { data } = await supabaseAdmin
+  const { data } = await req.db
     .from("invitaciones_caja")
     .select("*")
     .eq("caja_id", cajaId)

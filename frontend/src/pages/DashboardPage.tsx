@@ -101,13 +101,17 @@ function Dashboard({ cajaId, nombreCaja, esCoordinador }: DashboardProps) {
         <StatCard
           etiqueta="Créditos activos"
           valor={String(resumen.creditosActivos)}
-          detalle="Desembolsados y sin terminar de pagar"
+          detalle={
+            resumen.creditosEnMora > 0
+              ? `${resumen.creditosEnMora} en mora: con cuotas vencidas sin pagar`
+              : "Desembolsados y sin terminar de pagar, todos al día"
+          }
           icono={CreditCard}
         />
         <StatCard
           etiqueta="Por cobrar"
           valor={moneda(resumen.saldoPendiente)}
-          detalle="Saldo pendiente de los créditos activos"
+          detalle="Saldo pendiente de los créditos desembolsados"
           icono={TrendingUp}
         />
       </div>

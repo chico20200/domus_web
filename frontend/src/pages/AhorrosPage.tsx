@@ -1,9 +1,10 @@
 // src/pages/AhorrosPage.tsx
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { PiggyBank, Plus, UserRoundX } from "lucide-react"
+import { PiggyBank, Plus, Search, UserRoundX } from "lucide-react"
 import { PageShell } from "../components/layout/PageShell"
 import { Button } from "../components/Button"
+import { TextField } from "../components/TextField"
 import { Badge } from "../components/Badge"
 import { DataTable, type Columna } from "../components/DataTable"
 import { EmptyState } from "../components/EmptyState"
@@ -18,6 +19,7 @@ import { useDatos } from "../lib/useDatos"
 import { tieneRol } from "../lib/roles"
 import { nombreSocio } from "../lib/creditos"
 import { estadoCuenta } from "../lib/ahorros"
+import { coincideSocio, normalizar } from "../lib/texto"
 import { DetalleCuenta } from "./ahorros/DetalleCuenta"
 import { NuevaCuentaModal } from "./ahorros/NuevaCuentaModal"
 
@@ -57,6 +59,8 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
   const { datos, cargando, error, recargar } = useDatos(cargar)
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const [nueva, setNueva] = useState(false)
+  // Se queda al abrir una cuenta y volver: la lista vuelve filtrada como estaba
+  const [busqueda, setBusqueda] = useState("")
 
   if (seleccionada) {
     return (
@@ -75,15 +79,23 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
 
   const cuentas = datos?.cuentas ?? []
   const total = cuentas.reduce((s, c) => s + Number(c.saldo), 0)
+  const q = normalizar(busqueda.trim())
+  const filtradas = cuentas.filter((c) => coincideSocio(c.socios, q))
 
   return (
     <PageShell titulo="Ahorros" ancho="formulario">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-secondary">
-          {cargando
-            ? "Cargando…"
-            : `${cuentas.length} ${cuentas.length === 1 ? "cuenta" : "cuentas"} · ${moneda(total)} ahorrados`}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="w-full max-w-sm">
+          <TextField
+            label="Buscar cuentas de un socio"
+            ocultarEtiqueta
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por nombre o cédula"
+            icon={Search}
+          />
+        </div>
         <Button
           label="Abrir cuenta"
           icon={Plus}
@@ -91,6 +103,14 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
           onClick={() => setNueva(true)}
         />
       </div>
+
+      {!cargando && !error && (
+        <p className="text-sm text-secondary" aria-live="polite">
+          {q
+            ? `${filtradas.length} de ${cuentas.length} ${cuentas.length === 1 ? "cuenta" : "cuentas"} · ${moneda(filtradas.reduce((s, c) => s + Number(c.saldo), 0))} ahorrados`
+            : `${cuentas.length} ${cuentas.length === 1 ? "cuenta" : "cuentas"} · ${moneda(total)} ahorrados`}
+        </p>
+      )}
 
       {error ? (
         <div className="flex flex-col items-start gap-3 rounded-xl border border-base bg-surface p-6">
@@ -102,14 +122,22 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
           descripcion="Cuentas de ahorro de la caja con su titular, estado y saldo"
           cargando={cargando}
           textoCargando="Cargando cuentas…"
-          filas={cuentas}
+          filas={filtradas}
           claveFila={(c) => c.id}
           vacio={
-            <EmptyState
-              icono={PiggyBank}
-              titulo="Aún no hay cuentas de ahorro"
-              descripcion="Abre la primera cuenta para un socio y registra su depósito inicial."
-            />
+            q ? (
+              <EmptyState
+                icono={Search}
+                titulo="Ninguna cuenta coincide con la búsqueda"
+                descripcion="Prueba con otra parte del nombre o con la cédula del socio."
+              />
+            ) : (
+              <EmptyState
+                icono={PiggyBank}
+                titulo="Aún no hay cuentas de ahorro"
+                descripcion="Abre la primera cuenta para un socio y registra su depósito inicial."
+              />
+            )
           }
           columnas={columnas({ titular: true, onAbrir: setSeleccionada })}
         />

@@ -32,6 +32,26 @@ export interface CreateSocioRequest {
   fecha_ingreso?: string
 }
 
+/** Una corrección de la fecha de ingreso (T14). La hace el coordinador con un motivo */
+export interface CorreccionIngreso {
+  id: string
+  fecha_anterior: string
+  fecha_nueva: string
+  motivo: string
+  corregido_por_nombre: string | null
+  creado_en: string
+}
+
+export interface GetCorreccionesIngresoResponse {
+  correcciones: CorreccionIngreso[]
+}
+
+export interface CorregirIngresoResponse {
+  message: string
+  fecha_anterior: string
+  fecha_ingreso: string
+}
+
 export interface SocioResponse {
   message: string
   socio: Socio

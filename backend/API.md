@@ -33,6 +33,52 @@ La verificación la hace un solo middleware, `requierePermiso("<permiso>")` en `
 - `403 { error: 'Sin acceso a esta caja' }` — el usuario no es miembro activo de la caja.
 - `403 { error: 'Tu rol no permite esta acción' }` — no alcanza el rol mínimo. Un rol que no está en la escalera tampoco pasa.
 
+### Aislamiento en la base (RLS, Etapa 6)
+
+Desde la migración `004`, las rutas de una caja consultan Supabase con el token de quien hace la petición (`req.db`, creado en `verifyToken` con la clave pública). Las políticas de fila repiten la escalera de roles dentro de la base: aunque una ruta olvidara un filtro, nadie lee ni escribe datos de una caja de la que no es miembro. Una caja que no está `activa` (bloqueada o eliminada) se puede leer, pero no admite registros nuevos.
+
+La clave de servicio (`supabaseAdmin`) queda solo para el panel del administrador (`/api/admin`) y para leer el estado de la cuenta (bloqueos).
+
+Las escrituras que tocan dos tablas son funciones de Postgres, todo o nada:
+
+| Ruta                                             | Función                                             |
+| ------------------------------------------------ | --------------------------------------------------- |
+| `POST /cuentas/:id/deposito`, `/retiro`          | `registrar_movimiento`                              |
+| `POST /creditos/:id/pagos`, `/prepago`, `/abono` | `registrar_pago_credito`                            |
+| `POST /api/cajas`                                | `crear_caja` (límite de 3 cajas creadas por cuenta) |
+| `POST /api/cajas/unirse`                         | `unirse_con_codigo`                                 |
+| `GET /cuentas/mias`                              | `vincular_mi_ficha`                                 |
+| `GET /miembros` (correos)                        | `correos_miembros`                                  |
+| `GET /api/cajas/mis-cajas` (cupo)                | `cajas_creadas`                                     |
+| `POST …/comprobante` (foto de un registro)        | `adjuntar_comprobante`                              |
+| `PUT`/`DELETE /api/profiles/me/foto`             | `poner_foto_perfil`                                 |
+| `PUT`/`DELETE /api/cajas/:id/foto`               | `poner_foto_caja`                                   |
+
+Errores que pueden devolver además de los de cada ruta:
+
+- `400`, `404`: el mensaje viene de la base (por ejemplo, "Saldo insuficiente…").
+- `409 { error: 'La caja no admite registros nuevos' }` — la caja está bloqueada o eliminada.
+- `409 { error: 'Ya creaste tres cajas, que es el máximo por cuenta' }`.
+- `409 { error: 'El crédito cambió mientras se registraba el pago. Vuelve a intentarlo.' }` — otro pago cambió el saldo entre el cálculo de la cuota y la escritura.
+- `403 { error: 'Tu rol no permite esta acción en esta caja' }` — una escritura que el RLS rechazó.
+- `409 { error: 'Ya existe un registro con esos datos en esta caja' }` — un dato que no se puede repetir, como la cédula.
+
+### Reglas de los datos en la base (migración 005)
+
+Con el token de la persona y la clave pública se puede hablar directo con Supabase, sin pasar por este backend. Por eso las reglas de los datos también están en la base y no se pueden saltar:
+
+- Saldos, movimientos y pagos solo cambian con `registrar_movimiento` y `registrar_pago_credito`. Nadie escribe a mano un saldo, un movimiento ni un pago, y nadie borra filas.
+- Fichas: cédula ecuatoriana válida, teléfono y correo con forma correcta. Se guardan solo los dígitos. Una ficha antigua se puede editar sin tocar su cédula.
+- Créditos: monto mayor a 0, tasa anual de 0,01 % a 100 %, plazo de 1 a 120 meses. La base calcula el total, la cuota y el saldo, y la solicitud nace `pendiente`. Cambios de estado permitidos: `pendiente → activo` (al aprobar, con fechas) y `activo ↔ vencido`. `pagado` lo pone el último pago.
+- Cuentas: nacen activas y en 0. Solo se cierran con saldo 0.
+- Perfil: nombre de al menos 6 letras, teléfono de 10 dígitos, foto con dirección `https`.
+
+Una regla incumplida responde `400` con el mismo mensaje del formulario. El backend revisa antes lo que la base no ve, como los tres decimales (una columna `numeric(12,2)` los redondea sin avisar) o un plazo con decimales.
+
+El prepago se rechaza si hay cuotas vencidas, y `proxima-cuota` no lo ofrece en ese caso. El abono sí se acepta en un crédito `vencido`.
+
+Las pruebas `backend/pruebas/aislamiento.sql` y `backend/pruebas/validacion.sql` se corren en el SQL Editor de Supabase y no dejan rastro.
+
 ---
 
 ## 1. Auth — `/api/auth`
@@ -101,17 +147,26 @@ Devuelve el perfil del usuario autenticado, el estado de su cuenta y si administ
 - 200: `{ profile, estado_cuenta: { estado, motivo, desde, cajas_activas }, es_admin_sistema }`
 - `estado`: `'activa'` (miembro de al menos una caja) o `'inactiva'` (de ninguna). Los otros dos estados, `'pendiente'` (correo sin confirmar) y `'bloqueada'` (con `motivo` y `desde`), no llegan aquí porque esas cuentas no pasan la autenticación; se ven en el login y en el panel de administración.
 
-- 200: `{ profile }`
+- `profile`: `{ id, nombre, telefono, foto_url }`. `foto_url` es un enlace firmado a la foto de perfil, válido por una hora, o `null` si no hay foto (T17).
 - 404: `{ error: 'Perfil no encontrado' }`
 
 ### PUT /api/profiles/me
 
 Actualiza el perfil propio.
 
-- Body (todos opcionales): `{ nombre, telefono, foto_url }`
+- Body (todos opcionales): `{ nombre, telefono }`. La foto va por `PUT /me/foto`; un `foto_url` en el cuerpo se ignora.
 - 200: `{ message, profile }`
-- 400: `{ error }` si no se envía ningún campo
-- 500: `{ error, detalle }`
+- 400: `{ error }` si no se envía ningún campo, o si el nombre o el teléfono no son válidos (lo dice la base)
+
+### PUT /api/profiles/me/foto · DELETE /api/profiles/me/foto
+
+Pone, cambia o quita la foto de perfil (T17). La ven la cuenta y quienes comparten una caja con ella.
+
+- Body del PUT: la imagen tal cual, con `Content-Type: image/jpeg`, `image/png` o `image/webp`, hasta 2 MB. El frontend la reduce antes a 512 px.
+- 200: `{ message, foto_url }`. Después del DELETE, `foto_url` es `null`.
+- 400: `{ error }` si no es una imagen válida; 413 si pesa más de 2 MB
+
+Se guarda en el bucket privado `perfiles`, en `{cuenta}/{uuid}.jpg`. `poner_foto_perfil` (migración 012) comprueba que la ruta sea de la cuenta y que el archivo exista, y devuelve la ruta anterior. El backend borra la foto anterior: cada cuenta tiene una sola.
 
 ---
 
@@ -123,7 +178,21 @@ Todas requieren Auth (Bearer token).
 
 Lista las cajas activas a las que pertenece el usuario, junto con su rol en cada una.
 
-- 200: `{ cajas: [{ id, nombre, descripcion, rol, politicas_aceptadas }] }`. `politicas_aceptadas`: si aceptó la versión vigente de las políticas de esa caja (HU-S04)
+- 200: `{ cajas: [{ id, nombre, descripcion, rol, politicas_aceptadas, estado, estado_motivo, foto_url }], creacion }`.
+- `politicas_aceptadas`: si aceptó la versión vigente de las políticas de esa caja (HU-S04).
+- `foto_url`: enlace firmado de la foto de la caja, válido por una hora, o `null` (T17). Todos los enlaces se firman en una sola llamada.
+
+### GET /api/cajas/:cajaId/foto · PUT · DELETE
+
+La foto de la caja (T17).
+
+- GET: permiso `caja.ver` (todo miembro). 200: `{ foto_url }`, firmado por una hora, o `null`.
+- PUT y DELETE: permiso `caja.configurar` (coordinador), con la caja activa. El cuerpo del PUT es la imagen, igual que en `PUT /api/profiles/me/foto` (hasta 2 MB).
+- 200: `{ message, foto_url }`
+- 403: `{ error: 'Solo el coordinador cambia la foto de la caja' }`, cuando Storage la rechaza
+- 409: `{ error: 'La caja no admite registros nuevos' }`
+
+Se guarda en el bucket privado `cajas`, en `{caja}/{uuid}.jpg`. `poner_foto_caja` (migración 012) la revisa igual que la de perfil, y el backend borra la anterior.
 
 ### POST /api/cajas
 
@@ -150,7 +219,7 @@ Registra la aceptación de las políticas de uso de la caja (HU-S04). Aceptar do
 
 Devuelve el detalle de la caja, el rol del usuario y un resumen de indicadores (miembros, socios, saldo total en ahorros, créditos activos, saldo pendiente, últimas 5 transacciones). Rol mínimo: `tesorero` (permiso `datos.ver`).
 
-- 200: `{ caja, rol, resumen: { totalMiembros, totalSocios, saldoTotal, creditosActivos, saldoPendiente }, transaccionesRecientes }`
+- 200: `{ caja, rol, resumen: { totalMiembros, totalSocios, saldoTotal, creditosActivos, creditosEnMora, saldoPendiente }, transaccionesRecientes }`. `creditosActivos` y `saldoPendiente` cuentan los créditos `activo` y `vencido` (desembolsados y sin terminar de pagar); `creditosEnMora`, los que de esos tienen una cuota vencida sin pagar.
 - 403: `{ error: 'Sin acceso a esta caja' }`
 
 ### PUT /api/cajas/:cajaId
@@ -162,6 +231,23 @@ Edita nombre/descripción de la caja.
 - 200: `{ message, caja }`
 - 400: `{ error }` si no se envían campos
 - 403: `{ error: 'Tu rol no permite esta acción' }`
+
+### GET /api/cajas/:cajaId/configuracion-credito
+
+Reglas de crédito de la caja (Etapa 6, T12; migración `008`).
+
+- Rol mínimo: `socio` (permiso `caja.ver`): todos los miembros saben cuánto se puede pedir
+- 200: `{ monto_maximo_credito }`: número, o `null` si la caja no tiene límite
+
+### PUT /api/cajas/:cajaId/configuracion-credito
+
+Fija o quita el monto máximo de un crédito.
+
+- Rol mínimo: `coordinador` (permiso `caja.configurar`)
+- Body: `{ monto_maximo_credito: number | null }`. `null` quita el límite; un número tiene que ser mayor que 0 y con hasta dos decimales.
+- 200: `{ message, monto_maximo_credito }`
+- 400: falta el campo, o el monto no es válido
+- La base lo aplica en cada solicitud nueva (`POST /creditos`): por encima responde 400 con "El monto máximo de crédito de esta caja es $1.500,00". Los créditos ya solicitados no cambian.
 
 ### POST /api/cajas/unirse
 
@@ -218,6 +304,25 @@ Desactiva (soft delete) un socio.
 
 - Rol mínimo: `coordinador`
 - 200: `{ message: 'Socio desactivado correctamente' }`
+
+### GET /api/cajas/:cajaId/socios/:socioId/correcciones-ingreso
+
+Correcciones de la fecha de ingreso del socio, la más reciente primero (Etapa 6, T14; migración `009`).
+
+- Rol mínimo: `tesorero` (permiso `datos.ver`)
+- 200: `{ correcciones: [{ id, fecha_anterior, fecha_nueva, motivo, corregido_por_nombre, creado_en }] }`
+
+### POST /api/cajas/:cajaId/socios/:socioId/correcciones-ingreso
+
+Corrige la fecha de ingreso. Es la única forma de cambiarla: `PUT /socios/:id` no la toca y la base no deja editar la columna.
+
+- Rol mínimo: `coordinador` (permiso `socios.corregir_ingreso`)
+- Body: `{ fecha_ingreso: 'AAAA-MM-DD', motivo }`
+- 201: `{ message, id, fecha_anterior, fecha_ingreso }`
+- 400: fecha mal escrita, motivo de menos de 10 caracteres, fecha futura, la misma fecha, o fecha nueva anterior al inicio del ciclo en curso ("La fecha nueva cae en un ciclo cerrado. Usa una fecha desde el 01/01/2026")
+- 404: la ficha no es de esta caja
+- 409: la fecha actual ya está en un ciclo cerrado (se usó para repartir intereses), o la caja está bloqueada
+- La base (`corregir_fecha_ingreso`) cambia la fecha y registra la corrección en `correcciones_fecha_ingreso` en una sola transacción. Sin periodo configurado no hay ciclos cerrados.
 
 ---
 
@@ -349,14 +454,16 @@ Todas requieren Auth.
 Lista los créditos de la caja con datos del socio.
 
 - Rol mínimo: `tesorero` (permiso `datos.ver`: el socio no ve los datos de los demás)
-- 200: `{ creditos }`
+- 200: `{ creditos }`. Cada crédito trae `mora`, calculada al leer (no se guarda): `{ cuotas_vencidas, monto_vencido, desde }` si tiene al menos una cuota vencida sin pagar, o `null` si está al día o no está en curso. Una cuota vence el último día de su mes y está vencida desde el mes siguiente; `desde` es el vencimiento de la más antigua. Solo los créditos `activo` o `vencido` pueden estar en mora.
+- `estado` es el de la base: `pendiente`, `activo`, `pagado` o `vencido`. La mora no es un estado: un crédito `activo` puede estar en mora.
+- `numero`: 1, 2, 3… dentro de la caja, en el orden de solicitud (migración `007`). Lo asigna la base al registrar la solicitud; lo que se envíe se ignora y después no se cambia. La tabla de amortización (`GET /creditos/:id/amortizacion`) también lo devuelve en `credito.numero`.
 
 ### GET /api/cajas/:cajaId/creditos/:creditoId
 
 Detalle de un crédito y sus pagos asociados.
 
 - Rol mínimo: `tesorero` (permiso `datos.ver`: el socio no ve los datos de los demás)
-- 200: `{ credito, pagos }`
+- 200: `{ credito, pagos }`; `credito.mora` como en el listado
 - 404: `{ error: 'Crédito no encontrado' }`
 
 ### GET /api/cajas/:cajaId/creditos/socio/:socioId
@@ -364,7 +471,7 @@ Detalle de un crédito y sus pagos asociados.
 Créditos de un socio específico.
 
 - Rol mínimo: `tesorero` (permiso `datos.ver`: el socio no ve los datos de los demás)
-- 200: `{ creditos }`
+- 200: `{ creditos }`, con `mora` como en el listado
 
 ### POST /api/cajas/:cajaId/creditos
 
@@ -445,6 +552,39 @@ Registra el pago de una cuota y actualiza el saldo pendiente del crédito (pasa 
 
 ---
 
+## 8.1 Comprobantes (foto de un depósito, retiro o pago)
+
+La foto es opcional y se agrega después de registrar el movimiento: el frontend registra primero y luego sube la foto; si la subida falla, el movimiento queda igual y la foto se puede agregar desde el historial. Un registro tiene a lo sumo una foto y no se cambia ni se quita.
+
+La foto se guarda en el bucket privado `comprobantes`, en `{caja}/{socio}/{uuid}.jpg` (migración 010). Se sube con el token de la persona, así que las políticas del bucket deciden quién puede. Luego `adjuntar_comprobante` (migración 011) la une al registro: comprueba que la ruta sea de esa caja y ese socio, que el archivo exista y que el registro aún no tenga foto. La columna `comprobante` de `transacciones` y `pagos_credito` guarda la ruta.
+
+### POST /api/cajas/:cajaId/cuentas/:cuentaId/movimientos/:movimientoId/comprobante
+
+### POST /api/cajas/:cajaId/creditos/:creditoId/pagos/:pagoId/comprobante
+
+Guardan la foto de un depósito o retiro, o de un pago (cuota, prepago o abono).
+
+- Rol mínimo: `tesorero` (permiso `movimientos.registrar`). La caja tiene que estar activa.
+- Body: la imagen tal cual, no en JSON. Lleva `Content-Type: image/jpeg`, `image/png` o `image/webp`, y pesa hasta 5 MB. El frontend la reduce antes a JPEG de 1600 px por el lado mayor.
+- 201: `{ message: 'Comprobante guardado', comprobante: true }`
+- 400: `{ error }` si el tipo no es de imagen, el cuerpo está vacío o los primeros bytes no corresponden al tipo
+- 403: `{ error: 'No tienes permiso para subir comprobantes en esta caja' }`, cuando Storage lo rechaza
+- 404: `{ error: 'Movimiento no encontrado' }` o `{ error: 'Pago no encontrado' }`
+- 409: `{ error: 'Este movimiento ya tiene su comprobante' }`; también `La caja no admite registros nuevos`
+- 413: `{ error: 'La foto pesa más de 5 MB. Toma otra o redúcela.' }`
+
+Si la base rechaza la unión después de subir, el backend borra esa foto recién subida con la clave de servicio, para que no queden archivos sueltos.
+
+### GET …/movimientos/:movimientoId/comprobante · GET …/pagos/:pagoId/comprobante
+
+Devuelven un enlace firmado para ver la foto.
+
+- Permiso `caja.ver`. El tesorero ve los comprobantes de toda la caja; el socio, solo los de sus propias cuentas y créditos (lo deciden el RLS y la política del bucket).
+- 200: `{ url, vence_en: 300 }`. El enlace vale 5 minutos.
+- 404: `{ error: 'Este registro no tiene comprobante' }`, o el registro no se encuentra
+
+---
+
 ## 9. Administración del sistema — `/api/admin`
 
 Solo para las cuentas de la tabla `administradores_sistema` (`verifyToken` + `requiereAdminSistema`). No depende de ninguna caja.
@@ -467,9 +607,17 @@ Todas las demás rutas de `/api/admin` exigen la versión vigente aceptada; sin 
 
 ### GET /api/admin/cajas
 
-Cada caja con sus conteos, sin montos (HU-S01).
+Cada caja con su estado, fundación, ciclo vigente y conteos, sin montos (HU019, HU-S01). Las eliminadas no se listan.
 
-- 200: `{ cajas: [{ id, nombre, creada_en, miembros, socios, creditos_vigentes }] }`. `miembros`: cuentas con acceso activo; `socios`: fichas activas; `creditos_vigentes`: en estado `pendiente`, `activo` o `mora`.
+- 200: `{ cajas: [{ id, nombre, creada_en, fecha_fundacion, ciclo_vigente, estado, estado_motivo, estado_cambiado_en, miembros, socios, creditos_vigentes }] }`. `estado`: `activa` o `bloqueada`; `estado_motivo` solo con `bloqueada`. `ciclo_vigente`: el ciclo en curso, como `"abr 2026 – mar 2027"`, o `null` sin fecha de fundación. `miembros`: cuentas con acceso activo; `socios`: fichas activas; `creditos_vigentes`: en estado `pendiente`, `activo` o `vencido`.
+
+### POST /api/admin/cajas/:id/bloqueo · POST /api/admin/cajas/:id/restablecimiento
+
+Bloquea o restablece una caja (HU020) y lo anota en la bitácora, en la misma transacción (`admin_estado_caja`, migración 006). Una caja bloqueada se sigue leyendo, pero nadie registra nada en ella, ni su coordinador puede desbloquearla (migración 004). Sus miembros ven el motivo en Mis cajas y dentro de la caja.
+
+- Body: `{ motivo }`, de 10 a 500 caracteres
+- 201 (bloqueo) / 200 (restablecimiento): `{ caja: { id, estado, estado_motivo, estado_cambiado_en } }`
+- 400: motivo inválido (`campo: 'motivo'`) · 404: la caja no existe · 409: ya estaba bloqueada, no estaba bloqueada o fue eliminada
 
 ### GET /api/admin/cuentas
 
@@ -497,7 +645,7 @@ Quita el bloqueo y lo anota en la bitácora. Si la bitácora falla, el bloqueo v
 
 Las últimas 200 acciones, la más reciente primero.
 
-- 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, motivo, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer`.
+- 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, caja_id, caja_nombre, motivo, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer` (sobre una cuenta: `cuenta_correo`) o `bloquear_caja` o `restablecer_caja` (sobre una caja: `caja_nombre`, el nombre al momento de la acción).
 
 ---
 

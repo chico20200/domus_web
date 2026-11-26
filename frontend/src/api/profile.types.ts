@@ -5,7 +5,8 @@ export interface Profile {
   id: string
   nombre: string
   telefono: string
-  foto_url: string
+  /** Enlace firmado de la foto de perfil (T17), válido una hora; null si no tiene */
+  foto_url: string | null
 }
 
 /** Estado de la cuenta de usuario (Figura 1.2). Ver `lib/cuentaUsuario.ts` */
@@ -31,7 +32,12 @@ export interface GetProfileResponse {
 export interface UpdateProfileRequest {
   nombre?: string
   telefono?: string
-  foto_url?: string
+}
+
+/** PUT y DELETE /api/profiles/me/foto, y lo mismo para la foto de la caja */
+export interface FotoResponse {
+  message: string
+  foto_url: string | null
 }
 
 export interface UpdateProfileResponse {

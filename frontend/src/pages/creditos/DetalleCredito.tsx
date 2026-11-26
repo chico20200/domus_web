@@ -13,10 +13,12 @@ import { TablaAmortizacion } from "../../components/TablaAmortizacion"
 import { useNotif } from "../../context/NotifContext"
 import { creditosService } from "../../api/creditos.service"
 import { pagosService } from "../../api/pagos.service"
+import { adjuntarTrasRegistrar } from "../../api/comprobantes.service"
+import { BotonComprobante } from "../../components/BotonComprobante"
 import type { PagoCredito, TipoPago } from "../../api/pagos.types"
 import { fecha, moneda, porcentaje } from "../../lib/format"
 import { useDatos } from "../../lib/useDatos"
-import { estadoCredito, nombreSocio } from "../../lib/creditos"
+import { EN_CURSO, estadoCredito, nombreSocio, numeroCredito } from "../../lib/creditos"
 import { InfoTip } from "../../components/InfoTip"
 import { AYUDA } from "../../lib/ayuda"
 
@@ -78,10 +80,10 @@ export function DetalleCredito({
 
   const { credito: c, pagos, proxima } = datos
   const socio = nombreSocio(c.socios)
-  const estado = estadoCredito(c.estado)
+  const estado = estadoCredito(c)
   const totalCapital = pagos.reduce((s, p) => s + Number(p.monto_capital), 0)
   const totalInteres = pagos.reduce((s, p) => s + Number(p.monto_interes), 0)
-  const activo = c.estado === "activo"
+  const activo = EN_CURSO.includes(c.estado)
 
   async function aprobar() {
     const ok = await confirm({
@@ -102,19 +104,25 @@ export function DetalleCredito({
     }
   }
 
-  async function pagar() {
+  async function pagar(foto: Blob | null) {
     if (!pagoPorConfirmar) return
     setProcesando(true)
     try {
       const res = await pagosService.registrarPago(cajaId, c.id, pagoPorConfirmar)
+      const aviso = await adjuntarTrasRegistrar(
+        { tipo: "pago", cajaId, creditoId: c.id, id: res.pago.id },
+        foto,
+      )
       setPagoPorConfirmar(null)
       await actualizar()
-      toast(
-        "exito",
-        res.credito_pagado
-          ? "Pago registrado. El crédito quedó pagado por completo."
-          : `Pago de ${moneda(res.desglose.total)} registrado`,
-      )
+      if (aviso) toast("advertencia", aviso)
+      else
+        toast(
+          "exito",
+          res.credito_pagado
+            ? "Pago registrado. El crédito quedó pagado por completo."
+            : `Pago de ${moneda(res.desglose.total)} registrado`,
+        )
     } catch (err) {
       toast("error", err instanceof Error ? err.message : "No se pudo registrar el pago")
     } finally {
@@ -122,13 +130,18 @@ export function DetalleCredito({
     }
   }
 
-  async function abonar(monto: number, motivo: string) {
+  async function abonar(monto: number, motivo: string, foto: Blob | null) {
     setProcesando(true)
     try {
       const res = await pagosService.abonar(cajaId, c.id, monto, motivo)
+      const aviso = await adjuntarTrasRegistrar(
+        { tipo: "pago", cajaId, creditoId: c.id, id: res.pago.id },
+        foto,
+      )
       setVerAbono(false)
       await actualizar()
-      if (res.credito_pagado) toast("exito", "Abono registrado. El crédito quedó pagado.")
+      if (aviso) toast("advertencia", aviso)
+      else if (res.credito_pagado) toast("exito", "Abono registrado. El crédito quedó pagado.")
       else if (res.resta_en_cuota.total > 0.001)
         toast(
           "info",
@@ -171,7 +184,7 @@ export function DetalleCredito({
 
       <Panel
         titulo={socio}
-        descripcion={`${c.plazo_meses} meses · ${porcentaje(c.tasa_interes)} de interés anual${c.fecha_desembolso ? ` · desembolsado el ${fecha(c.fecha_desembolso)}` : ""}`}
+        descripcion={`Crédito ${numeroCredito(c.numero)} · ${c.plazo_meses} meses · ${porcentaje(c.tasa_interes)} de interés anual${c.fecha_desembolso ? ` · desembolsado el ${fecha(c.fecha_desembolso)}` : ""}`}
         acciones={<Badge tono={estado.tono} label={estado.etiqueta} />}
       >
         <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
@@ -304,6 +317,19 @@ export function DetalleCredito({
               encabezado: "Total",
               alinear: "derecha",
               celda: (p) => <span className="font-medium">{moneda(p.monto_pagado)}</span>,
+            },
+            {
+              clave: "comprobante",
+              encabezado: "Comprobante",
+              celda: (p) => (
+                <BotonComprobante
+                  destino={{ tipo: "pago", cajaId, creditoId: c.id, id: p.id }}
+                  tiene={Boolean(p.comprobante)}
+                  puedeAdjuntar={puedeOperar}
+                  descripcion={`del pago de la cuota ${p.numero_cuota} del ${fecha(p.fecha_pago)}`}
+                  onAdjuntado={actualizar}
+                />
+              ),
             },
           ]}
         />

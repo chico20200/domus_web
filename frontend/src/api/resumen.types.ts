@@ -3,7 +3,10 @@ export interface ResumenCaja {
   totalMiembros: number
   totalSocios: number
   saldoTotal: number
+  /** Activos y vencidos: desembolsados y sin terminar de pagar */
   creditosActivos: number
+  /** De esos, los que tienen al menos una cuota vencida sin pagar */
+  creditosEnMora: number
   saldoPendiente: number
 }
 

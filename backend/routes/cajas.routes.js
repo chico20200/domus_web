@@ -1,13 +1,14 @@
 // backend/routes/cajas.routes.js
 const express = require("express")
 const router = express.Router()
-const supabase = require("../config/supabaseAdmin")
-const supabaseAdmin = require("../config/supabaseAdmin")
 const { POLITICAS_VERSION } = require("../utils/politicas")
-const { vincularFichaPorCorreo } = require("../utils/fichas")
+const { responderError } = require("../utils/errores")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { calcularCiclos, validarConfigCiclo } = require("../utils/ciclos")
+const { EN_CURSO, agregarMora } = require("../utils/mora")
+const { errorMonto } = require("../utils/validacion")
+const { leerFoto, subirFoto, quitarFoto, enlace, enlaces } = require("../utils/fotos")
 
 // Largos máximos de los datos de una caja (los mismos que el formulario)
 const LARGO_NOMBRE = 80
@@ -23,7 +24,7 @@ router.use(verifyToken)
 router.get("/mis-cajas", async (req, res) => {
   const userId = req.user.id
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("miembros_caja")
     .select(
       `
@@ -32,7 +33,10 @@ router.get("/mis-cajas", async (req, res) => {
         id,
         nombre,
         descripcion,
-        activa
+        activa,
+        estado,
+        estado_motivo,
+        foto
       )
     `,
     )
@@ -40,32 +44,86 @@ router.get("/mis-cajas", async (req, res) => {
     .eq("activo", true)
 
   if (error) {
-    return res.status(500).json({ error: error.message })
+    return responderError(res, error)
   }
 
-  const { data: aceptaciones, error: errorAceptaciones } = await supabaseAdmin
+  const { data: aceptaciones, error: errorAceptaciones } = await req.db
     .from("aceptaciones_politicas")
     .select("caja_id")
     .eq("user_id", userId)
     .eq("version", POLITICAS_VERSION)
   if (errorAceptaciones) {
-    return res.status(500).json({ error: errorAceptaciones.message })
+    return responderError(res, errorAceptaciones)
   }
   const aceptadas = new Set((aceptaciones ?? []).map((a) => a.caja_id))
 
   // Transforma el resultado para aplanar la estructura
   const cajas = data
-    .filter((m) => m.cajas && m.cajas.activa)
+    // Las bloqueadas por el administrador se listan con su motivo: sus miembros siguen
+    // viendo sus datos (T10). Las eliminadas quedan para la Etapa 7.
+    .filter((m) => m.cajas && m.cajas.activa && m.cajas.estado !== "eliminada")
     .map((m) => ({
       id: m.cajas.id,
       nombre: m.cajas.nombre,
       descripcion: m.cajas.descripcion ?? "",
       rol: m.rol,
       politicas_aceptadas: aceptadas.has(m.cajas.id),
+      estado: m.cajas.estado ?? "activa",
+      estado_motivo: m.cajas.estado_motivo ?? null,
+      foto: m.cajas.foto,
     }))
 
-  return res.json({ cajas })
+  // Las fotos de las cajas (T17), firmadas en una sola llamada
+  const fotos = await enlaces(
+    req.db,
+    "cajas",
+    cajas.map((c) => c.foto),
+  )
+  cajas.forEach((c) => {
+    c.foto_url = fotos[c.foto] ?? null
+    delete c.foto
+  })
+
+  // Cuántas cajas creó y el máximo (T9), para avisar antes del asistente. Si falla, la
+  // lista se entrega igual: crear_caja vuelve a comprobar el límite al crear.
+  const { data: creacion } = await req.db.rpc("cajas_creadas")
+
+  return res.json({ cajas, creacion: creacion ?? null })
 })
+
+// ─────────────────────────────────────────────
+// Foto de la caja (T17). La ven todos sus miembros; la cambia el coordinador.
+// GET    /api/cajas/:cajaId/foto  → { foto_url } firmada por una hora, o null
+// PUT    /api/cajas/:cajaId/foto  (la imagen como cuerpo, hasta 2 MB) → { foto_url }
+// DELETE /api/cajas/:cajaId/foto
+// ─────────────────────────────────────────────
+router.get("/:cajaId/foto", requierePermiso("caja.ver"), async (req, res) => {
+  const { data, error } = await req.db
+    .from("cajas")
+    .select("foto")
+    .eq("id", req.params.cajaId)
+    .single()
+  if (error) return responderError(res, error)
+  return res.json({ foto_url: await enlace(req.db, "cajas", data.foto) })
+})
+
+router.put("/:cajaId/foto", requierePermiso("caja.configurar"), leerFoto, (req, res) =>
+  subirFoto(req, res, {
+    bucket: "cajas",
+    carpeta: req.params.cajaId,
+    rpc: "poner_foto_caja",
+    args: { p_caja: req.params.cajaId },
+    sinPermiso: "Solo el coordinador cambia la foto de la caja",
+  }),
+)
+
+router.delete("/:cajaId/foto", requierePermiso("caja.configurar"), (req, res) =>
+  quitarFoto(req, res, {
+    bucket: "cajas",
+    rpc: "poner_foto_caja",
+    args: { p_caja: req.params.cajaId },
+  }),
+)
 
 // ─────────────────────────────────────────────
 // POST /api/cajas
@@ -75,7 +133,6 @@ router.get("/mis-cajas", async (req, res) => {
 // politicas_version (la versión que se le mostró y aceptó).
 // ─────────────────────────────────────────────
 router.post("/", async (req, res) => {
-  const userId = req.user.id
   const { nombre, descripcion, politicas_version } = req.body
 
   const nombreLimpio = typeof nombre === "string" ? nombre.trim().replace(/\s+/g, " ") : ""
@@ -108,38 +165,17 @@ router.post("/", async (req, res) => {
     })
   }
 
-  // 1. Crea la caja con su periodo
-  const { data: caja, error: errorCaja } = await supabaseAdmin
-    .from("cajas")
-    .insert({
-      nombre: nombreLimpio,
-      descripcion: descripcionLimpia,
-      creado_por: userId,
-      ...config,
-    })
-    .select("id, nombre, descripcion, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo")
-    .single()
-
-  if (errorCaja) {
-    return res.status(500).json({ error: errorCaja.message })
-  }
-
-  // 2. El creador queda como coordinador. 3. Su aceptación de las políticas.
-  // Si algo falla se borra la caja (miembros_caja y aceptaciones se van en cascada)
-  // para no dejar una caja sin coordinador o sin aceptación.
-  const { error: errorMiembro } = await supabaseAdmin
-    .from("miembros_caja")
-    .insert({ caja_id: caja.id, user_id: userId, rol: "coordinador" })
-  const { error: errorAceptacion } = errorMiembro
-    ? { error: null }
-    : await supabaseAdmin
-        .from("aceptaciones_politicas")
-        .insert({ caja_id: caja.id, user_id: userId, version: POLITICAS_VERSION })
-
-  if (errorMiembro || errorAceptacion) {
-    await supabaseAdmin.from("cajas").delete().eq("id", caja.id)
-    return res.status(500).json({ error: (errorMiembro ?? errorAceptacion).message })
-  }
+  // Caja, coordinador y aceptación de políticas en una sola operación (crear_caja,
+  // migración 004). Ahí también se cumple el límite de tres cajas creadas por cuenta.
+  const { data: caja, error: errorCaja } = await req.db.rpc("crear_caja", {
+    p_nombre: nombreLimpio,
+    p_descripcion: descripcionLimpia,
+    p_fecha_fundacion: config.fecha_fundacion,
+    p_mes_inicio: config.mes_inicio_ciclo,
+    p_duracion: config.duracion_ciclo,
+    p_politicas_version: POLITICAS_VERSION,
+  })
+  if (errorCaja) return responderError(res, errorCaja)
 
   const { cicloActual } = calcularCiclos(
     caja.fecha_fundacion,
@@ -162,37 +198,39 @@ router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) =>
   const { cajaId } = req.params
 
   try {
-    const { data: caja, error: errorCaja } = await supabaseAdmin
+    const { data: caja, error: errorCaja } = await req.db
       .from("cajas")
       .select("id, nombre, descripcion, created_at")
       .eq("id", cajaId)
       .single()
 
-    const { count: totalMiembros, error: errorMiembros } = await supabaseAdmin
+    const { count: totalMiembros, error: errorMiembros } = await req.db
       .from("miembros_caja")
       .select("*", { count: "exact", head: true })
       .eq("caja_id", cajaId)
       .eq("activo", true)
 
-    const { count: totalSocios, error: errorSocios } = await supabaseAdmin
+    const { count: totalSocios, error: errorSocios } = await req.db
       .from("socios")
       .select("*", { count: "exact", head: true })
       .eq("caja_id", cajaId)
       .eq("activo", true)
 
-    const { data: cuentas, error: errorCuentas } = await supabaseAdmin
+    const { data: cuentas, error: errorCuentas } = await req.db
       .from("cuentas_ahorro")
       .select("saldo")
       .eq("caja_id", cajaId)
       .eq("estado", "activa")
 
-    const { data: creditos, error: errorCreditos } = await supabaseAdmin
+    const { data: creditos, error: errorCreditos } = await req.db
       .from("creditos")
-      .select("saldo_pendiente")
+      .select(
+        "id, estado, monto_solicitado, tasa_interes, plazo_meses, fecha_desembolso, saldo_pendiente",
+      )
       .eq("caja_id", cajaId)
-      .eq("estado", "activo")
+      .in("estado", EN_CURSO)
 
-    const { data: transacciones, error: errorTx } = await supabaseAdmin
+    const { data: transacciones, error: errorTx } = await req.db
       .from("transacciones")
       .select(
         `
@@ -214,6 +252,10 @@ router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) =>
       errorCaja || errorMiembros || errorSocios || errorCuentas || errorCreditos || errorTx
     if (errorConsulta) throw errorConsulta
 
+    // Activos y vencidos están desembolsados y sin pagar; la mora se calcula al leer (T13)
+    const conMora = await agregarMora(req.db, creditos)
+    if (conMora.error) throw conMora.error
+
     const saldoTotal = (cuentas ?? []).reduce((sum, c) => sum + parseFloat(c.saldo ?? 0), 0)
     const saldoPendiente = (creditos ?? []).reduce(
       (sum, c) => sum + parseFloat(c.saldo_pendiente ?? 0),
@@ -228,13 +270,14 @@ router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) =>
         totalSocios: totalSocios ?? 0,
         saldoTotal,
         creditosActivos: creditos?.length ?? 0,
+        creditosEnMora: conMora.creditos.filter((c) => c.mora).length,
         saldoPendiente,
       },
       transaccionesRecientes: transacciones ?? [],
     })
   } catch (err) {
     console.error("Error en resumen:", err.message)
-    return res.status(500).json({ error: err.message })
+    return responderError(res, err)
   }
 })
 
@@ -254,7 +297,7 @@ router.put("/:cajaId", requierePermiso("caja.configurar"), async (req, res) => {
     return res.status(400).json({ error: "No se enviaron campos para actualizar" })
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await req.db
     .from("cajas")
     .update(updates)
     .eq("id", cajaId)
@@ -262,7 +305,7 @@ router.put("/:cajaId", requierePermiso("caja.configurar"), async (req, res) => {
     .single()
 
   if (error) {
-    return res.status(500).json({ error: error.message })
+    return responderError(res, error)
   }
 
   return res.json({ message: "Caja actualizada correctamente", caja: data })
@@ -271,86 +314,21 @@ router.put("/:cajaId", requierePermiso("caja.configurar"), async (req, res) => {
 // POST /api/cajas/unirse
 // El usuario ingresa un código y se une a la caja
 router.post("/unirse", async (req, res) => {
-  const userId = req.user.id
   const { codigo } = req.body
-
-  if (!codigo) return res.status(400).json({ error: "El código es requerido" })
-
-  // 1. Busca la invitación activa y válida
-  const { data: invitacion } = await supabaseAdmin
-    .from("invitaciones_caja")
-    .select("*, cajas(nombre)")
-    .eq("codigo", codigo.toUpperCase().trim())
-    .eq("activo", true)
-    .is("usado_por", null)
-    .gt("expira_at", new Date().toISOString())
-    .single()
-
-  if (!invitacion) {
-    return res.status(404).json({ error: "Código inválido o expirado" })
+  if (!codigo || typeof codigo !== "string") {
+    return res.status(400).json({ error: "El código es requerido" })
   }
 
-  // 2. Verifica que no sea ya miembro. Quien fue removido (activo: false) conserva su
-  // fila: con un código nuevo vuelve a entrar con el rol del código.
-  const { data: miembroPrevio } = await supabaseAdmin
-    .from("miembros_caja")
-    .select("id, activo")
-    .eq("caja_id", invitacion.caja_id)
-    .eq("user_id", userId)
-    .maybeSingle()
-
-  if (miembroPrevio?.activo) {
-    return res.status(400).json({ error: "Ya perteneces a esta caja" })
-  }
-
-  // 3. Agrega como miembro de la caja, o reactiva al que fue removido
-  const { error: errorMiembro } = miembroPrevio
-    ? await supabaseAdmin
-        .from("miembros_caja")
-        .update({ activo: true, rol: invitacion.rol })
-        .eq("id", miembroPrevio.id)
-        .eq("caja_id", invitacion.caja_id)
-    : await supabaseAdmin.from("miembros_caja").insert({
-        caja_id: invitacion.caja_id,
-        user_id: userId,
-        rol: invitacion.rol,
-      })
-
-  if (errorMiembro) {
-    return res.status(500).json({ error: errorMiembro.message })
-  }
-
-  // 4. Vincula la ficha de socio que tenga el mismo correo, sin distinguir mayúsculas
-  let socioVinculado = false
-  try {
-    socioVinculado = Boolean(
-      await vincularFichaPorCorreo(invitacion.caja_id, userId, req.user.email),
-    )
-  } catch (err) {
-    // Si falla la vinculación no es crítico: el usuario igual entra a la caja, y la
-    // ficha se vincula cuando abra "Mis ahorros" (GET /cuentas/mias)
-    console.error("Error al vincular socio:", err.message)
-  }
-
-  // 5. Marca la invitación como usada
-  await supabaseAdmin
-    .from("invitaciones_caja")
-    .update({
-      usado_por: userId,
-      usado_at: new Date().toISOString(),
-      activo: false,
-    })
-    .eq("id", invitacion.id)
-    .eq("caja_id", invitacion.caja_id)
+  // unirse_con_codigo (migración 004) busca el código vigente, agrega o reactiva la
+  // membresía con el rol del código, lo marca como usado y vincula la ficha con el mismo
+  // correo, todo junto. Quien fue removido conserva su fila y vuelve con el rol del código.
+  const { data, error } = await req.db.rpc("unirse_con_codigo", { p_codigo: codigo })
+  if (error) return responderError(res, error)
 
   return res.json({
-    message: `Te uniste a ${invitacion.cajas.nombre} correctamente`,
-    socioVinculado, // ← el frontend puede mostrar un mensaje diferente si se vinculó
-    caja: {
-      id: invitacion.caja_id,
-      nombre: invitacion.cajas.nombre,
-      rol: invitacion.rol,
-    },
+    message: `Te uniste a ${data.caja.nombre} correctamente`,
+    socioVinculado: data.socio_vinculado, // el frontend muestra otro mensaje si se vinculó
+    caja: data.caja,
   })
 })
 
@@ -371,27 +349,27 @@ router.post("/:cajaId/politicas", requierePermiso("caja.ver"), async (req, res) 
     })
   }
   const fila = { user_id: req.user.id, caja_id: req.params.cajaId, version: POLITICAS_VERSION }
-  const { data: previa, error: errorPrevia } = await supabaseAdmin
+  const { data: previa, error: errorPrevia } = await req.db
     .from("aceptaciones_politicas")
     .select("aceptada_en")
     .match(fila)
     .maybeSingle()
-  if (errorPrevia) return res.status(500).json({ error: errorPrevia.message })
+  if (errorPrevia) return responderError(res, errorPrevia)
   if (previa) return res.json({ version: POLITICAS_VERSION, aceptada_en: previa.aceptada_en })
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("aceptaciones_politicas")
     .insert(fila)
     .select("aceptada_en")
     .single()
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
   return res.status(201).json({ version: POLITICAS_VERSION, aceptada_en: data.aceptada_en })
 })
 
 router.get("/:cajaId/ciclos", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId } = req.params
 
-  const { data: caja } = await supabaseAdmin
+  const { data: caja } = await req.db
     .from("cajas")
     .select("fecha_fundacion, mes_inicio_ciclo, duracion_ciclo, created_at")
     .eq("id", cajaId)
@@ -436,7 +414,7 @@ router.put("/:cajaId/configuracion-ciclo", requierePermiso("caja.configurar"), a
   const { error: errorCiclo, config } = validarConfigCiclo(req.body)
   if (errorCiclo) return res.status(400).json({ error: errorCiclo })
 
-  const { error } = await supabaseAdmin
+  const { error } = await req.db
     .from("cajas")
     .update({
       ...config,
@@ -444,7 +422,7 @@ router.put("/:cajaId/configuracion-ciclo", requierePermiso("caja.configurar"), a
     })
     .eq("id", cajaId)
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   const { ciclos, cicloActual } = calcularCiclos(
     config.fecha_fundacion,
@@ -458,5 +436,62 @@ router.put("/:cajaId/configuracion-ciclo", requierePermiso("caja.configurar"), a
     ciclo_actual: cicloActual,
   })
 })
+
+// ─────────────────────────────────────────────
+// GET /api/cajas/:cajaId/configuracion-credito
+// Reglas de crédito de la caja (T12). Las ven todos los miembros: el socio también
+// tiene que saber cuánto puede pedir.
+// ─────────────────────────────────────────────
+router.get("/:cajaId/configuracion-credito", requierePermiso("caja.ver"), async (req, res) => {
+  const { data, error } = await req.db
+    .from("cajas")
+    .select("monto_maximo_credito")
+    .eq("id", req.params.cajaId)
+    .single()
+
+  if (error) return responderError(res, error)
+
+  return res.json({
+    monto_maximo_credito:
+      data.monto_maximo_credito === null ? null : Number(data.monto_maximo_credito),
+  })
+})
+
+// ─────────────────────────────────────────────
+// PUT /api/cajas/:cajaId/configuracion-credito  { monto_maximo_credito: number | null }
+// null quita el límite. Solo coordinador. La base lo aplica en cada solicitud (008).
+// ─────────────────────────────────────────────
+router.put(
+  "/:cajaId/configuracion-credito",
+  requierePermiso("caja.configurar"),
+  async (req, res) => {
+    const valor = req.body?.monto_maximo_credito
+    if (valor === undefined) {
+      return res.status(400).json({ error: "Indica el monto máximo, o null para no tener límite" })
+    }
+    if (valor !== null) {
+      const problema = errorMonto(valor, "El monto máximo")
+      if (problema) return res.status(400).json({ error: problema })
+    }
+
+    const { data, error } = await req.db
+      .from("cajas")
+      .update({
+        monto_maximo_credito: valor === null ? null : Number(valor),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", req.params.cajaId)
+      .select("monto_maximo_credito")
+      .single()
+
+    if (error) return responderError(res, error)
+
+    return res.json({
+      message: valor === null ? "La caja ya no tiene monto máximo" : "Monto máximo guardado",
+      monto_maximo_credito:
+        data.monto_maximo_credito === null ? null : Number(data.monto_maximo_credito),
+    })
+  },
+)
 
 module.exports = router

@@ -58,5 +58,6 @@ export interface EstadoCajaResponse {
     pagados: number
     pendientes: number
     vencidos: number
+    en_mora: number
   }
 }

@@ -1,8 +1,19 @@
 // src/api/creditos.types.ts
-export type EstadoCredito = "pendiente" | "activo" | "pagado" | "mora" | "castigado"
+// Los valores del enum estado_credito de la base
+export type EstadoCredito = "pendiente" | "activo" | "pagado" | "vencido"
+
+/** Cuotas vencidas sin pagar, calculadas al leer el crédito (T13). null si está al día */
+export interface MoraCredito {
+  cuotas_vencidas: number
+  monto_vencido: number
+  /** Vencimiento de la cuota atrasada más antigua */
+  desde: string
+}
 
 export interface Credito {
   id: string
+  /** 1, 2, 3… dentro de la caja, en el orden de solicitud. Lo pone la base (007) */
+  numero: number
   caja_id: string
   socio_id: string
   monto_solicitado: number
@@ -12,6 +23,7 @@ export interface Credito {
   cuota_mensual: number
   saldo_pendiente: number
   estado: EstadoCredito
+  mora?: MoraCredito | null
   fecha_desembolso?: string | null
   fecha_vencimiento?: string | null
   aprobado_por?: string | null
@@ -33,6 +45,15 @@ export interface GetCreditosResponse {
 export interface GetCreditoResponse {
   credito: Credito
   pagos: PagoCredito[]
+}
+
+/** Reglas de crédito de la caja (T12). null: sin monto máximo */
+export interface ConfigCredito {
+  monto_maximo_credito: number | null
+}
+
+export interface GuardarConfigCreditoResponse extends ConfigCredito {
+  message: string
 }
 
 export interface CreateCreditoRequest {

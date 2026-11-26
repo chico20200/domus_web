@@ -3,7 +3,9 @@ import { Modal } from "../../components/Modal"
 import { Form } from "../../components/Form"
 import { Button } from "../../components/Button"
 import { TextField } from "../../components/TextField"
+import { CampoComprobante } from "../../components/CampoComprobante"
 import { ahorrosService } from "../../api/ahorros.service"
+import { adjuntarTrasRegistrar } from "../../api/comprobantes.service"
 import { moneda } from "../../lib/format"
 
 /**
@@ -22,7 +24,8 @@ interface Props {
   titular: string
   saldo: number
   onCerrar: () => void
-  onHecho: () => void | Promise<void>
+  /** aviso: si la foto del comprobante no se pudo guardar (el movimiento sí quedó) */
+  onHecho: (aviso: string | null) => void | Promise<void>
 }
 
 const TEXTOS: Record<TipoOperacion, { titulo: string; verbo: string; confirmar: string }> = {
@@ -47,6 +50,7 @@ export function OperacionModal({
   const [errorGeneral, setErrorGeneral] = useState("")
   const [revisando, setRevisando] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  const [foto, setFoto] = useState<Blob | null>(null)
 
   const m = Number(monto)
   const saldoDespues = +(tipo === "deposito" ? saldo + m : saldo - m).toFixed(2)
@@ -68,8 +72,12 @@ export function OperacionModal({
     setErrorGeneral("")
     try {
       const fn = tipo === "deposito" ? ahorrosService.depositar : ahorrosService.retirar
-      await fn(cajaId, cuentaId, m, descripcion.trim())
-      await onHecho()
+      const res = await fn(cajaId, cuentaId, m, descripcion.trim())
+      const aviso = await adjuntarTrasRegistrar(
+        { tipo: "movimiento", cajaId, cuentaId, id: res.transaccion.id },
+        foto,
+      )
+      await onHecho(aviso)
     } catch (err) {
       setErrorGeneral(err instanceof Error ? err.message : "No se pudo registrar el movimiento")
       setRevisando(false)
@@ -116,6 +124,12 @@ export function OperacionModal({
               <div className="col-span-2 flex justify-between gap-6">
                 <dt className="text-secondary">Descripción</dt>
                 <dd className="text-right text-primary">{descripcion.trim()}</dd>
+              </div>
+            )}
+            {foto && (
+              <div className="col-span-2 flex justify-between gap-6">
+                <dt className="text-secondary">Comprobante</dt>
+                <dd className="text-right text-primary">Con foto</dd>
               </div>
             )}
           </dl>
@@ -169,6 +183,7 @@ export function OperacionModal({
           hint="Opcional. Aparece en el historial de la cuenta."
           maxLength={120}
         />
+        <CampoComprobante valor={foto} onCambio={setFoto} />
       </Form>
     </Modal>
   )

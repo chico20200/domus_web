@@ -39,6 +39,16 @@ export const adminService = {
     return apiClient.post(`/admin/cuentas/${cuentaId}/restablecimiento`, { motivo })
   },
 
+  // POST /api/admin/cajas/:id/bloqueo
+  bloquearCaja(cajaId: string, motivo: string): Promise<unknown> {
+    return apiClient.post(`/admin/cajas/${cajaId}/bloqueo`, { motivo })
+  },
+
+  // POST /api/admin/cajas/:id/restablecimiento
+  restablecerCaja(cajaId: string, motivo: string): Promise<unknown> {
+    return apiClient.post(`/admin/cajas/${cajaId}/restablecimiento`, { motivo })
+  },
+
   // GET /api/admin/bitacora
   async getBitacora(): Promise<RegistroBitacora[]> {
     return (await apiClient.get<{ registros: RegistroBitacora[] }>("/admin/bitacora")).registros

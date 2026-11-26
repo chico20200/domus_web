@@ -1,7 +1,12 @@
 // src/pages/NuevaCajaPage.tsx
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { Building2 } from "lucide-react"
 import { PaginaSinMenu } from "../components/layout/PaginaSinMenu"
+import { Button } from "../components/Button"
+import { EmptyState } from "../components/EmptyState"
+import { cajasService } from "../api/cajas.service"
+import { useDatos } from "../lib/useDatos"
 import { useCaja } from "../context/CajaContext"
 import type { CreateCajaResponse } from "../api/cajas.types"
 import { IndicadorPasos } from "./cajas/IndicadorPasos"
@@ -38,15 +43,36 @@ export default function NuevaCajaPage() {
 
   const cancelar = () => navigate("/cajas")
 
+  // Límite de tres cajas creadas por cuenta (T9): se avisa al empezar y no al final del
+  // asistente. Si la consulta falla se sigue: crear_caja vuelve a comprobarlo al crear.
+  const cargarCupo = useCallback(async () => (await cajasService.getMisCajas()).creacion, [])
+  const { datos: cupo } = useDatos(cargarCupo)
+  const sinCupo = paso < 4 && !!cupo && cupo.creadas >= cupo.limite
+
   return (
     <PaginaSinMenu
       titulo="Crear una caja"
-      descripcion="Cuatro pasos: qué es una caja, las políticas de uso, sus datos y la confirmación."
+      descripcion={
+        sinCupo
+          ? undefined
+          : "Cuatro pasos: qué es una caja, las políticas de uso, sus datos y la confirmación."
+      }
     >
-      <IndicadorPasos pasos={PASOS} actual={paso} />
+      {sinCupo ? (
+        <div className="rounded-xl border border-base bg-surface">
+          <EmptyState
+            icono={Building2}
+            titulo={`Ya creaste ${cupo.limite} cajas`}
+            descripcion={`Es el máximo de cajas que crea una cuenta. Puedes unirte a otras cajas con el código que te entregue su coordinador.`}
+            accion={<Button label="Volver a Mis cajas" variant="secondary" onClick={cancelar} />}
+          />
+        </div>
+      ) : (
+        <IndicadorPasos pasos={PASOS} actual={paso} />
+      )}
 
-      {paso === 1 && <PasoQueEs onContinuar={() => setPaso(2)} onCancelar={cancelar} />}
-      {paso === 2 && (
+      {!sinCupo && paso === 1 && <PasoQueEs onContinuar={() => setPaso(2)} onCancelar={cancelar} />}
+      {!sinCupo && paso === 2 && (
         <PasoPoliticas
           aceptadas={aceptadas}
           onCambiar={setAceptadas}
@@ -54,7 +80,7 @@ export default function NuevaCajaPage() {
           onAtras={() => setPaso(1)}
         />
       )}
-      {paso === 3 && (
+      {!sinCupo && paso === 3 && (
         <PasoDatos
           datos={datos}
           onCambiar={setDatos}

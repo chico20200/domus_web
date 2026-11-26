@@ -1,9 +1,10 @@
 // src/pages/CreditosPage.tsx
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { CreditCard, Plus } from "lucide-react"
+import { CreditCard, Plus, Search } from "lucide-react"
 import { PageShell } from "../components/layout/PageShell"
 import { Button } from "../components/Button"
+import { TextField } from "../components/TextField"
 import { Badge } from "../components/Badge"
 import { DataTable } from "../components/DataTable"
 import { EmptyState } from "../components/EmptyState"
@@ -15,7 +16,8 @@ import type { Credito } from "../api/creditos.types"
 import { moneda, porcentaje } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
 import { tieneRol } from "../lib/roles"
-import { estadoCredito, nombreSocio } from "../lib/creditos"
+import { coincideCredito, estadoCredito, nombreSocio, numeroCredito } from "../lib/creditos"
+import { normalizar } from "../lib/texto"
 import { DetalleCredito } from "./creditos/DetalleCredito"
 import { NuevaSolicitudModal } from "./creditos/NuevaSolicitudModal"
 
@@ -53,16 +55,23 @@ function Creditos({
   const { toast } = useNotif()
 
   const cargar = useCallback(async () => {
-    const [creditos, socios] = await Promise.all([
+    const [creditos, socios, config] = await Promise.all([
       creditosService.getCreditos(cajaId),
       sociosService.getSocios(cajaId),
+      creditosService.getConfig(cajaId),
     ])
-    return { creditos: creditos.creditos, socios: socios.socios.filter((s) => s.activo) }
+    return {
+      creditos: creditos.creditos,
+      socios: socios.socios.filter((s) => s.activo),
+      montoMaximo: config.monto_maximo_credito,
+    }
   }, [cajaId])
   const { datos, cargando, error, recargar } = useDatos(cargar)
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const [nuevaSolicitud, setNuevaSolicitud] = useState(false)
+  // Se queda al abrir un crédito y volver: la lista vuelve filtrada como estaba
+  const [busqueda, setBusqueda] = useState("")
 
   if (seleccionado) {
     return (
@@ -80,15 +89,23 @@ function Creditos({
   }
 
   const creditos = datos?.creditos ?? []
+  const q = normalizar(busqueda.trim())
+  const filtrados = creditos.filter((c) => coincideCredito(c, q))
 
   return (
     <PageShell titulo="Créditos" ancho="formulario">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-secondary">
-          {cargando
-            ? "Cargando…"
-            : `${creditos.length} ${creditos.length === 1 ? "crédito" : "créditos"}`}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="w-full max-w-sm">
+          <TextField
+            label="Buscar créditos por socio o número"
+            ocultarEtiqueta
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por nombre, cédula o número"
+            icon={Search}
+          />
+        </div>
         {puedeOperar && (
           <Button
             label="Nueva solicitud"
@@ -98,6 +115,14 @@ function Creditos({
           />
         )}
       </div>
+
+      {!cargando && !error && (
+        <p className="text-sm text-secondary" aria-live="polite">
+          {q
+            ? `${filtrados.length} de ${creditos.length} ${creditos.length === 1 ? "crédito" : "créditos"}`
+            : `${creditos.length} ${creditos.length === 1 ? "crédito" : "créditos"}`}
+        </p>
+      )}
 
       {error ? (
         <div className="flex flex-col items-start gap-3 rounded-xl border border-base bg-surface p-6">
@@ -109,18 +134,32 @@ function Creditos({
           descripcion="Créditos de la caja con su monto, saldo y estado"
           cargando={cargando}
           textoCargando="Cargando créditos…"
-          filas={creditos}
+          filas={filtrados}
           claveFila={(c) => c.id}
           vacio={
-            <EmptyState
-              icono={CreditCard}
-              titulo="Aún no hay créditos"
-              descripcion={
-                puedeOperar ? "Crea una solicitud para el primer socio que lo pida." : undefined
-              }
-            />
+            q ? (
+              <EmptyState
+                icono={Search}
+                titulo="Ningún crédito coincide con la búsqueda"
+                descripcion="Prueba con otra parte del nombre, con la cédula del socio o con el número del crédito."
+              />
+            ) : (
+              <EmptyState
+                icono={CreditCard}
+                titulo="Aún no hay créditos"
+                descripcion={
+                  puedeOperar ? "Crea una solicitud para el primer socio que lo pida." : undefined
+                }
+              />
+            )
           }
           columnas={[
+            {
+              clave: "numero",
+              encabezado: "N.º",
+              alinear: "derecha",
+              celda: (c) => <span className="tabular-nums">{c.numero}</span>,
+            },
             {
               clave: "socio",
               encabezado: "Socio",
@@ -129,6 +168,7 @@ function Creditos({
                   <button
                     type="button"
                     onClick={() => setSeleccionado(c.id)}
+                    aria-label={`${nombreSocio(c.socios)}, crédito ${numeroCredito(c.numero)}`}
                     className="w-fit text-left font-medium text-accion-texto hover:underline focus-visible:outline-2 focus-visible:outline-focus"
                   >
                     {nombreSocio(c.socios)}
@@ -155,7 +195,7 @@ function Creditos({
               clave: "estado",
               encabezado: "Estado",
               celda: (c) => {
-                const e = estadoCredito(c.estado)
+                const e = estadoCredito(c)
                 return <Badge tono={e.tono} label={e.etiqueta} />
               },
             },
@@ -167,6 +207,7 @@ function Creditos({
         <NuevaSolicitudModal
           cajaId={cajaId}
           socios={datos.socios}
+          montoMaximo={datos.montoMaximo}
           onCerrar={() => setNuevaSolicitud(false)}
           onCreado={async () => {
             setNuevaSolicitud(false)

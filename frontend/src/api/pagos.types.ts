@@ -11,6 +11,8 @@ export interface PagoCredito {
   saldo_despues: number
   fecha_pago: string
   created_at: string
+  /** Ruta de la foto del comprobante (T16), o null si no tiene */
+  comprobante?: string | null
 }
 
 export interface CuotaVencida {
@@ -42,6 +44,7 @@ export interface ProximaCuota {
 
 export interface PrepagoResponse {
   message: string
+  pago: PagoCredito
   cuota_prepagada: number
   capital_pagado: number
   interes_condonado: number
@@ -68,6 +71,7 @@ export interface RegistrarPagoResponse {
 }
 export interface AbonoResponse {
   message: string
+  pago: PagoCredito
   aplicado: {
     cuota: number
     capital: number

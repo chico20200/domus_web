@@ -41,6 +41,7 @@ export interface FilaAmortizacion {
 export interface GetAmortizacionResponse {
   credito: {
     id: string
+    numero: number
     socio?: { nombre: string; apellido: string; cedula?: string }
     monto_solicitado: number
     tasa_interes: number

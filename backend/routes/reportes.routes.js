@@ -1,11 +1,12 @@
 // backend/routes/reportes.routes.js
 const express = require("express")
+const { responderError } = require("../utils/errores")
 const router = express.Router({ mergeParams: true })
-const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { calcularDistribucionInteres } = require("../utils/reportes")
 const { calcularCiclos } = require("../utils/ciclos")
+const { EN_CURSO, agregarMora } = require("../utils/mora")
 
 router.use(verifyToken)
 
@@ -18,7 +19,7 @@ router.get("/distribucion-interes", requierePermiso("reportes.generar"), async (
   const { ciclo } = req.query // ?ciclo=2 → ver un ciclo pasado
 
   try {
-    const { data: caja } = await supabaseAdmin
+    const { data: caja } = await req.db
       .from("cajas")
       .select("id, nombre, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo")
       .eq("id", cajaId)
@@ -50,7 +51,7 @@ router.get("/distribucion-interes", requierePermiso("reportes.generar"), async (
     const meses = cicloSel.meses
 
     // Socios activos
-    const { data: socios } = await supabaseAdmin
+    const { data: socios } = await req.db
       .from("socios")
       .select("id, nombre, apellido, cedula")
       .eq("caja_id", cajaId)
@@ -58,7 +59,7 @@ router.get("/distribucion-interes", requierePermiso("reportes.generar"), async (
       .order("apellido")
 
     // Transacciones de ahorro
-    const { data: transacciones } = await supabaseAdmin
+    const { data: transacciones } = await req.db
       .from("transacciones")
       .select("tipo, monto, created_at, cuentas_ahorro!inner ( socio_id )")
       .eq("caja_id", cajaId)
@@ -72,7 +73,7 @@ router.get("/distribucion-interes", requierePermiso("reportes.generar"), async (
     }))
 
     // Pagos de interés dentro del ciclo — con la fecha fin correcta
-    const { data: pagosInteres } = await supabaseAdmin
+    const { data: pagosInteres } = await req.db
       .from("pagos_credito")
       .select("monto_interes, fecha_pago")
       .eq("caja_id", cajaId)
@@ -102,7 +103,7 @@ router.get("/distribucion-interes", requierePermiso("reportes.generar"), async (
     })
   } catch (err) {
     console.error("Error en distribución:", err.message)
-    return res.status(500).json({ error: err.message })
+    return responderError(res, err)
   }
 })
 
@@ -115,7 +116,7 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
   const { ciclo } = req.query
 
   // 1. Configuración del ciclo
-  const { data: caja } = await supabaseAdmin
+  const { data: caja } = await req.db
     .from("cajas")
     .select("fecha_fundacion, mes_inicio_ciclo, duracion_ciclo")
     .eq("id", cajaId)
@@ -140,7 +141,7 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
   if (!cicloSel) return res.status(404).json({ error: "Ciclo no encontrado" })
 
   // 2. Ahorros — saldo actual de las cuentas (no depende del ciclo)
-  const { data: cuentas } = await supabaseAdmin
+  const { data: cuentas } = await req.db
     .from("cuentas_ahorro")
     .select("saldo")
     .eq("caja_id", cajaId)
@@ -149,12 +150,17 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
   const totalAhorros = +(cuentas ?? []).reduce((s, c) => s + parseFloat(c.saldo), 0).toFixed(2)
 
   // 3. Créditos — estado actual de la cartera
-  const { data: creditos } = await supabaseAdmin
+  const { data: creditos } = await req.db
     .from("creditos")
-    .select("estado, monto_solicitado, saldo_pendiente, interes_condonado")
+    .select(
+      "id, estado, monto_solicitado, tasa_interes, plazo_meses, fecha_desembolso, saldo_pendiente, interes_condonado",
+    )
     .eq("caja_id", cajaId)
 
-  const activos = (creditos ?? []).filter((c) => c.estado === "activo")
+  // Por cobrar: desembolsados y sin terminar de pagar, al día o atrasados (T13)
+  const activos = (creditos ?? []).filter((c) => EN_CURSO.includes(c.estado))
+  const conMora = await agregarMora(req.db, activos)
+  if (conMora.error) return responderError(res, conMora.error)
   const porCobrar = +activos.reduce((s, c) => s + parseFloat(c.saldo_pendiente), 0).toFixed(2)
 
   const condonado = +(creditos ?? [])
@@ -162,7 +168,7 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
     .toFixed(2)
 
   // 4. Interés y capital — SOLO DEL CICLO SELECCIONADO
-  const { data: pagosCiclo } = await supabaseAdmin
+  const { data: pagosCiclo } = await req.db
     .from("pagos_credito")
     .select("monto_interes, monto_capital")
     .eq("caja_id", cajaId)
@@ -177,7 +183,7 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
     .toFixed(2)
 
   // 5. Interés histórico total — para contexto
-  const { data: pagosTodos } = await supabaseAdmin
+  const { data: pagosTodos } = await req.db
     .from("pagos_credito")
     .select("monto_interes")
     .eq("caja_id", cajaId)
@@ -209,6 +215,7 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
       pagados: (creditos ?? []).filter((c) => c.estado === "pagado").length,
       pendientes: (creditos ?? []).filter((c) => c.estado === "pendiente").length,
       vencidos: (creditos ?? []).filter((c) => c.estado === "vencido").length,
+      en_mora: conMora.creditos.filter((c) => c.mora).length,
     },
   })
 })

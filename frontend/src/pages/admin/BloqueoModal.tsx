@@ -5,23 +5,38 @@ import { Button } from "../../components/Button"
 import { TextareaField } from "../../components/TextareaField"
 import { adminService } from "../../api/admin.service"
 import { ApiError } from "../../api/api.client"
-import type { CuentaAdmin } from "../../api/admin.types"
 
 /**
- * Bloquear o restablecer una cuenta (HU020, HU-S02). El motivo es obligatorio y queda en la
- * bitácora con quién y cuándo. El modal mismo es la confirmación: explica qué pasa y pide
- * el motivo antes del botón final.
+ * Bloquear o restablecer una cuenta o una caja (HU020, HU-S02). El motivo es obligatorio
+ * y queda en la bitácora con quién y cuándo. El modal mismo es la confirmación: explica
+ * qué pasa y pide el motivo antes del botón final.
  */
 
 export type AccionBloqueo = "bloquear" | "restablecer"
+export type ObjetivoBloqueo = { tipo: "cuenta" | "caja"; id: string; nombre: string }
 
 const MINIMO = 10
 const MAXIMO = 500
 
-const TEXTOS: Record<
-  AccionBloqueo,
-  { titulo: string; explicacion: string; boton: string; pista: string }
-> = {
+type Textos = { titulo: string; explicacion: string; boton: string; pista: string }
+
+const TEXTOS_CAJA: Record<AccionBloqueo, Textos> = {
+  bloquear: {
+    titulo: "Bloquear la caja",
+    explicacion:
+      "Sus miembros siguen entrando y viendo sus datos, pero nadie puede registrar nada: ni fichas, ni movimientos, ni créditos, ni pagos. El coordinador no puede desbloquearla. Los miembros verán el motivo.",
+    boton: "Bloquear la caja",
+    pista: "Qué pasó y por qué se bloquea. Lo verán los miembros de la caja.",
+  },
+  restablecer: {
+    titulo: "Restablecer la caja",
+    explicacion: "La caja vuelve a admitir registros. El bloqueo anterior queda en la bitácora.",
+    boton: "Restablecer la caja",
+    pista: "Por qué se levanta el bloqueo.",
+  },
+}
+
+const TEXTOS: Record<AccionBloqueo, Textos> = {
   bloquear: {
     titulo: "Bloquear la cuenta",
     explicacion:
@@ -39,14 +54,14 @@ const TEXTOS: Record<
 }
 
 interface Props {
-  cuenta: CuentaAdmin
+  objetivo: ObjetivoBloqueo
   accion: AccionBloqueo
   onCerrar: () => void
   onHecho: () => void
 }
 
-export function BloqueoModal({ cuenta, accion, onCerrar, onHecho }: Props) {
-  const t = TEXTOS[accion]
+export function BloqueoModal({ objetivo, accion, onCerrar, onHecho }: Props) {
+  const t = (objetivo.tipo === "caja" ? TEXTOS_CAJA : TEXTOS)[accion]
   const [motivo, setMotivo] = useState("")
   const [errorMotivo, setErrorMotivo] = useState("")
   const [error, setError] = useState("")
@@ -59,8 +74,12 @@ export function BloqueoModal({ cuenta, accion, onCerrar, onHecho }: Props) {
     }
     setEnviando(true)
     try {
-      if (accion === "bloquear") await adminService.bloquear(cuenta.id, motivo.trim())
-      else await adminService.restablecer(cuenta.id, motivo.trim())
+      const m = motivo.trim()
+      if (objetivo.tipo === "caja") {
+        if (accion === "bloquear") await adminService.bloquearCaja(objetivo.id, m)
+        else await adminService.restablecerCaja(objetivo.id, m)
+      } else if (accion === "bloquear") await adminService.bloquear(objetivo.id, m)
+      else await adminService.restablecer(objetivo.id, m)
       onHecho()
     } catch (err) {
       if (err instanceof ApiError && err.datos.campo === "motivo") setErrorMotivo(err.message)
@@ -74,7 +93,7 @@ export function BloqueoModal({ cuenta, accion, onCerrar, onHecho }: Props) {
       abierto
       onCerrar={onCerrar}
       titulo={t.titulo}
-      descripcion={cuenta.correo}
+      descripcion={objetivo.nombre}
       cerrarAlClicFuera={false}
     >
       <Form

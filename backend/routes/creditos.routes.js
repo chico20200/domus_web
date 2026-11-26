@@ -1,11 +1,13 @@
 // backend/routes/creditos.routes.js
 const express = require("express")
+const { responderError } = require("../utils/errores")
 const router = express.Router({ mergeParams: true })
-const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal, leerFecha } = require("../utils/fechas")
+const { errorMonto, errorEntero } = require("../utils/validacion")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
+const { agregarMora, calcularMora } = require("../utils/mora")
 
 router.use(verifyToken)
 
@@ -16,15 +18,19 @@ router.use(verifyToken)
 router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId } = req.params
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("creditos")
     .select(`*, socios ( nombre, apellido, cedula )`)
     .eq("caja_id", cajaId)
     .order("created_at", { ascending: false })
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
-  return res.json({ creditos: data ?? [] })
+  // Cada crédito con su mora calculada al leer (T13)
+  const conMora = await agregarMora(req.db, data)
+  if (conMora.error) return responderError(res, conMora.error)
+
+  return res.json({ creditos: conMora.creditos })
 })
 
 // ─────────────────────────────────────────────
@@ -34,7 +40,7 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
 router.get("/:creditoId", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
-  const { data: credito, error } = await supabaseAdmin
+  const { data: credito, error } = await req.db
     .from("creditos")
     .select(`*, socios ( nombre, apellido, cedula )`)
     .eq("id", creditoId)
@@ -43,13 +49,16 @@ router.get("/:creditoId", requierePermiso("datos.ver"), async (req, res) => {
 
   if (error || !credito) return res.status(404).json({ error: "Crédito no encontrado" })
 
-  const { data: pagos } = await supabaseAdmin
+  const { data: pagos } = await req.db
     .from("pagos_credito")
     .select("*")
     .eq("credito_id", creditoId)
     .order("created_at", { ascending: false })
 
-  return res.json({ credito, pagos: pagos ?? [] })
+  return res.json({
+    credito: { ...credito, mora: calcularMora(credito, pagos ?? []) },
+    pagos: pagos ?? [],
+  })
 })
 
 // ─────────────────────────────────────────────
@@ -59,16 +68,19 @@ router.get("/:creditoId", requierePermiso("datos.ver"), async (req, res) => {
 router.get("/socio/:socioId", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, socioId } = req.params
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("creditos")
     .select("*")
     .eq("caja_id", cajaId)
     .eq("socio_id", socioId)
     .order("created_at", { ascending: false })
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
-  return res.json({ creditos: data ?? [] })
+  const conMora = await agregarMora(req.db, data)
+  if (conMora.error) return responderError(res, conMora.error)
+
+  return res.json({ creditos: conMora.creditos })
 })
 
 // ─────────────────────────────────────────────
@@ -79,12 +91,17 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId } = req.params
 
   const { socio_id, monto_solicitado, tasa_interes, plazo_meses } = req.body
-  if (!socio_id || !monto_solicitado || !tasa_interes || !plazo_meses) {
-    return res.status(400).json({ error: "Faltan campos requeridos" })
-  }
+  if (!socio_id) return res.status(400).json({ error: "Elige el socio" })
+  // Los límites (tasa hasta 100 %, plazo hasta 120 meses) los revisa también la base (005)
+  const problema =
+    errorMonto(monto_solicitado) ||
+    errorMonto(tasa_interes, "La tasa") ||
+    (Number(tasa_interes) > 100 ? "La tasa anual va de 0,01 % a 100 %" : "") ||
+    errorEntero(plazo_meses, 1, 120, "El plazo es un número entero de 1 a 120 meses")
+  if (problema) return res.status(400).json({ error: problema })
 
   // Valida que el socio pertenezca a la caja
-  const { data: socio } = await supabaseAdmin
+  const { data: socio } = await req.db
     .from("socios")
     .select("id")
     .eq("id", socio_id)
@@ -94,30 +111,21 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
 
   if (!socio) return res.status(404).json({ error: "Socio no encontrado en esta caja" })
 
-  // Calcula monto total por interés simple anual proporcional al plazo
-  const meses = parseInt(plazo_meses, 10)
-  const monto = parseFloat(monto_solicitado)
-  const tasa = parseFloat(tasa_interes)
-  const monto_total = +(monto * (1 + (tasa / 100) * (meses / 12))).toFixed(2)
-  const cuota_mensual = +(monto_total / meses).toFixed(2)
-
-  const { data, error } = await supabaseAdmin
+  // El total, la cuota y el saldo los calcula la base con interés simple (migración 005),
+  // y la solicitud nace pendiente
+  const { data, error } = await req.db
     .from("creditos")
     .insert({
       caja_id: cajaId,
       socio_id,
-      monto_solicitado: monto,
-      tasa_interes: tasa,
-      plazo_meses: meses,
-      monto_total,
-      cuota_mensual,
-      saldo_pendiente: monto_total,
-      estado: "pendiente",
+      monto_solicitado: Number(monto_solicitado),
+      tasa_interes: Number(tasa_interes),
+      plazo_meses: Number(plazo_meses),
     })
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.status(201).json({ message: "Solicitud registrada", credito: data })
 })
@@ -133,7 +141,7 @@ router.put("/:creditoId/aprobar", requierePermiso("creditos.aprobar"), async (re
   const fecha = fecha_desembolso ? leerFecha(fecha_desembolso) : new Date()
 
   // Lee el crédito
-  const { data: credito } = await supabaseAdmin
+  const { data: credito } = await req.db
     .from("creditos")
     .select("*")
     .eq("id", creditoId)
@@ -147,7 +155,7 @@ router.put("/:creditoId/aprobar", requierePermiso("creditos.aprobar"), async (re
   const fecha_vencimiento = new Date(fecha)
   fecha_vencimiento.setMonth(fecha_vencimiento.getMonth() + parseInt(credito.plazo_meses, 10))
 
-  const { data: dataUpd, error: errorUpd } = await supabaseAdmin
+  const { data: dataUpd, error: errorUpd } = await req.db
     .from("creditos")
     .update({
       estado: "activo",
@@ -161,7 +169,7 @@ router.put("/:creditoId/aprobar", requierePermiso("creditos.aprobar"), async (re
     .select()
     .single()
 
-  if (errorUpd) return res.status(500).json({ error: errorUpd.message })
+  if (errorUpd) return responderError(res, errorUpd)
 
   return res.json({ message: "Crédito aprobado", credito: dataUpd })
 })
@@ -174,10 +182,12 @@ router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), asy
   const { cajaId, creditoId } = req.params
 
   const { estado } = req.body
-  const estadosValidos = ["pendiente", "activo", "pagado", "mora", "castigado"]
+  // Aprobar va por /aprobar y "pagado" lo pone el último pago; aquí solo se marca o se
+  // quita el vencimiento. La base rechaza cualquier otro cambio (migración 005).
+  const estadosValidos = ["activo", "vencido"]
   if (!estadosValidos.includes(estado)) return res.status(400).json({ error: "Estado inválido" })
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("creditos")
     .update({ estado, updated_at: new Date().toISOString() })
     .eq("id", creditoId)
@@ -185,7 +195,7 @@ router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), asy
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.json({ message: "Estado actualizado", credito: data })
 })
@@ -197,7 +207,7 @@ router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), asy
 router.get("/:creditoId/amortizacion", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
-  const { data: credito, error } = await supabaseAdmin
+  const { data: credito, error } = await req.db
     .from("creditos")
     .select("*, socios ( nombre, apellido, cedula )")
     .eq("id", creditoId)
@@ -206,10 +216,7 @@ router.get("/:creditoId/amortizacion", requierePermiso("datos.ver"), async (req,
 
   if (error || !credito) return res.status(404).json({ error: "Crédito no encontrado" })
 
-  const { data: pagos } = await supabaseAdmin
-    .from("pagos_credito")
-    .select("*")
-    .eq("credito_id", creditoId)
+  const { data: pagos } = await req.db.from("pagos_credito").select("*").eq("credito_id", creditoId)
 
   const { filas, interesCondonadoTotal, totalAbonos } = analizarEstadoCredito(credito, pagos)
 
@@ -223,6 +230,7 @@ router.get("/:creditoId/amortizacion", requierePermiso("datos.ver"), async (req,
   return res.json({
     credito: {
       id: credito.id,
+      numero: credito.numero,
       socio: credito.socios,
       monto_solicitado: parseFloat(credito.monto_solicitado),
       tasa_interes: parseFloat(credito.tasa_interes),

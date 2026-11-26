@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react"
-import { Building2, NotebookText, Search, ShieldCheck, Users, UserX } from "lucide-react"
+import { Building2, Lock, NotebookText, Search, ShieldCheck, Users, UserX } from "lucide-react"
 import { Tabs } from "../../components/Tabs"
 import { DataTable, type Columna } from "../../components/DataTable"
 import { StatCard } from "../../components/StatCard"
@@ -25,9 +25,10 @@ import { useNotif } from "../../context/NotifContext"
 import { BloqueoModal, type AccionBloqueo } from "./BloqueoModal"
 
 /**
- * Panel del administrador del sistema (HU019, HU-S01): las cajas con sus conteos y las
- * cuentas de usuario con su estado, bloquear y restablecer cuentas con motivo (HU-S02) y la
- * bitácora de esas acciones. Sin montos: el backend no los envía.
+ * Panel del administrador del sistema (HU019, HU-S01): las cajas con su estado, fundación,
+ * ciclo vigente y conteos, y las cuentas de usuario con su estado; bloquear y restablecer
+ * cuentas y cajas con motivo (HU020, HU-S02) y la bitácora de esas acciones. Sin montos:
+ * el backend no los envía.
  */
 
 type Vista = "cajas" | "cuentas" | "bitacora"
@@ -66,11 +67,13 @@ export function PanelAdministracion() {
   }
 
   const bloqueadas = datos.cuentas.filter((c) => c.estado === "bloqueada").length
+  const cajasBloqueadas = datos.cajas.filter((c) => c.estado === "bloqueada").length
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard etiqueta="Cajas" valor={datos.cajas.length} icono={Building2} />
+        <StatCard etiqueta="Cajas bloqueadas" valor={cajasBloqueadas} icono={Lock} />
         <StatCard etiqueta="Cuentas de usuario" valor={datos.cuentas.length} icono={Users} />
         <StatCard etiqueta="Cuentas bloqueadas" valor={bloqueadas} icono={UserX} />
       </div>
@@ -86,7 +89,7 @@ export function PanelAdministracion() {
         ]}
       >
         {vista === "cajas" ? (
-          <TablaCajas cajas={datos.cajas} />
+          <TablaCajas cajas={datos.cajas} onCambio={recargar} />
         ) : vista === "cuentas" ? (
           <TablaCuentas cuentas={datos.cuentas} onCambio={recargar} />
         ) : (
@@ -97,10 +100,40 @@ export function PanelAdministracion() {
   )
 }
 
-function TablaCajas({ cajas }: { cajas: CajaAdmin[] }) {
+function TablaCajas({ cajas, onCambio }: { cajas: CajaAdmin[]; onCambio: () => Promise<void> }) {
+  const { toast } = useNotif()
+  const [accion, setAccion] = useState<{ caja: CajaAdmin; tipo: AccionBloqueo } | null>(null)
   const columnas: Columna<CajaAdmin>[] = [
     { clave: "caja", encabezado: "Caja", celda: (c) => c.nombre, fija: true },
-    { clave: "creada", encabezado: "Registrada", celda: (c) => fecha(c.creada_en) },
+    {
+      clave: "estado",
+      encabezado: "Estado",
+      celda: (c) =>
+        c.estado === "bloqueada" ? (
+          <span className="flex flex-col items-start gap-1">
+            <Badge label="Bloqueada" tono="destructivo" icon={Lock} />
+            {c.estado_motivo && (
+              <span className="max-w-64 text-xs whitespace-normal text-secondary">
+                {conPunto(c.estado_motivo)}
+                {c.estado_cambiado_en && ` Desde el ${fecha(c.estado_cambiado_en)}.`}
+              </span>
+            )}
+          </span>
+        ) : (
+          <Badge label="Activa" tono="ok" />
+        ),
+    },
+    {
+      clave: "fundacion",
+      encabezado: "Fundación",
+      celda: (c) =>
+        c.fecha_fundacion ? fecha(c.fecha_fundacion) : <span className="text-muted">—</span>,
+    },
+    {
+      clave: "ciclo",
+      encabezado: "Ciclo vigente",
+      celda: (c) => c.ciclo_vigente ?? <span className="text-muted">—</span>,
+    },
     { clave: "miembros", encabezado: "Cuentas", alinear: "derecha", celda: (c) => c.miembros },
     { clave: "socios", encabezado: "Socios", alinear: "derecha", celda: (c) => c.socios },
     {
@@ -109,15 +142,54 @@ function TablaCajas({ cajas }: { cajas: CajaAdmin[] }) {
       alinear: "derecha",
       celda: (c) => c.creditos_vigentes,
     },
+    {
+      clave: "acciones",
+      encabezado: <span className="sr-only">Acciones</span>,
+      alinear: "derecha",
+      celda: (c) =>
+        c.estado === "bloqueada" ? (
+          <Button
+            label="Restablecer"
+            variant="secondary"
+            onClick={() => setAccion({ caja: c, tipo: "restablecer" })}
+          />
+        ) : (
+          <Button
+            label="Bloquear"
+            variant="ghost"
+            onClick={() => setAccion({ caja: c, tipo: "bloquear" })}
+          />
+        ),
+    },
   ]
   return (
-    <DataTable<CajaAdmin>
-      descripcion="Cajas registradas con sus cuentas de usuario, fichas de socio activas y créditos por aprobar, al día o en mora"
-      filas={cajas}
-      claveFila={(c) => c.id}
-      columnas={columnas}
-      vacio={<EmptyState icono={Building2} titulo="Aún no hay cajas registradas" />}
-    />
+    <>
+      <DataTable<CajaAdmin>
+        descripcion="Cajas registradas con su estado, fundación y ciclo vigente, sus cuentas de usuario, fichas de socio activas y créditos por aprobar, al día o vencidos"
+        filas={cajas}
+        claveFila={(c) => c.id}
+        columnas={columnas}
+        vacio={<EmptyState icono={Building2} titulo="Aún no hay cajas registradas" />}
+      />
+      {accion && (
+        <BloqueoModal
+          objetivo={{ tipo: "caja", id: accion.caja.id, nombre: accion.caja.nombre }}
+          accion={accion.tipo}
+          onCerrar={() => setAccion(null)}
+          onHecho={async () => {
+            const { caja, tipo } = accion
+            await onCambio()
+            setAccion(null)
+            toast(
+              "exito",
+              tipo === "bloquear"
+                ? `Se bloqueó la caja ${caja.nombre}`
+                : `Se restableció la caja ${caja.nombre}`,
+            )
+          }}
+        />
+      )}
+    </>
   )
 }
 
@@ -264,7 +336,7 @@ function TablaCuentas({
       />
       {accion && (
         <BloqueoModal
-          cuenta={accion.cuenta}
+          objetivo={{ tipo: "cuenta", id: accion.cuenta.id, nombre: accion.cuenta.correo }}
           accion={accion.tipo}
           onCerrar={() => setAccion(null)}
           onHecho={async () => {
@@ -284,7 +356,7 @@ function TablaCuentas({
   )
 }
 
-/** Bitácora de bloqueos y restablecimientos (HU-S02), la acción más reciente primero */
+/** Bitácora de bloqueos y restablecimientos de cuentas y cajas (HU-S02), la más reciente primero */
 function TablaBitacora({ registros }: { registros: RegistroBitacora[] }) {
   const columnas: Columna<RegistroBitacora>[] = [
     { clave: "fecha", encabezado: "Fecha", celda: (r) => fechaHora(r.fecha) },
@@ -292,13 +364,28 @@ function TablaBitacora({ registros }: { registros: RegistroBitacora[] }) {
       clave: "accion",
       encabezado: "Acción",
       celda: (r) =>
-        r.accion === "bloquear" ? (
+        r.accion === "bloquear" || r.accion === "bloquear_caja" ? (
           <Badge label="Bloqueo" tono="destructivo" />
         ) : (
           <Badge label="Restablecimiento" tono="ok" />
         ),
     },
-    { clave: "cuenta", encabezado: "Cuenta", celda: (r) => r.cuenta_correo },
+    {
+      clave: "sobre",
+      encabezado: "Sobre",
+      celda: (r) =>
+        r.caja_nombre ? (
+          <span className="inline-flex items-center gap-2">
+            <Building2 size={16} className="text-muted" aria-label="Caja" />
+            {r.caja_nombre}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-2">
+            <Users size={16} className="text-muted" aria-label="Cuenta" />
+            {r.cuenta_correo}
+          </span>
+        ),
+    },
     {
       clave: "motivo",
       encabezado: "Motivo",
@@ -316,7 +403,7 @@ function TablaBitacora({ registros }: { registros: RegistroBitacora[] }) {
   ]
   return (
     <DataTable<RegistroBitacora>
-      descripcion="Bloqueos y restablecimientos de cuentas, con su motivo y quién los hizo"
+      descripcion="Bloqueos y restablecimientos de cuentas y cajas, con su motivo y quién los hizo"
       filas={registros}
       claveFila={(r) => r.id}
       columnas={columnas}
