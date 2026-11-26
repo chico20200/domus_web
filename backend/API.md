@@ -41,14 +41,14 @@ La clave de servicio (`supabaseAdmin`) queda solo para el panel del administrado
 
 Las escrituras que tocan dos tablas son funciones de Postgres, todo o nada:
 
-| Ruta | Función |
-| --- | --- |
-| `POST /cuentas/:id/deposito`, `/retiro` | `registrar_movimiento` |
-| `POST /creditos/:id/pagos`, `/prepago`, `/abono` | `registrar_pago_credito` |
-| `POST /api/cajas` | `crear_caja` (límite de 3 cajas creadas por cuenta) |
-| `POST /api/cajas/unirse` | `unirse_con_codigo` |
-| `GET /cuentas/mias` | `vincular_mi_ficha` |
-| `GET /miembros` (correos) | `correos_miembros` |
+| Ruta                                             | Función                                             |
+| ------------------------------------------------ | --------------------------------------------------- |
+| `POST /cuentas/:id/deposito`, `/retiro`          | `registrar_movimiento`                              |
+| `POST /creditos/:id/pagos`, `/prepago`, `/abono` | `registrar_pago_credito`                            |
+| `POST /api/cajas`                                | `crear_caja` (límite de 3 cajas creadas por cuenta) |
+| `POST /api/cajas/unirse`                         | `unirse_con_codigo`                                 |
+| `GET /cuentas/mias`                              | `vincular_mi_ficha`                                 |
+| `GET /miembros` (correos)                        | `correos_miembros`                                  |
 
 Errores que pueden devolver además de los de cada ruta:
 
@@ -57,6 +57,23 @@ Errores que pueden devolver además de los de cada ruta:
 - `409 { error: 'Ya creaste tres cajas, que es el máximo por cuenta' }`.
 - `409 { error: 'El crédito cambió mientras se registraba el pago. Vuelve a intentarlo.' }` — otro pago cambió el saldo entre el cálculo de la cuota y la escritura.
 - `403 { error: 'Tu rol no permite esta acción en esta caja' }` — una escritura que el RLS rechazó.
+- `409 { error: 'Ya existe un registro con esos datos en esta caja' }` — un dato que no se puede repetir, como la cédula.
+
+### Reglas de los datos en la base (migración 005)
+
+Con el token de la persona y la clave pública se puede hablar directo con Supabase, sin pasar por este backend. Por eso las reglas de los datos también están en la base y no se pueden saltar:
+
+- Saldos, movimientos y pagos solo cambian con `registrar_movimiento` y `registrar_pago_credito`. Nadie escribe a mano un saldo, un movimiento ni un pago, y nadie borra filas.
+- Fichas: cédula ecuatoriana válida, teléfono y correo con forma correcta. Se guardan solo los dígitos. Una ficha antigua se puede editar sin tocar su cédula.
+- Créditos: monto mayor a 0, tasa anual de 0,01 % a 100 %, plazo de 1 a 120 meses. La base calcula el total, la cuota y el saldo, y la solicitud nace `pendiente`. Cambios de estado permitidos: `pendiente → activo` (al aprobar, con fechas) y `activo ↔ vencido`. `pagado` lo pone el último pago.
+- Cuentas: nacen activas y en 0. Solo se cierran con saldo 0.
+- Perfil: nombre de al menos 6 letras, teléfono de 10 dígitos, foto con dirección `https`.
+
+Una regla incumplida responde `400` con el mismo mensaje del formulario. El backend revisa antes lo que la base no ve, como los tres decimales (una columna `numeric(12,2)` los redondea sin avisar) o un plazo con decimales.
+
+El prepago se rechaza si hay cuotas vencidas, y `proxima-cuota` no lo ofrece en ese caso. El abono sí se acepta en un crédito `vencido`.
+
+Las pruebas `backend/pruebas/aislamiento.sql` y `backend/pruebas/validacion.sql` se corren en el SQL Editor de Supabase y no dejan rastro.
 
 ---
 

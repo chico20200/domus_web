@@ -69,9 +69,8 @@ router.put("/me", async (req, res) => {
     .select()
     .single()
 
-  if (error || !data) {
-    return res.status(500).json({ error: "Error al actualizar el perfil", detalle: error.message })
-  }
+  // El nombre, el teléfono y la foto los valida la base (migración 005) y responde 400
+  if (error) return responderError(res, error)
 
   return res.json({ message: "Perfil actualizado correctamente", profile: data })
 })

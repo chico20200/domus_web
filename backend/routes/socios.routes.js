@@ -5,6 +5,7 @@ const router = express.Router({ mergeParams: true }) // ← mergeParams para lee
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal } = require("../utils/fechas")
+const { soloDigitos } = require("../utils/validacion")
 
 router.use(verifyToken)
 
@@ -58,13 +59,15 @@ router.post("/", requierePermiso("socios.gestionar"), async (req, res) => {
     return res.status(400).json({ error: "Nombre, apellido y cédula son requeridos" })
   }
 
-  // Verifica que la cédula no esté duplicada en la misma caja
+  // Verifica que la cédula no esté duplicada en la misma caja. La base la guarda solo con
+  // dígitos, así que se compara igual. La cédula, el teléfono y el correo los valida la
+  // base (migración 005) y responde 400 con el mensaje.
   const { data: existente } = await req.db
     .from("socios")
     .select("id")
     .eq("caja_id", cajaId)
-    .eq("cedula", cedula)
-    .single()
+    .eq("cedula", soloDigitos(cedula))
+    .maybeSingle()
 
   if (existente) {
     return res.status(400).json({ error: "Ya existe un socio con esa cédula en esta caja" })
@@ -120,8 +123,7 @@ router.put("/:socioId", requierePermiso("socios.gestionar"), async (req, res) =>
     .select()
     .single()
 
-  if (error || !data)
-    return res.status(500).json({ error: error?.message ?? "Error al actualizar" })
+  if (error) return responderError(res, error)
 
   return res.json({ message: "Socio actualizado correctamente", socio: data })
 })

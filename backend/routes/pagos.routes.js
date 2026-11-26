@@ -6,6 +6,7 @@ const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal } = require("../utils/fechas")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
 const { responderError } = require("../utils/errores")
+const { errorMonto } = require("../utils/validacion")
 
 router.use(verifyToken)
 
@@ -48,6 +49,9 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
   if (!credito) return res.status(404).json({ error: "Crédito no encontrado" })
   if (credito.estado === "pagado") {
     return res.status(400).json({ error: "Este crédito ya está pagado" })
+  }
+  if (!["activo", "vencido"].includes(credito.estado)) {
+    return res.status(400).json({ error: "Solo se registran pagos de créditos activos" })
   }
 
   // 2. Genera la tabla teórica
@@ -198,14 +202,16 @@ router.get("/proxima-cuota", requierePermiso("datos.ver"), async (req, res) => {
       falta_total: +(v.falta_capital + v.falta_interes).toFixed(2),
     })),
 
-    // Prepago disponible (última cuota sin tocar)
-    prepago_disponible: prepagable
-      ? {
-          numero_cuota: prepagable.numero_cuota,
-          capital: prepagable.capital,
-          interes_a_condonar: prepagable.interes,
-        }
-      : null,
+    // Prepago disponible (última cuota sin tocar). Con cuotas vencidas no se ofrece:
+    // POST /prepago lo rechaza hasta ponerse al día (T8)
+    prepago_disponible:
+      prepagable && vencidas.length === 0
+        ? {
+            numero_cuota: prepagable.numero_cuota,
+            capital: prepagable.capital,
+            interes_a_condonar: prepagable.interes,
+          }
+        : null,
   })
 })
 
@@ -228,7 +234,15 @@ router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, re
 
   const { data: pagos } = await req.db.from("pagos_credito").select("*").eq("credito_id", creditoId)
 
-  const { prepagable } = analizarEstadoCredito(credito, pagos)
+  const { prepagable, vencidas } = analizarEstadoCredito(credito, pagos)
+
+  // Adelantar cuotas futuras con una atrasada dejaría la atrasada sin cobrar y le
+  // condonaría interés a quien está en mora
+  if (vencidas.length > 0) {
+    return res.status(400).json({
+      error: `Hay ${vencidas.length === 1 ? "una cuota vencida" : `${vencidas.length} cuotas vencidas`}. Primero se paga lo atrasado; después se puede prepagar.`,
+    })
+  }
 
   if (!prepagable) {
     return res.status(400).json({
@@ -277,10 +291,9 @@ router.post("/abono", requierePermiso("movimientos.registrar"), async (req, res)
 
   const { monto, motivo } = req.body
 
-  const montoNum = parseFloat(monto)
-  if (!montoNum || isNaN(montoNum) || montoNum <= 0) {
-    return res.status(400).json({ error: "El monto debe ser mayor a 0" })
-  }
+  const problemaMonto = errorMonto(monto)
+  if (problemaMonto) return res.status(400).json({ error: problemaMonto })
+  const montoNum = Number(monto)
   if (!motivo || !motivo.trim()) {
     return res.status(400).json({ error: "El motivo del abono es requerido" })
   }
@@ -294,7 +307,8 @@ router.post("/abono", requierePermiso("movimientos.registrar"), async (req, res)
     .single()
 
   if (!credito) return res.status(404).json({ error: "Crédito no encontrado" })
-  if (credito.estado !== "activo") {
+  // Un crédito vencido también recibe abonos: es justamente el que necesita ponerse al día
+  if (!["activo", "vencido"].includes(credito.estado)) {
     return res.status(400).json({ error: "Solo se puede abonar a un crédito activo" })
   }
 

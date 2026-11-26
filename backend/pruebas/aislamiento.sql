@@ -114,7 +114,8 @@ begin
   insert into public.creditos (caja_id, socio_id, monto_solicitado, tasa_interes, plazo_meses,
                                monto_total, cuota_mensual, saldo_pendiente, estado)
   values (caja_a, ficha_otra, 300, 12, 3, 309, 103, 309, 'pendiente') returning id into credito;
-  update public.creditos set estado = 'activo', fecha_desembolso = '2025-02-01' where id = credito;
+  update public.creditos set estado = 'activo', fecha_desembolso = '2025-02-01',
+    fecha_vencimiento = '2025-05-01' where id = credito;
   perform public.registrar_pago_credito(caja_a, credito, 309, 1, 100, 3, 'cuota');
 
   -- El socio se une después: su ficha se vincula por correo (sin distinguir mayúsculas)
@@ -164,7 +165,7 @@ begin
   n := pg_temp.contar(format('select 1 from public.cajas where id = %L', i.caja_b));
   perform pg_temp.anotar('Tesorero de A no ve la caja B', n = 0, n::text);
   e := pg_temp.error_de(format(
-    'insert into public.socios (caja_id, cedula, nombre, apellido) values (%L, ''1'', ''X'', ''Y'')', i.caja_b));
+    'insert into public.socios (caja_id, cedula, nombre, apellido) values (%L, ''1710034065'', ''X'', ''Y'')', i.caja_b));
   perform pg_temp.anotar('Tesorero de A no registra fichas en B', e = '42501', e);
   e := pg_temp.error_de(format('select public.registrar_movimiento(%L, %L, ''deposito'', 5)', i.caja_b, i.cuenta_b));
   perform pg_temp.anotar('Tesorero de A no deposita en una cuenta de B', e = 'DM404', e);
@@ -249,7 +250,7 @@ begin
   e := pg_temp.error_de(format('select public.registrar_movimiento(%L, %L, ''deposito'', 5)', i.caja_a, i.cuenta_otra));
   perform pg_temp.anotar('Caja bloqueada: no admite depósitos', e = 'DM409', e);
   e := pg_temp.error_de(format(
-    'insert into public.socios (caja_id, cedula, nombre, apellido) values (%L, ''2'', ''X'', ''Y'')', i.caja_a));
+    'insert into public.socios (caja_id, cedula, nombre, apellido) values (%L, ''1104680135'', ''X'', ''Y'')', i.caja_a));
   perform pg_temp.anotar('Caja bloqueada: no admite fichas nuevas', e = '42501', e);
   perform pg_temp.como(i.coord_a);
   e := pg_temp.error_de(format('update public.cajas set estado = ''activa'' where id = %L', i.caja_a));

@@ -47,9 +47,14 @@ export function NuevaSolicitudModal({ cajaId, socios, onCerrar, onCreado }: Prop
   function validar(): Errores {
     const e: Errores = {}
     if (!socioId) e.socio = "Elige el socio que recibe el crédito"
+    // Los mismos límites que la base (migración 005)
     if (!(m > 0)) e.monto = "Indica un monto mayor que 0"
+    else if (Math.round(m * 100) / 100 !== m) e.monto = "Usa hasta dos decimales"
     if (!(t > 0)) e.tasa = "Indica una tasa mayor que 0"
-    if (!(Number.isInteger(p) && p > 0)) e.plazo = "Indica un número entero de meses"
+    else if (t > 100) e.tasa = "La tasa anual llega hasta 100 %"
+    else if (Math.round(t * 100) / 100 !== t) e.tasa = "Usa hasta dos decimales"
+    if (!(Number.isInteger(p) && p > 0 && p <= 120))
+      e.plazo = "Indica un número entero de 1 a 120 meses"
     return e
   }
 

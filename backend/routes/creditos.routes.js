@@ -5,6 +5,7 @@ const router = express.Router({ mergeParams: true })
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal, leerFecha } = require("../utils/fechas")
+const { errorMonto, errorEntero } = require("../utils/validacion")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
 
 router.use(verifyToken)
@@ -79,9 +80,14 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId } = req.params
 
   const { socio_id, monto_solicitado, tasa_interes, plazo_meses } = req.body
-  if (!socio_id || !monto_solicitado || !tasa_interes || !plazo_meses) {
-    return res.status(400).json({ error: "Faltan campos requeridos" })
-  }
+  if (!socio_id) return res.status(400).json({ error: "Elige el socio" })
+  // Los límites (tasa hasta 100 %, plazo hasta 120 meses) los revisa también la base (005)
+  const problema =
+    errorMonto(monto_solicitado) ||
+    errorMonto(tasa_interes, "La tasa") ||
+    (Number(tasa_interes) > 100 ? "La tasa anual va de 0,01 % a 100 %" : "") ||
+    errorEntero(plazo_meses, 1, 120, "El plazo es un número entero de 1 a 120 meses")
+  if (problema) return res.status(400).json({ error: problema })
 
   // Valida que el socio pertenezca a la caja
   const { data: socio } = await req.db
@@ -94,25 +100,16 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
 
   if (!socio) return res.status(404).json({ error: "Socio no encontrado en esta caja" })
 
-  // Calcula monto total por interés simple anual proporcional al plazo
-  const meses = parseInt(plazo_meses, 10)
-  const monto = parseFloat(monto_solicitado)
-  const tasa = parseFloat(tasa_interes)
-  const monto_total = +(monto * (1 + (tasa / 100) * (meses / 12))).toFixed(2)
-  const cuota_mensual = +(monto_total / meses).toFixed(2)
-
+  // El total, la cuota y el saldo los calcula la base con interés simple (migración 005),
+  // y la solicitud nace pendiente
   const { data, error } = await req.db
     .from("creditos")
     .insert({
       caja_id: cajaId,
       socio_id,
-      monto_solicitado: monto,
-      tasa_interes: tasa,
-      plazo_meses: meses,
-      monto_total,
-      cuota_mensual,
-      saldo_pendiente: monto_total,
-      estado: "pendiente",
+      monto_solicitado: Number(monto_solicitado),
+      tasa_interes: Number(tasa_interes),
+      plazo_meses: Number(plazo_meses),
     })
     .select()
     .single()
@@ -174,7 +171,9 @@ router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), asy
   const { cajaId, creditoId } = req.params
 
   const { estado } = req.body
-  const estadosValidos = ["pendiente", "activo", "pagado", "mora", "castigado"]
+  // Aprobar va por /aprobar y "pagado" lo pone el último pago; aquí solo se marca o se
+  // quita el vencimiento. La base rechaza cualquier otro cambio (migración 005).
+  const estadosValidos = ["activo", "vencido"]
   if (!estadosValidos.includes(estado)) return res.status(400).json({ error: "Estado inválido" })
 
   const { data, error } = await req.db
