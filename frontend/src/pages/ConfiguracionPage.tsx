@@ -10,6 +10,7 @@ import { PeriodoCaja } from "./configuracion/PeriodoCaja"
 import { CodigoInvitacion } from "./configuracion/CodigoInvitacion"
 import { MiembrosCaja } from "./configuracion/MiembrosCaja"
 import { CreditoCaja } from "./configuracion/CreditoCaja"
+import { FotoCaja } from "./configuracion/FotoCaja"
 
 /**
  * Configuración de la caja activa. Cada sección es un componente que carga sus propios
@@ -35,6 +36,7 @@ export default function ConfiguracionPage() {
         <p className="flex items-center gap-2 text-sm text-secondary">
           Tu rol en esta caja: <Badge tono="neutral" label={ETIQUETA_ROL[cajaActiva.rol]} />
         </p>
+        <FotoCaja cajaId={cajaActiva.id} puedeCambiar={esCoordinador} />
       </Panel>
 
       {esCoordinador && <PeriodoCaja cajaId={cajaActiva.id} />}

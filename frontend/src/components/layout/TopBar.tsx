@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom"
 import { useTheme } from "../../context/ThemeContext"
 import { useAuth } from "../../context/AuthContext"
 import { BotonIcono } from "./BotonIcono"
+import { Avatar } from "../Avatar"
+import { iniciales } from "../../lib/texto"
+import { useMiPerfil } from "../../lib/fotos"
 
 interface TopBarProps {
   titulo: string
@@ -13,7 +16,7 @@ export function TopBar({ titulo }: TopBarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
-  const iniciales = user?.email?.[0].toUpperCase() ?? "U"
+  const { perfil, refrescar } = useMiPerfil(user?.id ?? null)
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-base bg-surface px-6">
@@ -34,9 +37,14 @@ export function TopBar({ titulo }: TopBarProps) {
           onClick={() => navigate("/perfil")}
           aria-label="Ir al perfil"
           title={user?.email}
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accion-primaria text-sm font-medium text-sobre-accion transition-colors hover:bg-accion-primaria-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          className="shrink-0 rounded-full transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
-          {iniciales}
+          <Avatar
+            url={perfil?.foto_url}
+            texto={iniciales(perfil?.nombre, user?.email)}
+            tamano="sm"
+            onFalla={refrescar}
+          />
         </button>
 
         <BotonIcono icono={LogOut} etiqueta="Cerrar sesión" onClick={logout} />

@@ -1,5 +1,5 @@
 // src/pages/ProfilePage.tsx
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { LogOut, Pencil, Phone } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
@@ -7,6 +7,10 @@ import { useNotif } from "../context/NotifContext"
 import { profileService } from "../api/profile.service"
 import { cajasService } from "../api/cajas.service"
 import type { EstadoCuenta, Profile } from "../api/profile.types"
+import { Avatar } from "../components/Avatar"
+import { iniciales } from "../lib/texto"
+import { EditorFoto } from "../components/EditorFoto"
+import { publicarMiPerfil } from "../lib/fotos"
 import type { MiCaja } from "../api/cajas.types"
 import { PageShell } from "../components/layout/PageShell"
 import { Panel } from "../components/Panel"
@@ -34,6 +38,12 @@ export default function ProfilePage() {
   const perfil = datos?.profile
   const [editando, setEditando] = useState(false)
 
+  // Lo que se lee aquí es lo más nuevo: la barra superior lo toma de aquí
+  useEffect(() => {
+    if (user && perfil)
+      publicarMiPerfil(user.id, { nombre: perfil.nombre, foto_url: perfil.foto_url })
+  }, [user, perfil])
+
   if (cargando) {
     return (
       <PageShell titulo="Mi perfil" ancho="formulario">
@@ -60,15 +70,32 @@ export default function ProfilePage() {
   return (
     <PageShell titulo="Mi perfil" ancho="formulario">
       <Panel>
-        <div className="flex items-center gap-4">
-          <Avatar perfil={perfil} correo={correo} />
-          <div className="flex min-w-0 flex-col gap-1">
-            <p className="truncate text-xl font-semibold text-primary">
-              {perfil.nombre || "Sin nombre"}
-            </p>
-            <p className="truncate text-sm text-secondary">{correo}</p>
-          </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="truncate text-xl font-semibold text-primary">
+            {perfil.nombre || "Sin nombre"}
+          </p>
+          <p className="truncate text-sm text-secondary">{correo}</p>
         </div>
+        <EditorFoto
+          avatar={
+            <Avatar
+              url={perfil.foto_url}
+              texto={iniciales(perfil.nombre, correo)}
+              tamano="lg"
+              onFalla={recargar}
+            />
+          }
+          tieneFoto={Boolean(perfil.foto_url)}
+          ayuda="La ven las personas de tus cajas. JPG, PNG o WebP."
+          onSubir={async (imagen) => {
+            await profileService.subirFoto(imagen)
+            await recargar()
+          }}
+          onQuitar={async () => {
+            await profileService.quitarFoto()
+            await recargar()
+          }}
+        />
       </Panel>
 
       {editando ? (
@@ -119,36 +146,6 @@ export default function ProfilePage() {
         </div>
       </Panel>
     </PageShell>
-  )
-}
-
-function Avatar({ perfil, correo }: { perfil: Profile; correo: string }) {
-  const iniciales = perfil.nombre
-    ? perfil.nombre
-        .trim()
-        .split(/\s+/)
-        .map((p) => p[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : (correo[0]?.toUpperCase() ?? "?")
-
-  if (perfil.foto_url) {
-    return (
-      <img
-        src={perfil.foto_url}
-        alt=""
-        className="h-16 w-16 shrink-0 rounded-full border border-base object-cover"
-      />
-    )
-  }
-  return (
-    <div
-      aria-hidden="true"
-      className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-accion-primaria text-xl font-semibold text-sobre-accion"
-    >
-      {iniciales}
-    </div>
   )
 }
 

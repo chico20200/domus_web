@@ -7,9 +7,12 @@
 const LADO_MAXIMO = 1600
 const CALIDAD = 0.82
 
+/** Para la foto de perfil y la de la caja (T17): se ven pequeñas, 512 px sobran */
+export const LADO_AVATAR = 512
+
 export class ErrorImagen extends Error {}
 
-export async function reducirImagen(archivo: File): Promise<Blob> {
+export async function reducirImagen(archivo: File, ladoMaximo = LADO_MAXIMO): Promise<Blob> {
   if (!archivo.type.startsWith("image/")) {
     throw new ErrorImagen("Elige una foto (JPG, PNG o WebP)")
   }
@@ -23,7 +26,7 @@ export async function reducirImagen(archivo: File): Promise<Blob> {
     throw new ErrorImagen("No se pudo abrir la foto. Prueba con una en JPG o PNG.")
   }
 
-  const escala = Math.min(1, LADO_MAXIMO / Math.max(imagen.width, imagen.height))
+  const escala = Math.min(1, ladoMaximo / Math.max(imagen.width, imagen.height))
   const ancho = Math.round(imagen.width * escala)
   const alto = Math.round(imagen.height * escala)
   const lienzo = document.createElement("canvas")

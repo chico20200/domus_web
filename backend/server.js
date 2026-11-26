@@ -39,11 +39,12 @@ app.use("/api/cajas/:cajaId/creditos", creditosRoutes)
 app.use("/api/cajas/:cajaId/creditos/:creditoId/pagos", pagosRoutes)
 app.use("/api/cajas/:cajaId/reportes", reportesRoutes)
 app.use("/api/admin", adminRoutes)
-// Errores del lector del cuerpo (una foto de más de 5 MB, un JSON roto): en JSON y en
+// Errores del lector del cuerpo (una foto que pasa del límite, un JSON roto): en JSON y en
 // español, como el resto de la API, en vez de la página HTML de Express
 app.use((err, req, res, next) => {
   if (err?.type === "entity.too.large") {
-    return res.status(413).json({ error: "La foto pesa más de 5 MB. Toma otra o redúcela." })
+    const mb = Math.round((err.limit ?? 0) / (1024 * 1024))
+    return res.status(413).json({ error: `La foto pesa más de ${mb} MB. Toma otra o redúcela.` })
   }
   if (err?.type === "entity.parse.failed") {
     return res.status(400).json({ error: "El cuerpo de la petición no es válido" })

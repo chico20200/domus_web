@@ -14,6 +14,8 @@ import {
 } from "lucide-react"
 import { useCaja } from "../../context/CajaContext"
 import { ETIQUETA_ROL, tieneRol } from "../../lib/roles"
+import { Avatar } from "../Avatar"
+import { useFotoCaja } from "../../lib/fotos"
 
 interface SidebarProps {
   abierto: boolean
@@ -31,6 +33,7 @@ interface SidebarProps {
 export function Sidebar({ abierto, onToggle }: SidebarProps) {
   const navigate = useNavigate()
   const { cajaActiva, salirDeCaja } = useCaja()
+  const { fotoUrl, refrescar } = useFotoCaja(cajaActiva?.id ?? null)
 
   const rol = cajaActiva?.rol ?? "socio"
   const esTesorero = tieneRol(rol, "tesorero")
@@ -59,9 +62,7 @@ export function Sidebar({ abierto, onToggle }: SidebarProps) {
     >
       {/* Caja activa */}
       <div className="flex h-14 shrink-0 items-center gap-3 border-b border-base px-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accion-primaria text-sobre-accion">
-          <Building2 size={16} aria-hidden="true" />
-        </span>
+        <Avatar url={fotoUrl} icono={Building2} tamano="sm" forma="cuadro" onFalla={refrescar} />
         {abierto && (
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-primary" title={cajaActiva?.nombre}>

@@ -18,6 +18,7 @@ import { PaginaSinMenu } from "../components/layout/PaginaSinMenu"
 import { Button } from "../components/Button"
 import { Badge } from "../components/Badge"
 import { EmptyState } from "../components/EmptyState"
+import { Avatar } from "../components/Avatar"
 import { LoadingState } from "../components/LoadingState"
 import { useCaja } from "../context/CajaContext"
 import { useNotif } from "../context/NotifContext"
@@ -161,9 +162,13 @@ export default function CajasPage() {
                 onClick={() => entrar(caja)}
                 className="flex w-full items-center gap-4 rounded-xl border border-base bg-surface p-4 text-left transition-colors hover:border-accion-texto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-accion-texto">
-                  <Building2 size={22} aria-hidden="true" />
-                </span>
+                <Avatar
+                  url={caja.foto_url}
+                  icono={Building2}
+                  forma="cuadro"
+                  tono="suave"
+                  onFalla={recargar}
+                />
                 <span className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="text-base font-medium text-primary">{caja.nombre}</span>
                   {caja.descripcion && (

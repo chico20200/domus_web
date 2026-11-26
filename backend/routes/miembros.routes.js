@@ -46,10 +46,7 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   // 2. Trae los perfiles de esos usuarios
   const userIds = miembros.map((m) => m.user_id)
 
-  const { data: perfiles } = await req.db
-    .from("profiles")
-    .select("id, nombre, telefono, foto_url")
-    .in("id", userIds)
+  const { data: perfiles } = await req.db.from("profiles").select("id, nombre").in("id", userIds)
 
   const perfilPorId = {}
   ;(perfiles ?? []).forEach((p) => {

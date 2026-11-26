@@ -194,8 +194,9 @@ begin
   perform pg_temp.anotar('Perfil con números en el nombre: rechazado', e = 'DM400', e);
   e := pg_temp.error_de(format('update public.profiles set telefono = ''099123456'' where id = %L', i.tes));
   perform pg_temp.anotar('Perfil con teléfono de 9 dígitos: rechazado', e = 'DM400', e);
-  e := pg_temp.error_de(format('update public.profiles set foto_url = ''http://sitio.com/a.png'' where id = %L', i.tes));
-  perform pg_temp.anotar('Perfil con foto sin https: rechazado', e = 'DM400', e);
+  -- Desde 012 (T17) la foto es una ruta en Storage que pone poner_foto_perfil (ver fotos.sql)
+  e := pg_temp.error_de(format('update public.profiles set foto = ''otra/a.png'' where id = %L', i.tes));
+  perform pg_temp.anotar('Perfil: la ruta de la foto no se escribe a mano', e = '42501', e);
   e := pg_temp.error_de(format('update public.profiles set nombre = ''  María   José O''''Neil '', telefono = ''099 123 4567'' where id = %L', i.tes));
   t := (select nombre || ' ' || telefono from public.profiles where id = i.tes);
   perform pg_temp.anotar('Perfil válido: se guarda limpio', e = 'sin error' and t = 'María José O''Neil 0991234567', e || ' → ' || coalesce(t, 'nada'));

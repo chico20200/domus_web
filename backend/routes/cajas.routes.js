@@ -8,6 +8,7 @@ const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { calcularCiclos, validarConfigCiclo } = require("../utils/ciclos")
 const { EN_CURSO, agregarMora } = require("../utils/mora")
 const { errorMonto } = require("../utils/validacion")
+const { leerFoto, subirFoto, quitarFoto, enlace, enlaces } = require("../utils/fotos")
 
 // Largos máximos de los datos de una caja (los mismos que el formulario)
 const LARGO_NOMBRE = 80
@@ -34,7 +35,8 @@ router.get("/mis-cajas", async (req, res) => {
         descripcion,
         activa,
         estado,
-        estado_motivo
+        estado_motivo,
+        foto
       )
     `,
     )
@@ -68,7 +70,19 @@ router.get("/mis-cajas", async (req, res) => {
       politicas_aceptadas: aceptadas.has(m.cajas.id),
       estado: m.cajas.estado ?? "activa",
       estado_motivo: m.cajas.estado_motivo ?? null,
+      foto: m.cajas.foto,
     }))
+
+  // Las fotos de las cajas (T17), firmadas en una sola llamada
+  const fotos = await enlaces(
+    req.db,
+    "cajas",
+    cajas.map((c) => c.foto),
+  )
+  cajas.forEach((c) => {
+    c.foto_url = fotos[c.foto] ?? null
+    delete c.foto
+  })
 
   // Cuántas cajas creó y el máximo (T9), para avisar antes del asistente. Si falla, la
   // lista se entrega igual: crear_caja vuelve a comprobar el límite al crear.
@@ -76,6 +90,40 @@ router.get("/mis-cajas", async (req, res) => {
 
   return res.json({ cajas, creacion: creacion ?? null })
 })
+
+// ─────────────────────────────────────────────
+// Foto de la caja (T17). La ven todos sus miembros; la cambia el coordinador.
+// GET    /api/cajas/:cajaId/foto  → { foto_url } firmada por una hora, o null
+// PUT    /api/cajas/:cajaId/foto  (la imagen como cuerpo, hasta 2 MB) → { foto_url }
+// DELETE /api/cajas/:cajaId/foto
+// ─────────────────────────────────────────────
+router.get("/:cajaId/foto", requierePermiso("caja.ver"), async (req, res) => {
+  const { data, error } = await req.db
+    .from("cajas")
+    .select("foto")
+    .eq("id", req.params.cajaId)
+    .single()
+  if (error) return responderError(res, error)
+  return res.json({ foto_url: await enlace(req.db, "cajas", data.foto) })
+})
+
+router.put("/:cajaId/foto", requierePermiso("caja.configurar"), leerFoto, (req, res) =>
+  subirFoto(req, res, {
+    bucket: "cajas",
+    carpeta: req.params.cajaId,
+    rpc: "poner_foto_caja",
+    args: { p_caja: req.params.cajaId },
+    sinPermiso: "Solo el coordinador cambia la foto de la caja",
+  }),
+)
+
+router.delete("/:cajaId/foto", requierePermiso("caja.configurar"), (req, res) =>
+  quitarFoto(req, res, {
+    bucket: "cajas",
+    rpc: "poner_foto_caja",
+    args: { p_caja: req.params.cajaId },
+  }),
+)
 
 // ─────────────────────────────────────────────
 // POST /api/cajas

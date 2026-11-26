@@ -51,6 +51,8 @@ Las escrituras que tocan dos tablas son funciones de Postgres, todo o nada:
 | `GET /miembros` (correos)                        | `correos_miembros`                                  |
 | `GET /api/cajas/mis-cajas` (cupo)                | `cajas_creadas`                                     |
 | `POST …/comprobante` (foto de un registro)        | `adjuntar_comprobante`                              |
+| `PUT`/`DELETE /api/profiles/me/foto`             | `poner_foto_perfil`                                 |
+| `PUT`/`DELETE /api/cajas/:id/foto`               | `poner_foto_caja`                                   |
 
 Errores que pueden devolver además de los de cada ruta:
 
@@ -145,17 +147,26 @@ Devuelve el perfil del usuario autenticado, el estado de su cuenta y si administ
 - 200: `{ profile, estado_cuenta: { estado, motivo, desde, cajas_activas }, es_admin_sistema }`
 - `estado`: `'activa'` (miembro de al menos una caja) o `'inactiva'` (de ninguna). Los otros dos estados, `'pendiente'` (correo sin confirmar) y `'bloqueada'` (con `motivo` y `desde`), no llegan aquí porque esas cuentas no pasan la autenticación; se ven en el login y en el panel de administración.
 
-- 200: `{ profile }`
+- `profile`: `{ id, nombre, telefono, foto_url }`. `foto_url` es un enlace firmado a la foto de perfil, válido por una hora, o `null` si no hay foto (T17).
 - 404: `{ error: 'Perfil no encontrado' }`
 
 ### PUT /api/profiles/me
 
 Actualiza el perfil propio.
 
-- Body (todos opcionales): `{ nombre, telefono, foto_url }`
+- Body (todos opcionales): `{ nombre, telefono }`. La foto va por `PUT /me/foto`; un `foto_url` en el cuerpo se ignora.
 - 200: `{ message, profile }`
-- 400: `{ error }` si no se envía ningún campo
-- 500: `{ error, detalle }`
+- 400: `{ error }` si no se envía ningún campo, o si el nombre o el teléfono no son válidos (lo dice la base)
+
+### PUT /api/profiles/me/foto · DELETE /api/profiles/me/foto
+
+Pone, cambia o quita la foto de perfil (T17). La ven la cuenta y quienes comparten una caja con ella.
+
+- Body del PUT: la imagen tal cual, con `Content-Type: image/jpeg`, `image/png` o `image/webp`, hasta 2 MB. El frontend la reduce antes a 512 px.
+- 200: `{ message, foto_url }`. Después del DELETE, `foto_url` es `null`.
+- 400: `{ error }` si no es una imagen válida; 413 si pesa más de 2 MB
+
+Se guarda en el bucket privado `perfiles`, en `{cuenta}/{uuid}.jpg`. `poner_foto_perfil` (migración 012) comprueba que la ruta sea de la cuenta y que el archivo exista, y devuelve la ruta anterior. El backend borra la foto anterior: cada cuenta tiene una sola.
 
 ---
 
@@ -167,7 +178,21 @@ Todas requieren Auth (Bearer token).
 
 Lista las cajas activas a las que pertenece el usuario, junto con su rol en cada una.
 
-- 200: `{ cajas: [{ id, nombre, descripcion, rol, politicas_aceptadas }] }`. `politicas_aceptadas`: si aceptó la versión vigente de las políticas de esa caja (HU-S04)
+- 200: `{ cajas: [{ id, nombre, descripcion, rol, politicas_aceptadas, estado, estado_motivo, foto_url }], creacion }`.
+- `politicas_aceptadas`: si aceptó la versión vigente de las políticas de esa caja (HU-S04).
+- `foto_url`: enlace firmado de la foto de la caja, válido por una hora, o `null` (T17). Todos los enlaces se firman en una sola llamada.
+
+### GET /api/cajas/:cajaId/foto · PUT · DELETE
+
+La foto de la caja (T17).
+
+- GET: permiso `caja.ver` (todo miembro). 200: `{ foto_url }`, firmado por una hora, o `null`.
+- PUT y DELETE: permiso `caja.configurar` (coordinador), con la caja activa. El cuerpo del PUT es la imagen, igual que en `PUT /api/profiles/me/foto` (hasta 2 MB).
+- 200: `{ message, foto_url }`
+- 403: `{ error: 'Solo el coordinador cambia la foto de la caja' }`, cuando Storage la rechaza
+- 409: `{ error: 'La caja no admite registros nuevos' }`
+
+Se guarda en el bucket privado `cajas`, en `{caja}/{uuid}.jpg`. `poner_foto_caja` (migración 012) la revisa igual que la de perfil, y el backend borra la anterior.
 
 ### POST /api/cajas
 

@@ -64,9 +64,9 @@ export const apiClient = {
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: "DELETE" }),
 
   /** Sube una imagen como cuerpo de la petición, con su tipo (T16): sin JSON ni base64 */
-  subirImagen: <T>(endpoint: string, imagen: Blob) =>
+  subirImagen: <T>(endpoint: string, imagen: Blob, method: "POST" | "PUT" = "POST") =>
     request<T>(endpoint, {
-      method: "POST",
+      method,
       body: imagen,
       headers: { "Content-Type": imagen.type },
     }),

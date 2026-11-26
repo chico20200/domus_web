@@ -1,6 +1,7 @@
 // backend/routes/profile.routes.js
 const express = require("express")
 const { responderError } = require("../utils/errores")
+const { leerFoto, subirFoto, quitarFoto, enlace } = require("../utils/fotos")
 const router = express.Router()
 const verifyToken = require("../middlewares/auth.middleware")
 const {
@@ -32,8 +33,12 @@ router.get("/me", async (req, res) => {
     return responderError(res, err)
   }
 
+  // La foto se guarda como ruta en Storage (T17); se entrega un enlace firmado
+  const { foto, ...perfil } = data
+  perfil.foto_url = await enlace(req.db, "perfiles", foto)
+
   return res.json({
-    profile: data,
+    profile: perfil,
     estado_cuenta: {
       ...calcularEstadoCuenta({
         confirmada: Boolean(req.user.email_confirmed_at),
@@ -51,12 +56,12 @@ router.get("/me", async (req, res) => {
 
 router.put("/me", async (req, res) => {
   const userId = req.user.id
-  const { nombre, telefono, foto_url } = req.body
+  const { nombre, telefono } = req.body
 
+  // La foto va por PUT /me/foto
   const updates = {}
   if (nombre !== undefined) updates.nombre = nombre
   if (telefono !== undefined) updates.telefono = telefono
-  if (foto_url !== undefined) updates.foto_url = foto_url
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "No se enviaron campos para actualizar" })
@@ -66,13 +71,32 @@ router.put("/me", async (req, res) => {
     .from("profiles")
     .update(updates)
     .eq("id", userId)
-    .select()
+    .select("id, nombre, telefono, foto")
     .single()
 
-  // El nombre, el teléfono y la foto los valida la base (migración 005) y responde 400
+  // El nombre y el teléfono los valida la base (migración 005) y responde 400
   if (error) return responderError(res, error)
 
-  return res.json({ message: "Perfil actualizado correctamente", profile: data })
+  const { foto, ...perfil } = data
+  perfil.foto_url = await enlace(req.db, "perfiles", foto)
+  return res.json({ message: "Perfil actualizado correctamente", profile: perfil })
 })
+
+// PUT /api/profiles/me/foto  (la imagen como cuerpo, hasta 2 MB) → { foto_url }
+// DELETE /api/profiles/me/foto
+// Foto de perfil (T17). La ven la cuenta y quienes comparten una caja con ella.
+router.put("/me/foto", leerFoto, (req, res) =>
+  subirFoto(req, res, {
+    bucket: "perfiles",
+    carpeta: req.user.id,
+    rpc: "poner_foto_perfil",
+    args: {},
+    sinPermiso: "No se pudo guardar la foto de perfil",
+  }),
+)
+
+router.delete("/me/foto", (req, res) =>
+  quitarFoto(req, res, { bucket: "perfiles", rpc: "poner_foto_perfil", args: {} }),
+)
 
 module.exports = router

@@ -22,6 +22,8 @@ export interface MiCaja {
    *  Opcional porque una caja guardada antes de T10 no lo trae hasta revalidarse. */
   estado?: "activa" | "bloqueada"
   estado_motivo?: string | null
+  /** Enlace firmado de la foto de la caja (T17), válido una hora; null si no tiene */
+  foto_url?: string | null
 }
 
 export interface GetMisCajasResponse {
