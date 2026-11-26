@@ -1,7 +1,7 @@
 // backend/routes/creditos.routes.js
 const express = require("express")
+const { responderError } = require("../utils/errores")
 const router = express.Router({ mergeParams: true })
-const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal, leerFecha } = require("../utils/fechas")
@@ -16,13 +16,13 @@ router.use(verifyToken)
 router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId } = req.params
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("creditos")
     .select(`*, socios ( nombre, apellido, cedula )`)
     .eq("caja_id", cajaId)
     .order("created_at", { ascending: false })
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.json({ creditos: data ?? [] })
 })
@@ -34,7 +34,7 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
 router.get("/:creditoId", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
-  const { data: credito, error } = await supabaseAdmin
+  const { data: credito, error } = await req.db
     .from("creditos")
     .select(`*, socios ( nombre, apellido, cedula )`)
     .eq("id", creditoId)
@@ -43,7 +43,7 @@ router.get("/:creditoId", requierePermiso("datos.ver"), async (req, res) => {
 
   if (error || !credito) return res.status(404).json({ error: "Crédito no encontrado" })
 
-  const { data: pagos } = await supabaseAdmin
+  const { data: pagos } = await req.db
     .from("pagos_credito")
     .select("*")
     .eq("credito_id", creditoId)
@@ -59,14 +59,14 @@ router.get("/:creditoId", requierePermiso("datos.ver"), async (req, res) => {
 router.get("/socio/:socioId", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, socioId } = req.params
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("creditos")
     .select("*")
     .eq("caja_id", cajaId)
     .eq("socio_id", socioId)
     .order("created_at", { ascending: false })
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.json({ creditos: data ?? [] })
 })
@@ -84,7 +84,7 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
   }
 
   // Valida que el socio pertenezca a la caja
-  const { data: socio } = await supabaseAdmin
+  const { data: socio } = await req.db
     .from("socios")
     .select("id")
     .eq("id", socio_id)
@@ -101,7 +101,7 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
   const monto_total = +(monto * (1 + (tasa / 100) * (meses / 12))).toFixed(2)
   const cuota_mensual = +(monto_total / meses).toFixed(2)
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("creditos")
     .insert({
       caja_id: cajaId,
@@ -117,7 +117,7 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.status(201).json({ message: "Solicitud registrada", credito: data })
 })
@@ -133,7 +133,7 @@ router.put("/:creditoId/aprobar", requierePermiso("creditos.aprobar"), async (re
   const fecha = fecha_desembolso ? leerFecha(fecha_desembolso) : new Date()
 
   // Lee el crédito
-  const { data: credito } = await supabaseAdmin
+  const { data: credito } = await req.db
     .from("creditos")
     .select("*")
     .eq("id", creditoId)
@@ -147,7 +147,7 @@ router.put("/:creditoId/aprobar", requierePermiso("creditos.aprobar"), async (re
   const fecha_vencimiento = new Date(fecha)
   fecha_vencimiento.setMonth(fecha_vencimiento.getMonth() + parseInt(credito.plazo_meses, 10))
 
-  const { data: dataUpd, error: errorUpd } = await supabaseAdmin
+  const { data: dataUpd, error: errorUpd } = await req.db
     .from("creditos")
     .update({
       estado: "activo",
@@ -161,7 +161,7 @@ router.put("/:creditoId/aprobar", requierePermiso("creditos.aprobar"), async (re
     .select()
     .single()
 
-  if (errorUpd) return res.status(500).json({ error: errorUpd.message })
+  if (errorUpd) return responderError(res, errorUpd)
 
   return res.json({ message: "Crédito aprobado", credito: dataUpd })
 })
@@ -177,7 +177,7 @@ router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), asy
   const estadosValidos = ["pendiente", "activo", "pagado", "mora", "castigado"]
   if (!estadosValidos.includes(estado)) return res.status(400).json({ error: "Estado inválido" })
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("creditos")
     .update({ estado, updated_at: new Date().toISOString() })
     .eq("id", creditoId)
@@ -185,7 +185,7 @@ router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), asy
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.json({ message: "Estado actualizado", credito: data })
 })
@@ -197,7 +197,7 @@ router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), asy
 router.get("/:creditoId/amortizacion", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
-  const { data: credito, error } = await supabaseAdmin
+  const { data: credito, error } = await req.db
     .from("creditos")
     .select("*, socios ( nombre, apellido, cedula )")
     .eq("id", creditoId)
@@ -206,10 +206,7 @@ router.get("/:creditoId/amortizacion", requierePermiso("datos.ver"), async (req,
 
   if (error || !credito) return res.status(404).json({ error: "Crédito no encontrado" })
 
-  const { data: pagos } = await supabaseAdmin
-    .from("pagos_credito")
-    .select("*")
-    .eq("credito_id", creditoId)
+  const { data: pagos } = await req.db.from("pagos_credito").select("*").eq("credito_id", creditoId)
 
   const { filas, interesCondonadoTotal, totalAbonos } = analizarEstadoCredito(credito, pagos)
 

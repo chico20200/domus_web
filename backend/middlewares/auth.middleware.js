@@ -1,6 +1,7 @@
 // backend/middlewares/auth.middleware.js
 const supabaseAuth = require("../config/supabaseAuth")
 const { leerBloqueo, responderBloqueada } = require("../utils/cuentaSistema")
+const { clienteDeUsuario } = require("../config/supabaseUsuario")
 
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"]
@@ -27,6 +28,8 @@ const verifyToken = async (req, res, next) => {
   if (bloqueo) return responderBloqueada(res, bloqueo)
 
   req.user = data.user
+  // Toda consulta de una caja va con el token de la persona: el RLS decide (migración 004)
+  req.db = clienteDeUsuario(token)
   next()
 }
 

@@ -1,5 +1,4 @@
 // backend/middlewares/permisos.middleware.js
-const supabaseAdmin = require("../config/supabaseAdmin")
 
 // Escalera de roles dentro de una caja. Cada rol puede todo lo que pueden los de
 // abajo, y no al revés (especificaciones §6.2).
@@ -44,7 +43,9 @@ function requierePermiso(permiso) {
   if (!rolMinimo) throw new Error(`Permiso desconocido: ${permiso}`)
 
   return async (req, res, next) => {
-    const { data: miembro, error } = await supabaseAdmin
+    // Con el token de la persona: el RLS le deja leer su propia membresía. Las políticas
+    // vuelven a comprobar el rol en cada consulta; esto da el mensaje claro y req.rol.
+    const { data: miembro, error } = await req.db
       .from("miembros_caja")
       .select("rol")
       .eq("caja_id", req.params.cajaId)

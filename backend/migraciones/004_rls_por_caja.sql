@@ -331,6 +331,12 @@ begin
   if p_numero_cuota is null or p_numero_cuota < 1 or p_numero_cuota > v_credito.plazo_meses then
     raise exception 'Número de cuota inválido' using errcode = 'DM400';
   end if;
+  -- Nadie paga más de lo que debe (un centavo de holgura por redondeo de las cuotas).
+  -- Agregado después como 004c, al ver créditos activos con saldo 0 en los datos.
+  if v_total + p_interes_condonado > v_credito.saldo_pendiente + 0.01 then
+    raise exception 'El pago supera el saldo pendiente del crédito ($%)',
+      to_char(v_credito.saldo_pendiente, 'FM999999990.00') using errcode = 'DM400';
+  end if;
 
   v_saldo_nuevo := greatest(v_credito.saldo_pendiente - v_total - p_interes_condonado, 0);
 

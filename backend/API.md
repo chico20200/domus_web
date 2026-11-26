@@ -33,6 +33,31 @@ La verificación la hace un solo middleware, `requierePermiso("<permiso>")` en `
 - `403 { error: 'Sin acceso a esta caja' }` — el usuario no es miembro activo de la caja.
 - `403 { error: 'Tu rol no permite esta acción' }` — no alcanza el rol mínimo. Un rol que no está en la escalera tampoco pasa.
 
+### Aislamiento en la base (RLS, Etapa 6)
+
+Desde la migración `004`, las rutas de una caja consultan Supabase con el token de quien hace la petición (`req.db`, creado en `verifyToken` con la clave pública). Las políticas de fila repiten la escalera de roles dentro de la base: aunque una ruta olvidara un filtro, nadie lee ni escribe datos de una caja de la que no es miembro. Una caja que no está `activa` (bloqueada o eliminada) se puede leer, pero no admite registros nuevos.
+
+La clave de servicio (`supabaseAdmin`) queda solo para el panel del administrador (`/api/admin`) y para leer el estado de la cuenta (bloqueos).
+
+Las escrituras que tocan dos tablas son funciones de Postgres, todo o nada:
+
+| Ruta | Función |
+| --- | --- |
+| `POST /cuentas/:id/deposito`, `/retiro` | `registrar_movimiento` |
+| `POST /creditos/:id/pagos`, `/prepago`, `/abono` | `registrar_pago_credito` |
+| `POST /api/cajas` | `crear_caja` (límite de 3 cajas creadas por cuenta) |
+| `POST /api/cajas/unirse` | `unirse_con_codigo` |
+| `GET /cuentas/mias` | `vincular_mi_ficha` |
+| `GET /miembros` (correos) | `correos_miembros` |
+
+Errores que pueden devolver además de los de cada ruta:
+
+- `400`, `404`: el mensaje viene de la base (por ejemplo, "Saldo insuficiente…").
+- `409 { error: 'La caja no admite registros nuevos' }` — la caja está bloqueada o eliminada.
+- `409 { error: 'Ya creaste tres cajas, que es el máximo por cuenta' }`.
+- `409 { error: 'El crédito cambió mientras se registraba el pago. Vuelve a intentarlo.' }` — otro pago cambió el saldo entre el cálculo de la cuota y la escritura.
+- `403 { error: 'Tu rol no permite esta acción en esta caja' }` — una escritura que el RLS rechazó.
+
 ---
 
 ## 1. Auth — `/api/auth`

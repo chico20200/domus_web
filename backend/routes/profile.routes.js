@@ -1,7 +1,7 @@
 // backend/routes/profile.routes.js
 const express = require("express")
+const { responderError } = require("../utils/errores")
 const router = express.Router()
-const supabase = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 const {
   esAdminSistema,
@@ -19,7 +19,7 @@ router.use(verifyToken)
 router.get("/me", async (req, res) => {
   const userId = req.user.id
 
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
+  const { data, error } = await req.db.from("profiles").select("*").eq("id", userId).single()
 
   if (error || !data) {
     return res.status(404).json({ error: "Perfil no encontrado" })
@@ -29,7 +29,7 @@ router.get("/me", async (req, res) => {
   try {
     ;[cajasActivas, admin] = await Promise.all([contarCajasActivas(userId), esAdminSistema(userId)])
   } catch (err) {
-    return res.status(500).json({ error: err.message })
+    return responderError(res, err)
   }
 
   return res.json({
@@ -62,7 +62,7 @@ router.put("/me", async (req, res) => {
     return res.status(400).json({ error: "No se enviaron campos para actualizar" })
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await req.db
     .from("profiles")
     .update(updates)
     .eq("id", userId)

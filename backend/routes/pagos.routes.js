@@ -1,11 +1,11 @@
 // backend/routes/pagos.routes.js
 const express = require("express")
 const router = express.Router({ mergeParams: true })
-const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal } = require("../utils/fechas")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
+const { responderError } = require("../utils/errores")
 
 router.use(verifyToken)
 
@@ -16,14 +16,14 @@ router.use(verifyToken)
 router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("pagos_credito")
     .select("*")
     .eq("caja_id", cajaId)
     .eq("credito_id", creditoId)
     .order("numero_cuota", { ascending: true })
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.json({ pagos: data ?? [] })
 })
@@ -38,7 +38,7 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { tipo_pago } = req.body
 
   // 1. Lee el crédito
-  const { data: credito } = await supabaseAdmin
+  const { data: credito } = await req.db
     .from("creditos")
     .select("*")
     .eq("id", creditoId)
@@ -58,7 +58,7 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
   )
 
   // 3. Lee TODOS los pagos ya hechos
-  const { data: pagosPrevios } = await supabaseAdmin
+  const { data: pagosPrevios } = await req.db
     .from("pagos_credito")
     .select("numero_cuota, monto_capital, monto_interes")
     .eq("credito_id", creditoId)
@@ -121,41 +121,23 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
     return res.status(400).json({ error: "No hay nada pendiente por pagar en esta cuota" })
   }
 
-  // 7. Saldo del crédito
+  // 7. Saldo del crédito tal como se vio al calcular la cuota
   const saldoAntes = parseFloat(credito.saldo_pendiente)
-  const saldoDespues = +(saldoAntes - montoPagado).toFixed(2)
 
-  // 8. Registra el pago
-  const { data: pago, error } = await supabaseAdmin
-    .from("pagos_credito")
-    .insert({
-      caja_id: cajaId,
-      credito_id: creditoId,
-      fecha_pago: fechaLocal(),
-      numero_cuota: numeroCuota,
-      monto_pagado: montoPagado,
-      monto_capital: montoCapital,
-      monto_interes: montoInteres,
-      saldo_antes: saldoAntes,
-      saldo_despues: saldoDespues < 0 ? 0 : saldoDespues,
-      registrado_por: req.user.id,
-    })
-    .select()
-    .single()
-
-  if (error) return res.status(500).json({ error: error.message })
-
-  // 9. Actualiza el crédito
-  const nuevoEstado = saldoDespues <= 0.001 ? "pagado" : "activo"
-  await supabaseAdmin
-    .from("creditos")
-    .update({
-      saldo_pendiente: saldoDespues < 0 ? 0 : saldoDespues,
-      estado: nuevoEstado,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", creditoId)
-    .eq("caja_id", cajaId)
+  // 8. Registra el pago y el saldo del crédito juntos (registrar_pago_credito, migración
+  // 004). Si otro pago cambió el saldo desde que se calculó la cuota, la base lo rechaza.
+  const { data: registro, error } = await req.db.rpc("registrar_pago_credito", {
+    p_caja: cajaId,
+    p_credito: creditoId,
+    p_saldo_esperado: saldoAntes,
+    p_numero_cuota: numeroCuota,
+    p_capital: montoCapital,
+    p_interes: montoInteres,
+    p_tipo: "cuota",
+    p_fecha: fechaLocal(),
+  })
+  if (error) return responderError(res, error)
+  const { pago } = registro
 
   return res.status(201).json({
     message: "Pago registrado correctamente",
@@ -166,8 +148,8 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
       interes: montoInteres,
       total: montoPagado,
     },
-    saldo_pendiente: saldoDespues < 0 ? 0 : saldoDespues,
-    credito_pagado: nuevoEstado === "pagado",
+    saldo_pendiente: Number(registro.saldo_pendiente),
+    credito_pagado: registro.credito_pagado,
   })
 })
 
@@ -178,7 +160,7 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
 router.get("/proxima-cuota", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
-  const { data: credito } = await supabaseAdmin
+  const { data: credito } = await req.db
     .from("creditos")
     .select("*")
     .eq("id", creditoId)
@@ -190,10 +172,7 @@ router.get("/proxima-cuota", requierePermiso("datos.ver"), async (req, res) => {
     return res.json({ pendiente: false, mensaje: "Crédito pagado por completo" })
   }
 
-  const { data: pagos } = await supabaseAdmin
-    .from("pagos_credito")
-    .select("*")
-    .eq("credito_id", creditoId)
+  const { data: pagos } = await req.db.from("pagos_credito").select("*").eq("credito_id", creditoId)
 
   const { cuotaCorriente, vencidas, prepagable } = analizarEstadoCredito(credito, pagos)
 
@@ -235,7 +214,7 @@ router.get("/proxima-cuota", requierePermiso("datos.ver"), async (req, res) => {
 router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
-  const { data: credito } = await supabaseAdmin
+  const { data: credito } = await req.db
     .from("creditos")
     .select("*")
     .eq("id", creditoId)
@@ -247,10 +226,7 @@ router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, re
     return res.status(400).json({ error: "Solo se puede prepagar un crédito activo" })
   }
 
-  const { data: pagos } = await supabaseAdmin
-    .from("pagos_credito")
-    .select("*")
-    .eq("credito_id", creditoId)
+  const { data: pagos } = await req.db.from("pagos_credito").select("*").eq("credito_id", creditoId)
 
   const { prepagable } = analizarEstadoCredito(credito, pagos)
 
@@ -265,42 +241,21 @@ router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, re
   const interesCondonado = prepagable.interes
 
   const saldoAntes = parseFloat(credito.saldo_pendiente)
-  // El saldo baja el capital Y el interés condonado (ya no se cobrará)
-  const saldoDespues = +(saldoAntes - montoCapital - interesCondonado).toFixed(2)
 
-  const { data: pago, error } = await supabaseAdmin
-    .from("pagos_credito")
-    .insert({
-      caja_id: cajaId,
-      credito_id: creditoId,
-      fecha_pago: fechaLocal(),
-      numero_cuota: prepagable.numero_cuota,
-      monto_pagado: montoCapital,
-      monto_capital: montoCapital,
-      monto_interes: 0, // ← prepago no paga interés
-      es_prepago: true,
-      saldo_antes: saldoAntes,
-      saldo_despues: saldoDespues < 0 ? 0 : saldoDespues,
-      registrado_por: req.user.id,
-    })
-    .select()
-    .single()
-
-  if (error) return res.status(500).json({ error: error.message })
-
-  const nuevoEstado = saldoDespues <= 0.001 ? "pagado" : "activo"
-  await supabaseAdmin
-    .from("creditos")
-    .update({
-      saldo_pendiente: saldoDespues < 0 ? 0 : saldoDespues,
-      estado: nuevoEstado,
-      interes_condonado: +(parseFloat(credito.interes_condonado ?? 0) + interesCondonado).toFixed(
-        2,
-      ),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", creditoId)
-    .eq("caja_id", cajaId)
+  // El pago, el saldo y el interés condonado se escriben juntos (migración 004)
+  const { data: registro, error } = await req.db.rpc("registrar_pago_credito", {
+    p_caja: cajaId,
+    p_credito: creditoId,
+    p_saldo_esperado: saldoAntes,
+    p_numero_cuota: prepagable.numero_cuota,
+    p_capital: montoCapital,
+    p_interes: 0, // el prepago no paga interés
+    p_tipo: "prepago",
+    p_interes_condonado: interesCondonado,
+    p_fecha: fechaLocal(),
+  })
+  if (error) return responderError(res, error)
+  const { pago } = registro
 
   return res.status(201).json({
     message: `Prepago de la cuota ${prepagable.numero_cuota} registrado`,
@@ -308,8 +263,8 @@ router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, re
     cuota_prepagada: prepagable.numero_cuota,
     capital_pagado: montoCapital,
     interes_condonado: interesCondonado,
-    saldo_pendiente: saldoDespues < 0 ? 0 : saldoDespues,
-    credito_pagado: nuevoEstado === "pagado",
+    saldo_pendiente: Number(registro.saldo_pendiente),
+    credito_pagado: registro.credito_pagado,
   })
 })
 
@@ -331,7 +286,7 @@ router.post("/abono", requierePermiso("movimientos.registrar"), async (req, res)
   }
 
   // 1. Lee el crédito
-  const { data: credito } = await supabaseAdmin
+  const { data: credito } = await req.db
     .from("creditos")
     .select("*")
     .eq("id", creditoId)
@@ -344,7 +299,7 @@ router.post("/abono", requierePermiso("movimientos.registrar"), async (req, res)
   }
 
   // 2. Analiza el estado real
-  const { data: pagosPrevios } = await supabaseAdmin
+  const { data: pagosPrevios } = await req.db
     .from("pagos_credito")
     .select("*")
     .eq("credito_id", creditoId)
@@ -374,43 +329,23 @@ router.post("/abono", requierePermiso("movimientos.registrar"), async (req, res)
 
   const montoPagado = +(montoCapital + montoInteres).toFixed(2)
 
-  // 4. Saldo
+  // 4. Saldo tal como se vio al calcular el abono
   const saldoAntes = parseFloat(credito.saldo_pendiente)
-  const saldoDespues = +(saldoAntes - montoPagado).toFixed(2)
 
-  // 5. Registra el abono
-  const { data: pago, error } = await supabaseAdmin
-    .from("pagos_credito")
-    .insert({
-      caja_id: cajaId,
-      credito_id: creditoId,
-      fecha_pago: fechaLocal(),
-      numero_cuota: cuotaCorriente.numero_cuota,
-      monto_pagado: montoPagado,
-      monto_capital: montoCapital,
-      monto_interes: montoInteres,
-      es_abono: true,
-      motivo: motivo.trim(),
-      saldo_antes: saldoAntes,
-      saldo_despues: saldoDespues < 0 ? 0 : saldoDespues,
-      registrado_por: req.user.id,
-    })
-    .select()
-    .single()
-
-  if (error) return res.status(500).json({ error: error.message })
-
-  // 6. Actualiza el crédito
-  const nuevoEstado = saldoDespues <= 0.001 ? "pagado" : "activo"
-  await supabaseAdmin
-    .from("creditos")
-    .update({
-      saldo_pendiente: saldoDespues < 0 ? 0 : saldoDespues,
-      estado: nuevoEstado,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", creditoId)
-    .eq("caja_id", cajaId)
+  // 5. Registra el abono y el saldo del crédito juntos (migración 004)
+  const { data: registro, error } = await req.db.rpc("registrar_pago_credito", {
+    p_caja: cajaId,
+    p_credito: creditoId,
+    p_saldo_esperado: saldoAntes,
+    p_numero_cuota: cuotaCorriente.numero_cuota,
+    p_capital: montoCapital,
+    p_interes: montoInteres,
+    p_tipo: "abono",
+    p_motivo: motivo.trim(),
+    p_fecha: fechaLocal(),
+  })
+  if (error) return responderError(res, error)
+  const { pago } = registro
 
   // Cuánto queda pendiente de esa cuota tras el abono
   const restaCapital = +(faltaCapital - montoCapital).toFixed(2)
@@ -432,8 +367,8 @@ router.post("/abono", requierePermiso("movimientos.registrar"), async (req, res)
         (restaCapital > 0 ? restaCapital : 0) + (restaInteres > 0 ? restaInteres : 0)
       ).toFixed(2),
     },
-    saldo_pendiente: saldoDespues < 0 ? 0 : saldoDespues,
-    credito_pagado: nuevoEstado === "pagado",
+    saldo_pendiente: Number(registro.saldo_pendiente),
+    credito_pagado: registro.credito_pagado,
   })
 })
 

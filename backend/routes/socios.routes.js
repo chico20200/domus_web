@@ -1,7 +1,7 @@
 // backend/routes/socios.routes.js
 const express = require("express")
+const { responderError } = require("../utils/errores")
 const router = express.Router({ mergeParams: true }) // ← mergeParams para leer :cajaId
-const supabaseAdmin = require("../config/supabaseAdmin")
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal } = require("../utils/fechas")
@@ -15,13 +15,13 @@ router.use(verifyToken)
 router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId } = req.params
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("socios")
     .select("*")
     .eq("caja_id", cajaId)
     .order("apellido", { ascending: true })
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.json({ socios: data })
 })
@@ -33,7 +33,7 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
 router.get("/:socioId", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, socioId } = req.params
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("socios")
     .select("*")
     .eq("id", socioId)
@@ -59,7 +59,7 @@ router.post("/", requierePermiso("socios.gestionar"), async (req, res) => {
   }
 
   // Verifica que la cédula no esté duplicada en la misma caja
-  const { data: existente } = await supabaseAdmin
+  const { data: existente } = await req.db
     .from("socios")
     .select("id")
     .eq("caja_id", cajaId)
@@ -70,7 +70,7 @@ router.post("/", requierePermiso("socios.gestionar"), async (req, res) => {
     return res.status(400).json({ error: "Ya existe un socio con esa cédula en esta caja" })
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("socios")
     .insert({
       caja_id: cajaId,
@@ -85,7 +85,7 @@ router.post("/", requierePermiso("socios.gestionar"), async (req, res) => {
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.status(201).json({ message: "Socio registrado correctamente", socio: data })
 })
@@ -112,7 +112,7 @@ router.put("/:socioId", requierePermiso("socios.gestionar"), async (req, res) =>
     return res.status(400).json({ error: "No se enviaron campos para actualizar" })
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await req.db
     .from("socios")
     .update(updates)
     .eq("id", socioId)
@@ -133,13 +133,13 @@ router.put("/:socioId", requierePermiso("socios.gestionar"), async (req, res) =>
 router.delete("/:socioId", requierePermiso("socios.eliminar"), async (req, res) => {
   const { cajaId, socioId } = req.params
 
-  const { error } = await supabaseAdmin
+  const { error } = await req.db
     .from("socios")
     .update({ activo: false, updated_at: new Date().toISOString() })
     .eq("id", socioId)
     .eq("caja_id", cajaId)
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return responderError(res, error)
 
   return res.json({ message: "Socio desactivado correctamente" })
 })
