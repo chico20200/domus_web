@@ -15,7 +15,7 @@ import type { Socio } from "../api/socios.types"
 import { fecha } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
 import { tieneRol } from "../lib/roles"
-import { normalizar } from "../lib/texto"
+import { coincideSocio, normalizar } from "../lib/texto"
 import { SocioModal } from "./socios/SocioModal"
 
 /**
@@ -47,7 +47,7 @@ function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: 
   const activos = socios.filter((s) => s.activo).length
   const q = normalizar(busqueda.trim())
   const filtrados = socios
-    .filter((s) => !q || normalizar(`${s.nombre} ${s.apellido} ${s.cedula}`).includes(q))
+    .filter((s) => coincideSocio(s, q))
     // Activos primero; dentro de cada grupo, por apellido
     .sort(
       (a, b) =>
