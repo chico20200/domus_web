@@ -18,13 +18,15 @@ import { moneda } from "../../lib/format"
 interface Props {
   cajaId: string
   socios: Socio[]
+  /** Lo que presta la caja como máximo en un crédito; null es sin límite */
+  montoMaximo: number | null
   onCerrar: () => void
   onCreado: () => void | Promise<void>
 }
 
 type Errores = Partial<Record<"socio" | "monto" | "tasa" | "plazo", string>>
 
-export function NuevaSolicitudModal({ cajaId, socios, onCerrar, onCreado }: Props) {
+export function NuevaSolicitudModal({ cajaId, socios, montoMaximo, onCerrar, onCreado }: Props) {
   const [socioId, setSocioId] = useState("")
   const [monto, setMonto] = useState("")
   const [tasa, setTasa] = useState("")
@@ -50,6 +52,8 @@ export function NuevaSolicitudModal({ cajaId, socios, onCerrar, onCreado }: Prop
     // Los mismos límites que la base (migración 005)
     if (!(m > 0)) e.monto = "Indica un monto mayor que 0"
     else if (Math.round(m * 100) / 100 !== m) e.monto = "Usa hasta dos decimales"
+    else if (montoMaximo !== null && m > montoMaximo)
+      e.monto = `La caja presta hasta ${moneda(montoMaximo)} por crédito`
     if (!(t > 0)) e.tasa = "Indica una tasa mayor que 0"
     else if (t > 100) e.tasa = "La tasa anual llega hasta 100 %"
     else if (Math.round(t * 100) / 100 !== t) e.tasa = "Usa hasta dos decimales"
@@ -131,6 +135,10 @@ export function NuevaSolicitudModal({ cajaId, socios, onCerrar, onCreado }: Prop
             limpiar("monto")
           }}
           placeholder="1000"
+          max={montoMaximo ?? undefined}
+          hint={
+            montoMaximo !== null ? `Hasta ${moneda(montoMaximo)}, el máximo de la caja.` : undefined
+          }
           error={errores.monto}
           required
         />

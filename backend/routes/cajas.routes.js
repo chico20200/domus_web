@@ -7,6 +7,7 @@ const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { calcularCiclos, validarConfigCiclo } = require("../utils/ciclos")
 const { EN_CURSO, agregarMora } = require("../utils/mora")
+const { errorMonto } = require("../utils/validacion")
 
 // Largos máximos de los datos de una caja (los mismos que el formulario)
 const LARGO_NOMBRE = 80
@@ -387,5 +388,62 @@ router.put("/:cajaId/configuracion-ciclo", requierePermiso("caja.configurar"), a
     ciclo_actual: cicloActual,
   })
 })
+
+// ─────────────────────────────────────────────
+// GET /api/cajas/:cajaId/configuracion-credito
+// Reglas de crédito de la caja (T12). Las ven todos los miembros: el socio también
+// tiene que saber cuánto puede pedir.
+// ─────────────────────────────────────────────
+router.get("/:cajaId/configuracion-credito", requierePermiso("caja.ver"), async (req, res) => {
+  const { data, error } = await req.db
+    .from("cajas")
+    .select("monto_maximo_credito")
+    .eq("id", req.params.cajaId)
+    .single()
+
+  if (error) return responderError(res, error)
+
+  return res.json({
+    monto_maximo_credito:
+      data.monto_maximo_credito === null ? null : Number(data.monto_maximo_credito),
+  })
+})
+
+// ─────────────────────────────────────────────
+// PUT /api/cajas/:cajaId/configuracion-credito  { monto_maximo_credito: number | null }
+// null quita el límite. Solo coordinador. La base lo aplica en cada solicitud (008).
+// ─────────────────────────────────────────────
+router.put(
+  "/:cajaId/configuracion-credito",
+  requierePermiso("caja.configurar"),
+  async (req, res) => {
+    const valor = req.body?.monto_maximo_credito
+    if (valor === undefined) {
+      return res.status(400).json({ error: "Indica el monto máximo, o null para no tener límite" })
+    }
+    if (valor !== null) {
+      const problema = errorMonto(valor, "El monto máximo")
+      if (problema) return res.status(400).json({ error: problema })
+    }
+
+    const { data, error } = await req.db
+      .from("cajas")
+      .update({
+        monto_maximo_credito: valor === null ? null : Number(valor),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", req.params.cajaId)
+      .select("monto_maximo_credito")
+      .single()
+
+    if (error) return responderError(res, error)
+
+    return res.json({
+      message: valor === null ? "La caja ya no tiene monto máximo" : "Monto máximo guardado",
+      monto_maximo_credito:
+        data.monto_maximo_credito === null ? null : Number(data.monto_maximo_credito),
+    })
+  },
+)
 
 module.exports = router

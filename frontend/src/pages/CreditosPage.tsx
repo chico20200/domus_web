@@ -55,11 +55,16 @@ function Creditos({
   const { toast } = useNotif()
 
   const cargar = useCallback(async () => {
-    const [creditos, socios] = await Promise.all([
+    const [creditos, socios, config] = await Promise.all([
       creditosService.getCreditos(cajaId),
       sociosService.getSocios(cajaId),
+      creditosService.getConfig(cajaId),
     ])
-    return { creditos: creditos.creditos, socios: socios.socios.filter((s) => s.activo) }
+    return {
+      creditos: creditos.creditos,
+      socios: socios.socios.filter((s) => s.activo),
+      montoMaximo: config.monto_maximo_credito,
+    }
   }, [cajaId])
   const { datos, cargando, error, recargar } = useDatos(cargar)
 
@@ -202,6 +207,7 @@ function Creditos({
         <NuevaSolicitudModal
           cajaId={cajaId}
           socios={datos.socios}
+          montoMaximo={datos.montoMaximo}
           onCerrar={() => setNuevaSolicitud(false)}
           onCreado={async () => {
             setNuevaSolicitud(false)

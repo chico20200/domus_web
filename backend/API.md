@@ -206,6 +206,23 @@ Edita nombre/descripción de la caja.
 - 400: `{ error }` si no se envían campos
 - 403: `{ error: 'Tu rol no permite esta acción' }`
 
+### GET /api/cajas/:cajaId/configuracion-credito
+
+Reglas de crédito de la caja (Etapa 6, T12; migración `008`).
+
+- Rol mínimo: `socio` (permiso `caja.ver`): todos los miembros saben cuánto se puede pedir
+- 200: `{ monto_maximo_credito }`: número, o `null` si la caja no tiene límite
+
+### PUT /api/cajas/:cajaId/configuracion-credito
+
+Fija o quita el monto máximo de un crédito.
+
+- Rol mínimo: `coordinador` (permiso `caja.configurar`)
+- Body: `{ monto_maximo_credito: number | null }`. `null` quita el límite; un número tiene que ser mayor que 0 y con hasta dos decimales.
+- 200: `{ message, monto_maximo_credito }`
+- 400: falta el campo, o el monto no es válido
+- La base lo aplica en cada solicitud nueva (`POST /creditos`): por encima responde 400 con "El monto máximo de crédito de esta caja es $1.500,00". Los créditos ya solicitados no cambian.
+
 ### POST /api/cajas/unirse
 
 El usuario se une a una caja mediante un código de invitación. Quien fue removido de la caja vuelve a entrar con el rol del código nuevo. Si existe un socio en la caja con el mismo email (sin distinguir mayúsculas) y sin `user_id` vinculado, se vincula automáticamente.

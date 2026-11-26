@@ -47,6 +47,15 @@ export interface GetCreditoResponse {
   pagos: PagoCredito[]
 }
 
+/** Reglas de crédito de la caja (T12). null: sin monto máximo */
+export interface ConfigCredito {
+  monto_maximo_credito: number | null
+}
+
+export interface GuardarConfigCreditoResponse extends ConfigCredito {
+  message: string
+}
+
 export interface CreateCreditoRequest {
   socio_id: string
   monto_solicitado: number

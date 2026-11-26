@@ -8,7 +8,7 @@
 -- NO DEJA RASTRO y no depende de los datos de la base, igual que aislamiento.sql.
 --
 -- CÓMO SE CORRE: Supabase → SQL Editor, pegar el archivo y ejecutarlo. El resultado sale
--- como mensaje de error: "VALIDACION: 41 de 41 casos pasan" y la lista de casos.
+-- como mensaje de error: "VALIDACION: 45 de 45 casos pasan" y la lista de casos.
 
 begin;
 
@@ -217,6 +217,25 @@ begin
   insert into public.creditos (caja_id, socio_id, monto_solicitado, tasa_interes, plazo_meses)
   values (t::uuid, e::uuid, 100, 12, 1) returning numero into n;
   perform pg_temp.anotar('Número: cada caja empieza en 1', n = 1, n::text);
+
+  -- Monto máximo de crédito (008). Quien creó la caja es su coordinador.
+  e := pg_temp.error_de(format('update public.cajas set monto_maximo_credito = 0 where id = %L', i.caja));
+  perform pg_temp.anotar('Máximo: 0 no es un máximo válido', e = '23514', e);
+  update public.cajas set monto_maximo_credito = 1500 where id = i.caja;
+  begin
+    insert into public.creditos (caja_id, socio_id, monto_solicitado, tasa_interes, plazo_meses)
+    values (i.caja, i.ficha, 1500.01, 12, 6);
+    e := 'sin error'; t := '';
+  exception when others then
+    e := sqlstate; t := sqlerrm;
+  end;
+  perform pg_temp.anotar('Máximo: una solicitud por encima se rechaza con el máximo en el mensaje',
+    e = 'DM400' and t = 'El monto máximo de crédito de esta caja es $1.500,00', e || ' → ' || t);
+  e := pg_temp.error_de(format(ins_credito, i.caja, i.ficha, '1500', '12', '6'));
+  perform pg_temp.anotar('Máximo: una solicitud igual al máximo pasa', e = 'sin error', e);
+  update public.cajas set monto_maximo_credito = null where id = i.caja;
+  e := pg_temp.error_de(format(ins_credito, i.caja, i.ficha, '90000', '12', '6'));
+  perform pg_temp.anotar('Máximo: vacío es sin límite', e = 'sin error', e);
 
   perform pg_temp.como(null);
   perform set_config('role', 'postgres', true);

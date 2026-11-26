@@ -9,12 +9,13 @@ import { ETIQUETA_ROL } from "../lib/roles"
 import { PeriodoCaja } from "./configuracion/PeriodoCaja"
 import { CodigoInvitacion } from "./configuracion/CodigoInvitacion"
 import { MiembrosCaja } from "./configuracion/MiembrosCaja"
+import { CreditoCaja } from "./configuracion/CreditoCaja"
 
 /**
  * Configuración de la caja activa. Cada sección es un componente que carga sus propios
  * datos, así un fallo en una no deja en blanco las demás.
  *
- * Periodo e invitaciones son solo del coordinador. La lista de miembros la ven todos.
+ * Periodo, créditos e invitaciones son solo del coordinador. La lista de miembros la ven todos.
  */
 export default function ConfiguracionPage() {
   const navigate = useNavigate()
@@ -37,6 +38,7 @@ export default function ConfiguracionPage() {
       </Panel>
 
       {esCoordinador && <PeriodoCaja cajaId={cajaActiva.id} />}
+      {esCoordinador && <CreditoCaja cajaId={cajaActiva.id} />}
       {esCoordinador && <CodigoInvitacion cajaId={cajaActiva.id} />}
       <MiembrosCaja cajaId={cajaActiva.id} esCoordinador={esCoordinador} />
     </PageShell>

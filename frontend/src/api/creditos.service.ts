@@ -7,9 +7,26 @@ import type {
   CreateCreditoRequest,
   CreateCreditoResponse,
   ChangeEstadoResponse,
+  ConfigCredito,
+  GuardarConfigCreditoResponse,
 } from "./creditos.types"
 
 export const creditosService = {
+  /** Monto máximo de la caja (T12); la base lo aplica en cada solicitud */
+  async getConfig(cajaId: string): Promise<ConfigCredito> {
+    return apiClient.get<ConfigCredito>(`/cajas/${cajaId}/configuracion-credito`)
+  },
+
+  async guardarConfig(
+    cajaId: string,
+    config: ConfigCredito,
+  ): Promise<GuardarConfigCreditoResponse> {
+    return apiClient.put<GuardarConfigCreditoResponse>(
+      `/cajas/${cajaId}/configuracion-credito`,
+      config,
+    )
+  },
+
   async getCreditos(cajaId: string): Promise<GetCreditosResponse> {
     return apiClient.get<GetCreditosResponse>(`/cajas/${cajaId}/creditos`)
   },
