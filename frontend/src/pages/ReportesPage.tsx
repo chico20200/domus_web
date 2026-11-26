@@ -140,9 +140,9 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
       encabezado: "Rendimiento del mes",
       alinear: "derecha",
       celda: (m) => (
-        <span className={m.tasa_mes > 0 ? "" : "text-muted"}>{porcentaje(m.tasa_mes, 4)}</span>
+        <span className={m.tasa_mes > 0 ? "" : "text-muted"}>{porcentaje(m.tasa_mes)}</span>
       ),
-      pie: porcentaje(dist.tasa_acumulada, 4),
+      pie: porcentaje(dist.tasa_acumulada),
     },
   ]
 
@@ -258,7 +258,7 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
           <StatCard
             etiqueta="Interés del ciclo"
             valor={moneda(estado.interes_recaudado)}
-            detalle={`Rendimiento ${porcentaje(dist.tasa_acumulada, 4)}`}
+            detalle={`Rendimiento ${porcentaje(dist.tasa_acumulada)}`}
             icono={TrendingUp}
           />
           <StatCard
