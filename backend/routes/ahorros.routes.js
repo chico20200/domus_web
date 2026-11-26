@@ -6,6 +6,7 @@ const { requierePermiso, NIVEL } = require("../middlewares/permisos.middleware")
 const { fichaDelUsuario } = require("../utils/fichas")
 const { fechaLocal } = require("../utils/fechas")
 const { responderError } = require("../utils/errores")
+const { leerImagen, subirYAdjuntar, enviarEnlace } = require("../utils/comprobantes")
 
 router.use(verifyToken)
 
@@ -211,6 +212,52 @@ router.post(
   "/:cuentaId/retiro",
   requierePermiso("movimientos.registrar"),
   registrarMovimiento("retiro"),
+)
+
+// ─────────────────────────────────────────────
+// Comprobante de un depósito o retiro (T16). La foto va en el cuerpo, como imagen.
+// POST: el tesorero la agrega al registrar el movimiento o después; una sola vez.
+// GET: enlace firmado para verla. El socio ve los de su propia cuenta (lo decide la
+// política del bucket); a los demás la base no les muestra el movimiento.
+// ─────────────────────────────────────────────
+async function leerMovimiento(req) {
+  const { cajaId, cuentaId, movimientoId } = req.params
+  const { data } = await req.db
+    .from("transacciones")
+    .select("id, comprobante, cuentas_ahorro!inner ( socio_id )")
+    .eq("id", movimientoId)
+    .eq("cuenta_id", cuentaId)
+    .eq("caja_id", cajaId)
+    .maybeSingle()
+  return data
+}
+
+router.post(
+  "/:cuentaId/movimientos/:movimientoId/comprobante",
+  requierePermiso("movimientos.registrar"),
+  leerImagen,
+  async (req, res) => {
+    const mov = await leerMovimiento(req)
+    if (!mov) return res.status(404).json({ error: "Movimiento no encontrado" })
+    if (mov.comprobante)
+      return res.status(409).json({ error: "Este movimiento ya tiene su comprobante" })
+    return subirYAdjuntar(req, res, {
+      tipo: "movimiento",
+      id: mov.id,
+      cajaId: req.params.cajaId,
+      socioId: mov.cuentas_ahorro.socio_id,
+    })
+  },
+)
+
+router.get(
+  "/:cuentaId/movimientos/:movimientoId/comprobante",
+  requierePermiso("caja.ver"),
+  async (req, res) => {
+    const mov = await leerMovimiento(req)
+    if (!mov) return res.status(404).json({ error: "Movimiento no encontrado" })
+    return enviarEnlace(req, res, mov.comprobante)
+  },
 )
 
 // ─────────────────────────────────────────────

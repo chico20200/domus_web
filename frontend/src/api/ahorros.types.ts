@@ -22,6 +22,8 @@ export interface Transaccion {
   saldo_anterior: number
   saldo_posterior: number
   descripcion: string
+  /** Ruta de la foto del comprobante (T16), o null si no tiene */
+  comprobante?: string | null
   created_at: string
 }
 

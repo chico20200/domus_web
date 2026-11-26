@@ -14,6 +14,7 @@ import { useDatos } from "../../lib/useDatos"
 import { nombreSocio } from "../../lib/creditos"
 import { estadoCuenta } from "../../lib/ahorros"
 import { OperacionModal, type TipoOperacion } from "./OperacionModal"
+import { BotonComprobante } from "../../components/BotonComprobante"
 
 /**
  * Detalle de una cuenta: saldo, estado, depósito y retiro (solo tesorero o coordinador,
@@ -162,6 +163,19 @@ export function DetalleCuenta({
               alinear: "derecha",
               celda: (t) => <span className="text-secondary">{moneda(t.saldo_posterior)}</span>,
             },
+            {
+              clave: "comprobante",
+              encabezado: "Comprobante",
+              celda: (t) => (
+                <BotonComprobante
+                  destino={{ tipo: "movimiento", cajaId, cuentaId: cuenta.id, id: t.id }}
+                  tiene={Boolean(t.comprobante)}
+                  puedeAdjuntar={operable}
+                  descripcion={`del ${t.tipo === "deposito" ? "depósito" : "retiro"} del ${fecha(t.created_at)}`}
+                  onAdjuntado={recargar}
+                />
+              ),
+            },
           ]}
         />
       </Panel>
@@ -175,12 +189,13 @@ export function DetalleCuenta({
           titular={titular}
           saldo={Number(cuenta.saldo)}
           onCerrar={() => setOperacion(null)}
-          onHecho={async () => {
+          onHecho={async (aviso) => {
             const tipo = operacion
             setOperacion(null)
             await recargar()
             onCambio()
-            toast("exito", tipo === "deposito" ? "Depósito registrado" : "Retiro registrado")
+            if (aviso) toast("advertencia", aviso)
+            else toast("exito", tipo === "deposito" ? "Depósito registrado" : "Retiro registrado")
           }}
         />
       )}

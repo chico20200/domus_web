@@ -7,6 +7,7 @@ const { fechaLocal } = require("../utils/fechas")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
 const { responderError } = require("../utils/errores")
 const { errorMonto } = require("../utils/validacion")
+const { leerImagen, subirYAdjuntar, enviarEnlace } = require("../utils/comprobantes")
 
 router.use(verifyToken)
 
@@ -384,6 +385,47 @@ router.post("/abono", requierePermiso("movimientos.registrar"), async (req, res)
     saldo_pendiente: Number(registro.saldo_pendiente),
     credito_pagado: registro.credito_pagado,
   })
+})
+
+// ─────────────────────────────────────────────
+// Comprobante de un pago (T16): cuota, prepago o abono. Igual que en los movimientos.
+// POST /api/cajas/:cajaId/creditos/:creditoId/pagos/:pagoId/comprobante  (imagen)
+// GET  …/comprobante  → { url } firmada y corta
+// ─────────────────────────────────────────────
+async function leerPago(req) {
+  const { cajaId, creditoId, pagoId } = req.params
+  const { data } = await req.db
+    .from("pagos_credito")
+    .select("id, comprobante, creditos!inner ( socio_id )")
+    .eq("id", pagoId)
+    .eq("credito_id", creditoId)
+    .eq("caja_id", cajaId)
+    .maybeSingle()
+  return data
+}
+
+router.post(
+  "/:pagoId/comprobante",
+  requierePermiso("movimientos.registrar"),
+  leerImagen,
+  async (req, res) => {
+    const pago = await leerPago(req)
+    if (!pago) return res.status(404).json({ error: "Pago no encontrado" })
+    if (pago.comprobante)
+      return res.status(409).json({ error: "Este pago ya tiene su comprobante" })
+    return subirYAdjuntar(req, res, {
+      tipo: "pago",
+      id: pago.id,
+      cajaId: req.params.cajaId,
+      socioId: pago.creditos.socio_id,
+    })
+  },
+)
+
+router.get("/:pagoId/comprobante", requierePermiso("caja.ver"), async (req, res) => {
+  const pago = await leerPago(req)
+  if (!pago) return res.status(404).json({ error: "Pago no encontrado" })
+  return enviarEnlace(req, res, pago.comprobante)
 })
 
 module.exports = router

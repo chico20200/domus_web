@@ -50,6 +50,7 @@ Las escrituras que tocan dos tablas son funciones de Postgres, todo o nada:
 | `GET /cuentas/mias`                              | `vincular_mi_ficha`                                 |
 | `GET /miembros` (correos)                        | `correos_miembros`                                  |
 | `GET /api/cajas/mis-cajas` (cupo)                | `cajas_creadas`                                     |
+| `POST …/comprobante` (foto de un registro)        | `adjuntar_comprobante`                              |
 
 Errores que pueden devolver además de los de cada ruta:
 
@@ -523,6 +524,39 @@ Registra el pago de una cuota y actualiza el saldo pendiente del crédito (pasa 
 - 200: `{ message, pago, credito }`
 - 400: `{ error: 'Faltan campos requeridos' }`
 - 404: `{ error: 'Crédito no encontrado' }`
+
+---
+
+## 8.1 Comprobantes (foto de un depósito, retiro o pago)
+
+La foto es opcional y se agrega después de registrar el movimiento: el frontend registra primero y luego sube la foto; si la subida falla, el movimiento queda igual y la foto se puede agregar desde el historial. Un registro tiene a lo sumo una foto y no se cambia ni se quita.
+
+La foto se guarda en el bucket privado `comprobantes`, en `{caja}/{socio}/{uuid}.jpg` (migración 010). Se sube con el token de la persona, así que las políticas del bucket deciden quién puede. Luego `adjuntar_comprobante` (migración 011) la une al registro: comprueba que la ruta sea de esa caja y ese socio, que el archivo exista y que el registro aún no tenga foto. La columna `comprobante` de `transacciones` y `pagos_credito` guarda la ruta.
+
+### POST /api/cajas/:cajaId/cuentas/:cuentaId/movimientos/:movimientoId/comprobante
+
+### POST /api/cajas/:cajaId/creditos/:creditoId/pagos/:pagoId/comprobante
+
+Guardan la foto de un depósito o retiro, o de un pago (cuota, prepago o abono).
+
+- Rol mínimo: `tesorero` (permiso `movimientos.registrar`). La caja tiene que estar activa.
+- Body: la imagen tal cual, no en JSON. Lleva `Content-Type: image/jpeg`, `image/png` o `image/webp`, y pesa hasta 5 MB. El frontend la reduce antes a JPEG de 1600 px por el lado mayor.
+- 201: `{ message: 'Comprobante guardado', comprobante: true }`
+- 400: `{ error }` si el tipo no es de imagen, el cuerpo está vacío o los primeros bytes no corresponden al tipo
+- 403: `{ error: 'No tienes permiso para subir comprobantes en esta caja' }`, cuando Storage lo rechaza
+- 404: `{ error: 'Movimiento no encontrado' }` o `{ error: 'Pago no encontrado' }`
+- 409: `{ error: 'Este movimiento ya tiene su comprobante' }`; también `La caja no admite registros nuevos`
+- 413: `{ error: 'La foto pesa más de 5 MB. Toma otra o redúcela.' }`
+
+Si la base rechaza la unión después de subir, el backend borra esa foto recién subida con la clave de servicio, para que no queden archivos sueltos.
+
+### GET …/movimientos/:movimientoId/comprobante · GET …/pagos/:pagoId/comprobante
+
+Devuelven un enlace firmado para ver la foto.
+
+- Permiso `caja.ver`. El tesorero ve los comprobantes de toda la caja; el socio, solo los de sus propias cuentas y créditos (lo deciden el RLS y la política del bucket).
+- 200: `{ url, vence_en: 300 }`. El enlace vale 5 minutos.
+- 404: `{ error: 'Este registro no tiene comprobante' }`, o el registro no se encuentra
 
 ---
 

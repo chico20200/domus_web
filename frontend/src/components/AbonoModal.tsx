@@ -8,6 +8,7 @@ import { TextField } from "./TextField"
 import { SelectField } from "./SelectField"
 import { LoadingState } from "./LoadingState"
 import { Badge } from "./Badge"
+import { CampoComprobante } from "./CampoComprobante"
 import { pagosService } from "../api/pagos.service"
 import { moneda } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
@@ -32,7 +33,7 @@ interface Props {
   creditoId: string
   nombreSocio?: string
   procesando?: boolean
-  onConfirmar: (monto: number, motivo: string) => void
+  onConfirmar: (monto: number, motivo: string, foto: Blob | null) => void
   onCancelar: () => void
 }
 
@@ -52,6 +53,7 @@ export function AbonoModal({
   )
   const { datos: cuota, cargando, error: errorCarga } = useDatos(cargar)
 
+  const [foto, setFoto] = useState<Blob | null>(null)
   const [monto, setMonto] = useState("")
   const [motivoSel, setMotivoSel] = useState("")
   const [motivoOtro, setMotivoOtro] = useState("")
@@ -87,7 +89,7 @@ export function AbonoModal({
     else if (motivoSel === OTRO && !motivoOtro.trim()) e.otro = "Describe el motivo"
     setErrores(e)
     if (Object.keys(e).length > 0) return
-    onConfirmar(m, motivoSel === OTRO ? motivoOtro.trim() : motivoSel)
+    onConfirmar(m, motivoSel === OTRO ? motivoOtro.trim() : motivoSel, foto)
   }
 
   const conCuota = !cargando && cuota?.pendiente
@@ -203,6 +205,8 @@ export function AbonoModal({
               required
             />
           )}
+
+          <CampoComprobante valor={foto} onCambio={setFoto} />
 
           <p className="flex gap-2 text-xs text-secondary">
             <Info size={14} className="mt-px shrink-0" aria-hidden="true" />

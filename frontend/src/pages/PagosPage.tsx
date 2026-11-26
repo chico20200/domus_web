@@ -13,6 +13,7 @@ import { useCaja } from "../context/CajaContext"
 import { useNotif } from "../context/NotifContext"
 import { creditosService } from "../api/creditos.service"
 import { pagosService } from "../api/pagos.service"
+import { adjuntarTrasRegistrar } from "../api/comprobantes.service"
 import type { Credito } from "../api/creditos.types"
 import type { TipoPago } from "../api/pagos.types"
 import { moneda, porcentaje } from "../lib/format"
@@ -68,21 +69,27 @@ function Pagos({ cajaId }: { cajaId: string }) {
   const q = normalizar(busqueda.trim())
   const filtrados = creditos.filter((c) => coincideCredito(c, q))
 
-  async function registrar() {
+  async function registrar(foto: Blob | null) {
     if (!pago?.tipo) return
     const { credito, tipo } = pago
     const nombre = nombreSocio(credito.socios)
     setProcesando(true)
     try {
       const res = await pagosService.registrarPago(cajaId, credito.id, tipo)
+      const aviso = await adjuntarTrasRegistrar(
+        { tipo: "pago", cajaId, creditoId: credito.id, id: res.pago.id },
+        foto,
+      )
       setPago(null)
       await recargar()
-      toast(
-        "exito",
-        res.credito_pagado
-          ? `Crédito de ${nombre} pagado por completo`
-          : `Pago de ${nombre} registrado: ${moneda(res.desglose.total)}. Saldo pendiente: ${moneda(res.saldo_pendiente)}`,
-      )
+      if (aviso) toast("advertencia", aviso)
+      else
+        toast(
+          "exito",
+          res.credito_pagado
+            ? `Crédito de ${nombre} pagado por completo`
+            : `Pago de ${nombre} registrado: ${moneda(res.desglose.total)}. Saldo pendiente: ${moneda(res.saldo_pendiente)}`,
+        )
     } catch (err) {
       toast("error", err instanceof Error ? err.message : "No se pudo registrar el pago")
     } finally {

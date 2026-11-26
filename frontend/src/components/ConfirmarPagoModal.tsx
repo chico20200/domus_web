@@ -1,9 +1,10 @@
 // src/components/ConfirmarPagoModal.tsx
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { TriangleAlert } from "lucide-react"
 import { Modal } from "./Modal"
 import { Button } from "./Button"
 import { LoadingState } from "./LoadingState"
+import { CampoComprobante } from "./CampoComprobante"
 import { pagosService } from "../api/pagos.service"
 import type { TipoPago } from "../api/pagos.types"
 import { fecha, moneda } from "../lib/format"
@@ -23,7 +24,8 @@ interface Props {
   creditoId: string
   tipo: TipoPago
   nombreSocio?: string
-  onConfirmar: () => void
+  /** foto: la del comprobante, opcional; se sube después de registrar el pago */
+  onConfirmar: (foto: Blob | null) => void
   onCancelar: () => void
   procesando?: boolean
 }
@@ -42,6 +44,7 @@ export function ConfirmarPagoModal({
     [cajaId, creditoId],
   )
   const { datos: cuota, cargando, error } = useDatos(cargar)
+  const [foto, setFoto] = useState<Blob | null>(null)
 
   const desglose = (() => {
     if (!cuota?.pendiente) return null
@@ -67,7 +70,7 @@ export function ConfirmarPagoModal({
         <>
           <Button label={puedePagar ? "Cancelar" : "Cerrar"} variant="ghost" onClick={onCancelar} />
           {puedePagar && (
-            <Button label="Confirmar pago" loading={procesando} onClick={onConfirmar} />
+            <Button label="Confirmar pago" loading={procesando} onClick={() => onConfirmar(foto)} />
           )}
         </>
       }
@@ -137,6 +140,7 @@ export function ConfirmarPagoModal({
                     <dd className="tabular-nums">{moneda(desglose.total)}</dd>
                   </div>
                 </dl>
+                <CampoComprobante valor={foto} onCambio={setFoto} />
                 <p className="text-xs text-muted">Un pago registrado no se puede deshacer.</p>
               </>
             )}
