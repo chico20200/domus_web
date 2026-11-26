@@ -4,7 +4,11 @@ const router = express.Router({ mergeParams: true })
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal } = require("../utils/fechas")
-const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
+const {
+  generarTablaAmortizacion,
+  analizarEstadoCredito,
+  planAdelanto,
+} = require("../utils/amortizacion")
 const { responderError } = require("../utils/errores")
 const { errorMonto } = require("../utils/validacion")
 const { leerImagen, subirYAdjuntar, enviarEnlace } = require("../utils/comprobantes")
@@ -179,7 +183,7 @@ router.get("/proxima-cuota", requierePermiso("datos.ver"), async (req, res) => {
 
   const { data: pagos } = await req.db.from("pagos_credito").select("*").eq("credito_id", creditoId)
 
-  const { cuotaCorriente, vencidas, prepagable } = analizarEstadoCredito(credito, pagos)
+  const { cuotaCorriente, vencidas, adelanto } = analizarEstadoCredito(credito, pagos)
 
   if (!cuotaCorriente) {
     return res.json({ pendiente: false, mensaje: "No hay cuotas pendientes" })
@@ -203,23 +207,36 @@ router.get("/proxima-cuota", requierePermiso("datos.ver"), async (req, res) => {
       falta_total: +(v.falta_capital + v.falta_interes).toFixed(2),
     })),
 
-    // Prepago disponible (última cuota sin tocar). Con cuotas vencidas no se ofrece:
-    // POST /prepago lo rechaza hasta ponerse al día (T8)
-    prepago_disponible:
-      prepagable && vencidas.length === 0
-        ? {
-            numero_cuota: prepagable.numero_cuota,
-            capital: prepagable.capital,
-            interes_a_condonar: prepagable.interes,
-          }
-        : null,
+    // Pago adelantado (T30): hasta cuánto se puede adelantar y a qué cuotas, o por qué no
+    adelanto: datosAdelanto(credito, adelanto),
   })
 })
 
-// POST /api/cajas/:cajaId/creditos/:creditoId/pagos/prepago
-// Prepaga el capital de la última cuota disponible — sin interés
+/** Lo que proxima-cuota dice del pago adelantado */
+function datosAdelanto(credito, adelanto) {
+  // Un crédito marcado vencido en la base tampoco adelanta, aunque ya esté al día
+  if (credito.estado !== "activo") {
+    return {
+      disponible: false,
+      motivo: "Solo se puede hacer un pago adelantado en un crédito activo y al día.",
+    }
+  }
+  if (adelanto.bloqueo) return { disponible: false, motivo: adelanto.bloqueo }
+  return { disponible: true, maximo: adelanto.maximo, cuotas: adelanto.cuotas }
+}
+
+// ─────────────────────────────────────────────
+// POST /api/cajas/:cajaId/creditos/:creditoId/pagos/prepago   { monto }
+// Pago adelantado por monto (T30): el capital se aplica desde la última cuota hacia
+// atrás. Las cuotas cubiertas enteras condonan su interés; la que queda a medias lo
+// conserva. Todo se registra junto (registrar_pago_adelantado, migración 013).
+// ─────────────────────────────────────────────
 router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, res) => {
   const { cajaId, creditoId } = req.params
+
+  const problemaMonto = errorMonto(req.body?.monto)
+  if (problemaMonto) return res.status(400).json({ error: problemaMonto })
+  const monto = Number(req.body.monto)
 
   const { data: credito } = await req.db
     .from("creditos")
@@ -227,59 +244,40 @@ router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, re
     .eq("id", creditoId)
     .eq("caja_id", cajaId)
     .single()
-
   if (!credito) return res.status(404).json({ error: "Crédito no encontrado" })
-  if (credito.estado !== "activo") {
-    return res
-      .status(400)
-      .json({ error: "Solo se puede hacer un pago adelantado en un crédito activo" })
-  }
 
   const { data: pagos } = await req.db.from("pagos_credito").select("*").eq("credito_id", creditoId)
+  const adelanto = datosAdelanto(credito, analizarEstadoCredito(credito, pagos).adelanto)
+  if (!adelanto.disponible) return res.status(400).json({ error: adelanto.motivo })
 
-  const { prepagable, vencidas } = analizarEstadoCredito(credito, pagos)
-
-  // Adelantar cuotas futuras con una atrasada dejaría la atrasada sin cobrar y le
-  // condonaría interés a quien está en mora
-  if (vencidas.length > 0) {
+  const partes = planAdelanto(adelanto.cuotas, monto)
+  if (!partes) {
     return res.status(400).json({
-      error: `Hay ${vencidas.length === 1 ? "una cuota vencida" : `${vencidas.length} cuotas vencidas`}. Primero se paga lo atrasado; después se puede adelantar una cuota.`,
+      error: `Se pueden adelantar hasta $${adelanto.maximo.toFixed(2)} de capital.`,
     })
   }
 
-  if (!prepagable) {
-    return res.status(400).json({
-      error:
-        "No hay cuotas para pagar por adelantado. Solo se adelantan cuotas futuras, no la corriente.",
-    })
-  }
-
-  const montoCapital = prepagable.capital
-  const interesCondonado = prepagable.interes
-
-  const saldoAntes = parseFloat(credito.saldo_pendiente)
-
-  // El pago, el saldo y el interés condonado se escriben juntos (migración 004)
-  const { data: registro, error } = await req.db.rpc("registrar_pago_credito", {
+  const { data: registro, error } = await req.db.rpc("registrar_pago_adelantado", {
     p_caja: cajaId,
     p_credito: creditoId,
-    p_saldo_esperado: saldoAntes,
-    p_numero_cuota: prepagable.numero_cuota,
-    p_capital: montoCapital,
-    p_interes: 0, // el prepago no paga interés
-    p_tipo: "prepago",
-    p_interes_condonado: interesCondonado,
+    p_saldo_esperado: parseFloat(credito.saldo_pendiente),
+    p_partes: partes,
     p_fecha: fechaLocal(),
   })
   if (error) return responderError(res, error)
-  const { pago } = registro
+
+  const enteras = partes.filter((p) => p.interes_condonado > 0).map((p) => p.numero_cuota)
+  const aMedias = partes.find((p) => p.interes_condonado === 0) ?? null
 
   return res.status(201).json({
-    message: `Pago adelantado de la cuota ${prepagable.numero_cuota} registrado`,
-    pago,
-    cuota_prepagada: prepagable.numero_cuota,
-    capital_pagado: montoCapital,
-    interes_condonado: interesCondonado,
+    message: "Pago adelantado registrado",
+    pagos: registro.pagos,
+    capital_pagado: Number(registro.capital_pagado),
+    interes_condonado: Number(registro.interes_condonado),
+    cuotas_adelantadas: enteras,
+    cuota_a_medias: aMedias
+      ? { numero_cuota: aMedias.numero_cuota, capital: aMedias.capital }
+      : null,
     saldo_pendiente: Number(registro.saldo_pendiente),
     credito_pagado: registro.credito_pagado,
   })

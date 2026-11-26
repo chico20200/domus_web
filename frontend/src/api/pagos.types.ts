@@ -21,11 +21,18 @@ export interface CuotaVencida {
   falta_total: number
 }
 
-export interface PrepagoDisponible {
+/** Una cuota que se puede adelantar (T30), de la última a la primera */
+export interface CuotaAdelantable {
   numero_cuota: number
-  capital: number
-  interes_a_condonar: number
+  falta_capital: number
+  /** El interés de la cuota: se condona si el adelanto cubre todo su capital */
+  interes: number
 }
+
+/** Si se puede hacer un pago adelantado y hasta cuánto, o por qué no */
+export type AdelantoDisponible =
+  | { disponible: true; maximo: number; cuotas: CuotaAdelantable[] }
+  | { disponible: false; motivo: string }
 
 export interface ProximaCuota {
   pendiente: boolean
@@ -38,16 +45,18 @@ export interface ProximaCuota {
   falta_interes?: number
   falta_total?: number
   cuotas_vencidas?: CuotaVencida[]
-  prepago_disponible?: PrepagoDisponible | null
+  adelanto?: AdelantoDisponible
   mensaje?: string
 }
 
-export interface PrepagoResponse {
+export interface AdelantoResponse {
   message: string
-  pago: PagoCredito
-  cuota_prepagada: number
+  /** Un pago por cuota tocada: las cubiertas enteras y la que queda a medias */
+  pagos: PagoCredito[]
   capital_pagado: number
   interes_condonado: number
+  cuotas_adelantadas: number[]
+  cuota_a_medias: { numero_cuota: number; capital: number } | null
   saldo_pendiente: number
   credito_pagado: boolean
 }

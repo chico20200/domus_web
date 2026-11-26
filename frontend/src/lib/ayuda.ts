@@ -74,7 +74,7 @@ export const AYUDA: Record<ConceptoAyuda, TextoAyuda> = {
   abonoPrepago: {
     titulo: "Formas de pago",
     que: "Cada cuota tiene una parte de capital, que devuelve lo prestado, y una de interés, que es lo que gana la caja.",
-    pasa: "El pago completo cubre las dos partes de la cuota. Solo interés deja el capital pendiente y solo capital deja el interés pendiente: la cuota no queda pagada hasta cubrir ambas.",
+    pasa: "El pago completo cubre las dos partes de la cuota. Solo interés deja el capital pendiente y solo capital deja el interés pendiente: la cuota no queda pagada hasta cubrir ambas. El pago adelantado entrega capital de más: se aplica desde la última cuota hacia atrás, y las cuotas que cubre enteras ya no cobran interés.",
     necesitas: "Que el crédito esté aprobado y tenga cuotas por pagar.",
   },
   distribucionIntereses: {
