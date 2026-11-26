@@ -5,6 +5,7 @@ import {
   PiggyBank,
   CreditCard,
   Receipt,
+  Landmark,
   PieChart,
   Settings,
   ChevronLeft,
@@ -44,6 +45,7 @@ export function Sidebar({ abierto, onToggle }: SidebarProps) {
     { to: "/ahorros", icon: PiggyBank, label: "Ahorros", visible: true },
     { to: "/creditos", icon: CreditCard, label: "Créditos", visible: esTesorero },
     { to: "/pagos", icon: Receipt, label: "Pagos", visible: esTesorero },
+    { to: "/fondos", icon: Landmark, label: "Fondos", visible: esTesorero },
     { to: "/reportes", icon: PieChart, label: "Reportes", visible: esTesorero },
     // Mismo rol mínimo que las rutas de App.tsx (§9.4)
     { to: "/configuracion", icon: Settings, label: "Configuración", visible: esTesorero },
