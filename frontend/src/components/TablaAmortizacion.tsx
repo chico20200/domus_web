@@ -30,7 +30,7 @@ interface Props {
 const NARANJA_PDF: [number, number, number] = [178, 96, 0]
 
 function estadoCuota(f: FilaAmortizacion): { etiqueta: string; tono: BadgeTono } {
-  if (f.es_prepago) return { etiqueta: "Prepagada", tono: "ok" }
+  if (f.es_prepago) return { etiqueta: "Adelantada", tono: "ok" }
   if (f.pagada) return { etiqueta: "Pagada", tono: "ok" }
   if (f.vencida) return { etiqueta: "Vencida", tono: "destructivo" }
   if (f.parcial) return { etiqueta: "Parcial", tono: "alerta" }
@@ -154,7 +154,7 @@ const COLUMNAS = (data: GetAmortizacionResponse): Columna<FilaAmortizacion>[] =>
     alinear: "derecha",
     celda: (f) =>
       f.es_prepago ? (
-        <span className="text-muted line-through" title="Condonado por prepago">
+        <span className="text-muted line-through" title="Condonado por pago adelantado">
           {moneda(f.interes_condonado)}
         </span>
       ) : (
@@ -250,7 +250,7 @@ export function TablaAmortizacion({ cajaId, creditoId, nombreCaja, onCerrar }: P
               {data.resumen.interes_condonado > 0 && (
                 <Badge
                   tono="ok"
-                  label={`Interés condonado por prepago: ${moneda(data.resumen.interes_condonado)}`}
+                  label={`Interés condonado por pagos adelantados: ${moneda(data.resumen.interes_condonado)}`}
                 />
               )}
             </div>

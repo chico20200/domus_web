@@ -75,7 +75,7 @@ Con el token de la persona y la clave pública se puede hablar directo con Supab
 
 Una regla incumplida responde `400` con el mismo mensaje del formulario. El backend revisa antes lo que la base no ve, como los tres decimales (una columna `numeric(12,2)` los redondea sin avisar) o un plazo con decimales.
 
-El prepago se rechaza si hay cuotas vencidas, y `proxima-cuota` no lo ofrece en ese caso. El abono sí se acepta en un crédito `vencido`.
+El prepago (en pantalla, "pago adelantado") se rechaza si hay cuotas vencidas, y `proxima-cuota` no lo ofrece en ese caso. El abono sí se acepta en un crédito `vencido`.
 
 Las pruebas `backend/pruebas/aislamiento.sql` y `backend/pruebas/validacion.sql` se corren en el SQL Editor de Supabase y no dejan rastro.
 
@@ -562,7 +562,7 @@ La foto se guarda en el bucket privado `comprobantes`, en `{caja}/{socio}/{uuid}
 
 ### POST /api/cajas/:cajaId/creditos/:creditoId/pagos/:pagoId/comprobante
 
-Guardan la foto de un depósito o retiro, o de un pago (cuota, prepago o abono).
+Guardan la foto de un depósito o retiro, o de un pago (cuota, pago adelantado o abono).
 
 - Rol mínimo: `tesorero` (permiso `movimientos.registrar`). La caja tiene que estar activa.
 - Body: la imagen tal cual, no en JSON. Lleva `Content-Type: image/jpeg`, `image/png` o `image/webp`, y pesa hasta 5 MB. El frontend la reduce antes a JPEG de 1600 px por el lado mayor.
