@@ -280,7 +280,9 @@ function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: 
           }}
         />
       )}
-      {importando && <ImportarExcelModal modulo="socios" onCerrar={() => setImportando(false)} />}
+      {importando && (
+        <ImportarExcelModal cajaId={cajaId} modulo="socios" onCerrar={() => setImportando(false)} />
+      )}
     </PageShell>
   )
 }

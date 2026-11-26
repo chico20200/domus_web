@@ -1,5 +1,4 @@
 // backend/utils/reportes.js
-const { fechaLocal } = require("./fechas")
 
 /** Último día del mes en formato ISO */
 function finDeMes(mesISO) {
@@ -20,7 +19,8 @@ function finDeMes(mesISO) {
  */
 function calcularDistribucionInteres({ meses, socios, transacciones, pagosInteres }) {
   // ── Índice de transacciones por socio ────────────────────────
-  // Cada transacción tiene: socio_id, tipo (deposito/retiro), monto, created_at
+  // Cada transacción tiene: socio_id, tipo (deposito/retiro), monto y fecha (el día del
+  // movimiento, migración 015; antes se usaba la hora de registro)
   const txPorSocio = {}
   socios.forEach((s) => {
     txPorSocio[s.id] = []
@@ -29,7 +29,7 @@ function calcularDistribucionInteres({ meses, socios, transacciones, pagosIntere
   transacciones.forEach((t) => {
     if (!txPorSocio[t.socio_id]) txPorSocio[t.socio_id] = []
     txPorSocio[t.socio_id].push({
-      fecha: fechaLocal(new Date(t.created_at)),
+      fecha: t.fecha,
       signo: t.tipo === "deposito" ? 1 : -1,
       monto: parseFloat(t.monto),
     })

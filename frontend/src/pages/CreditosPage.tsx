@@ -227,7 +227,13 @@ function Creditos({
           }}
         />
       )}
-      {importando && <ImportarExcelModal modulo="creditos" onCerrar={() => setImportando(false)} />}
+      {importando && (
+        <ImportarExcelModal
+          cajaId={cajaId}
+          modulo="creditos"
+          onCerrar={() => setImportando(false)}
+        />
+      )}
     </PageShell>
   )
 }

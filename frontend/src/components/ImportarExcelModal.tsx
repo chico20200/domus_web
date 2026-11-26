@@ -1,35 +1,74 @@
-import { useState } from "react"
-import { Download } from "lucide-react"
+import { useRef, useState } from "react"
+import { CircleAlert, CircleCheck, Download, Upload } from "lucide-react"
 import { Modal } from "./Modal"
 import { Button } from "./Button"
 import { MODULOS, type ModuloImportacion } from "../lib/importacion/modulos"
 import { descargarPlantilla } from "../lib/importacion/plantilla"
+import { leerArchivo } from "../lib/importacion/leer"
+import { cargarContexto } from "../lib/importacion/contexto"
+import { conPunto } from "../lib/texto"
+import { validar, type Datos, type Problema, type Validacion } from "../lib/importacion/validar"
 
 /**
  * Importar desde Excel (bloque F). Un botón en cada módulo abre este modal: primero se
  * descarga la plantilla, que trae sus instrucciones (T20); después se sube el archivo
- * lleno (T21) y se revisa cómo queda antes de confirmar (T22).
+ * lleno, que se lee y se revisa fila por fila contra los datos de la caja (T21), y se ve
+ * cómo queda antes de confirmar (T22).
  */
 
 interface Props {
+  cajaId: string
   modulo: ModuloImportacion
   onCerrar: () => void
 }
 
-export function ImportarExcelModal({ modulo, onCerrar }: Props) {
+/** Más errores que estos no ayudan: se muestran los primeros y cuántos faltan */
+const MAX_ERRORES = 50
+
+export function ImportarExcelModal({ cajaId, modulo, onCerrar }: Props) {
   const def = MODULOS[modulo]
+  const entrada = useRef<HTMLInputElement>(null)
   const [descargando, setDescargando] = useState(false)
-  const [error, setError] = useState("")
+  const [errorDescarga, setErrorDescarga] = useState("")
+  const [nombreArchivo, setNombreArchivo] = useState("")
+  const [revisando, setRevisando] = useState(false)
+  const [errorRevision, setErrorRevision] = useState("")
+  const [resultado, setResultado] = useState<Validacion | null>(null)
 
   async function descargar() {
     setDescargando(true)
-    setError("")
+    setErrorDescarga("")
     try {
       await descargarPlantilla(modulo)
     } catch {
-      setError("No se pudo armar la plantilla. Intenta de nuevo.")
+      setErrorDescarga("No se pudo armar la plantilla. Intenta de nuevo.")
     } finally {
       setDescargando(false)
+    }
+  }
+
+  async function revisar(archivo: File | undefined) {
+    if (!archivo) return
+    setNombreArchivo(archivo.name)
+    setResultado(null)
+    setErrorRevision("")
+    setRevisando(true)
+    try {
+      const [crudo, ctx] = await Promise.all([
+        leerArchivo(archivo, modulo),
+        cargarContexto(cajaId, modulo),
+      ])
+      setResultado(validar(modulo, crudo, ctx))
+    } catch (err) {
+      setErrorRevision(
+        err instanceof Error
+          ? `No se pudo revisar el archivo: ${err.message}`
+          : "No se pudo revisar el archivo",
+      )
+    } finally {
+      setRevisando(false)
+      // Permite subir de nuevo el mismo archivo después de corregirlo
+      if (entrada.current) entrada.current.value = ""
     }
   }
 
@@ -39,6 +78,8 @@ export function ImportarExcelModal({ modulo, onCerrar }: Props) {
       onCerrar={onCerrar}
       titulo={`Importar ${def.titulo.toLowerCase()} desde Excel`}
       descripcion={def.resumen}
+      ancho={resultado ? "amplio" : "normal"}
+      cerrarAlClicFuera={false}
       acciones={<Button label="Cerrar" variant="ghost" onClick={onCerrar} />}
     >
       <ol className="flex flex-col gap-5 text-sm">
@@ -60,9 +101,9 @@ export function ImportarExcelModal({ modulo, onCerrar }: Props) {
               onClick={descargar}
             />
           </div>
-          {error && (
+          {errorDescarga && (
             <p role="alert" className="text-destructivo">
-              {error}
+              {errorDescarga}
             </p>
           )}
         </li>
@@ -87,11 +128,120 @@ export function ImportarExcelModal({ modulo, onCerrar }: Props) {
         <li className="flex flex-col gap-2">
           <p className="font-medium text-primary">3. Súbela y revisa</p>
           <p className="text-secondary">
-            Antes de guardar verás cómo queda todo. Si una fila tiene un error, no se importa nada
-            hasta corregirlo.
+            DOMUS revisa cada fila contra los datos de la caja. Si una fila tiene un error, no se
+            importa nada hasta corregirlo.
           </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              label={nombreArchivo ? "Subir otro archivo" : "Subir archivo"}
+              variant="secondary"
+              icon={Upload}
+              loading={revisando}
+              onClick={() => entrada.current?.click()}
+            />
+            {nombreArchivo && (
+              <span className="min-w-0 truncate text-secondary">{nombreArchivo}</span>
+            )}
+          </div>
+          <input
+            ref={entrada}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+            onChange={(e) => revisar(e.target.files?.[0])}
+          />
+          {revisando && <p className="text-secondary">Revisando el archivo…</p>}
+          {errorRevision && (
+            <p role="alert" className="text-destructivo">
+              {errorRevision}
+            </p>
+          )}
+          {resultado && <ResultadoRevision resultado={resultado} />}
         </li>
       </ol>
     </Modal>
   )
+}
+
+function ResultadoRevision({ resultado }: { resultado: Validacion }) {
+  const { errores, avisos, filas, datos } = resultado
+
+  if (errores.length) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col gap-3 rounded-lg border border-base bg-surface-2 p-4"
+      >
+        <p className="flex items-center gap-2 font-medium text-primary">
+          <CircleAlert size={18} className="shrink-0 text-destructivo" aria-hidden="true" />
+          {errores.length === 1 ? "Hay 1 problema" : `Hay ${errores.length} problemas`} en el
+          archivo. No se importó nada: corrígelo y súbelo de nuevo.
+        </p>
+        <ListaProblemas problemas={errores.slice(0, MAX_ERRORES)} />
+        {errores.length > MAX_ERRORES && (
+          <p className="text-secondary">
+            Y {errores.length - MAX_ERRORES} más. Corrige estos primero y vuelve a subirlo.
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  const porCiclo = contarPorCiclo(datos)
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-base bg-surface-2 p-4">
+      <p className="flex items-center gap-2 font-medium text-primary">
+        <CircleCheck size={18} className="shrink-0 text-estado-ok" aria-hidden="true" />
+        El archivo está bien: {filas} {filas === 1 ? "fila" : "filas"} sin errores.
+      </p>
+      {porCiclo.length > 0 && (
+        <p className="text-secondary">
+          Por ciclo:{" "}
+          {porCiclo
+            .map(([ciclo, n]) => `ciclo ${ciclo}, ${n} ${n === 1 ? "fila" : "filas"}`)
+            .join(" · ")}
+          .
+        </p>
+      )}
+      {avisos.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <p className="text-primary">Para tener en cuenta:</p>
+          <ListaProblemas problemas={avisos} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ListaProblemas({ problemas }: { problemas: Problema[] }) {
+  return (
+    <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto text-secondary">
+      {problemas.map((p, i) => (
+        <li key={i}>
+          {p.fila !== null && (
+            <span className="text-primary">
+              {p.hoja ? `${p.hoja}, fila ${p.fila}` : `Fila ${p.fila}`}
+              {p.columna ? ` (${p.columna})` : ""}:{" "}
+            </span>
+          )}
+          {conPunto(p.mensaje)}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** Cuántas filas caen en cada ciclo, en orden */
+function contarPorCiclo(datos: Datos): [number, number][] {
+  const ciclos: (number | null)[] =
+    datos.modulo === "socios"
+      ? datos.socios.map((s) => s.ciclo)
+      : datos.modulo === "creditos"
+        ? datos.creditos.flatMap((c) => [c.ciclo, ...c.pagos.map((p) => p.ciclo)])
+        : datos.movimientos.map((m) => m.ciclo)
+  const cuenta = new Map<number, number>()
+  for (const c of ciclos) if (c !== null) cuenta.set(c, (cuenta.get(c) ?? 0) + 1)
+  return [...cuenta.entries()].sort((a, b) => a[0] - b[0])
 }

@@ -15,6 +15,8 @@ export interface TransaccionReciente {
   tipo: "deposito" | "retiro"
   monto: number
   descripcion: string
+  /** Día del movimiento (migración 015) */
+  fecha: string
   created_at: string
   cuentas_ahorro?: {
     socios?: {

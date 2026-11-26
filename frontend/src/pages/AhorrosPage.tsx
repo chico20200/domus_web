@@ -166,7 +166,13 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
           }}
         />
       )}
-      {importando && <ImportarExcelModal modulo="ahorros" onCerrar={() => setImportando(false)} />}
+      {importando && (
+        <ImportarExcelModal
+          cajaId={cajaId}
+          modulo="ahorros"
+          onCerrar={() => setImportando(false)}
+        />
+      )}
     </PageShell>
   )
 }

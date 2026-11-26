@@ -61,15 +61,15 @@ router.get("/distribucion-interes", requierePermiso("reportes.generar"), async (
     // Transacciones de ahorro
     const { data: transacciones } = await req.db
       .from("transacciones")
-      .select("tipo, monto, created_at, cuentas_ahorro!inner ( socio_id )")
+      .select("tipo, monto, fecha, cuentas_ahorro!inner ( socio_id )")
       .eq("caja_id", cajaId)
-      .order("created_at")
+      .order("fecha")
 
     const txPlanas = (transacciones ?? []).map((t) => ({
       socio_id: t.cuentas_ahorro.socio_id,
       tipo: t.tipo,
       monto: t.monto,
-      created_at: t.created_at,
+      fecha: t.fecha,
     }))
 
     // Pagos de interés dentro del ciclo — con la fecha fin correcta

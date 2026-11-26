@@ -253,7 +253,7 @@ Registra la aceptación de las políticas de uso de la caja (HU-S04). Aceptar do
 
 Devuelve el detalle de la caja, el rol del usuario y un resumen de indicadores (miembros, socios, saldo total en ahorros, créditos activos, saldo pendiente, últimas 5 transacciones). Rol mínimo: `tesorero` (permiso `datos.ver`).
 
-- 200: `{ caja, rol, resumen: { totalMiembros, totalSocios, saldoTotal, creditosActivos, creditosEnMora, saldoPendiente }, transaccionesRecientes }`. `creditosActivos` y `saldoPendiente` cuentan los créditos `activo` y `vencido` (desembolsados y sin terminar de pagar); `creditosEnMora`, los que de esos tienen una cuota vencida sin pagar.
+- 200: `{ caja, rol, resumen: { totalMiembros, totalSocios, saldoTotal, creditosActivos, creditosEnMora, saldoPendiente }, transaccionesRecientes }`. `creditosActivos` y `saldoPendiente` cuentan los créditos `activo` y `vencido` (desembolsados y sin terminar de pagar); `creditosEnMora`, los que de esos tienen una cuota vencida sin pagar. Las `transaccionesRecientes` son las cinco de fecha más reciente (`fecha`, el día del movimiento; migración 015).
 - 403: `{ error: 'Sin acceso a esta caja' }`
 
 ### PUT /api/cajas/:cajaId
@@ -383,7 +383,7 @@ Las cuentas del usuario en esta caja ("Mis ahorros"). El servidor busca su ficha
 Detalle de una cuenta y sus transacciones.
 
 - Rol mínimo: `socio`, solo para sus propias cuentas (una ajena responde 404); `tesorero` y `coordinador`, cualquiera
-- 200: `{ cuenta, transacciones }`
+- 200: `{ cuenta, transacciones }`. Cada transacción trae `fecha`, el día del movimiento (migración 015: hoy al registrarlo, el del Excel al importarlo), y `created_at`, cuándo se registró. Ordenadas por `fecha` y luego `created_at`, la más reciente primero.
 - 404: `{ error: 'Cuenta no encontrada' }`
 
 ### GET /api/cajas/:cajaId/cuentas/socio/:socioId

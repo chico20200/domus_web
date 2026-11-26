@@ -168,7 +168,7 @@ function Dashboard({ cajaId, nombreCaja, esCoordinador }: DashboardProps) {
             {
               clave: "fecha",
               encabezado: "Fecha",
-              celda: (t) => <span className="whitespace-nowrap">{fecha(t.created_at)}</span>,
+              celda: (t) => <span className="whitespace-nowrap">{fecha(t.fecha)}</span>,
             },
             {
               clave: "monto",
