@@ -22,7 +22,10 @@ export function AppLayout({ children, titulo }: AppLayoutProps) {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <TopBar titulo={titulo} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        {/* relative: el <main> es el bloque contenedor de lo que va con position:absolute
+            (por ejemplo `sr-only`). Sin esto, esos elementos se ubican respecto al documento,
+            salen del overflow-hidden y la ventana gana una segunda barra de desplazamiento. */}
+        <main className="relative flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   )
