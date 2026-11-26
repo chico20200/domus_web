@@ -416,3 +416,18 @@ $$;
 drop trigger if exists validar_perfil on public.profiles;
 create trigger validar_perfil before update on public.profiles
   for each row execute function private.validar_perfil();
+
+-- ─── 005b. Cuántas cajas creó la cuenta (T9) ────────────────────────────────────────
+-- Para avisar en Mis cajas antes de empezar el asistente. Cuenta también las cajas de
+-- las que ya no es miembro (el RLS se las escondería); las eliminadas no cuentan, igual
+-- que en crear_caja.
+create or replace function public.cajas_creadas()
+returns json language sql stable security definer set search_path = '' as $$
+  select json_build_object(
+    'creadas', (select count(*) from public.cajas
+                where creado_por = auth.uid() and estado <> 'eliminada'),
+    'limite', 3
+  )
+$$;
+revoke execute on function public.cajas_creadas() from public, anon;
+grant execute on function public.cajas_creadas() to authenticated;

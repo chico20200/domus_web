@@ -49,6 +49,7 @@ Las escrituras que tocan dos tablas son funciones de Postgres, todo o nada:
 | `POST /api/cajas/unirse`                         | `unirse_con_codigo`                                 |
 | `GET /cuentas/mias`                              | `vincular_mi_ficha`                                 |
 | `GET /miembros` (correos)                        | `correos_miembros`                                  |
+| `GET /api/cajas/mis-cajas` (cupo)                | `cajas_creadas`                                     |
 
 Errores que pueden devolver además de los de cada ruta:
 

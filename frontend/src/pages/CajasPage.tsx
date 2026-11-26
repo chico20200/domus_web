@@ -48,18 +48,21 @@ function OpcionCaja({
   icono: Icono,
   titulo,
   texto,
+  deshabilitada = false,
   onClick,
 }: {
   icono: LucideIcon
   titulo: string
   texto: string
+  deshabilitada?: boolean
   onClick: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex items-start gap-3 rounded-xl border border-base bg-surface p-4 text-left transition-colors hover:border-accion-texto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+      disabled={deshabilitada}
+      className="flex items-start gap-3 rounded-xl border border-base bg-surface p-4 text-left transition-colors enabled:hover:border-accion-texto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-70"
     >
       <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-accion-texto">
         <Icono size={20} aria-hidden="true" />
@@ -76,7 +79,7 @@ export default function CajasPage() {
   const navigate = useNavigate()
   const { setCajaActiva } = useCaja()
   const { toast } = useNotif()
-  const cargar = useCallback(async () => (await cajasService.getMisCajas()).cajas, [])
+  const cargar = useCallback(() => cajasService.getMisCajas(), [])
   const { datos, cargando, error, recargar } = useDatos(cargar)
   // El enlace al panel de administración solo para quien administra DOMUS. Si el perfil
   // no carga, simplemente no aparece: el panel igual valida en el servidor
@@ -95,7 +98,12 @@ export default function CajasPage() {
     navigate(inicioDeRol(caja.rol))
   }
 
-  const cajas = datos ?? []
+  const cajas = datos?.cajas ?? []
+  // Límite de cajas creadas por cuenta (decisión del 25 nov). Las que dejó de integrar
+  // también cuentan; las eliminadas no.
+  const creacion = datos?.creacion
+  const sinCupo = !!creacion && creacion.creadas >= creacion.limite
+  const restantes = creacion ? creacion.limite - creacion.creadas : null
 
   return (
     <PaginaSinMenu
@@ -183,7 +191,16 @@ export default function CajasPage() {
             <OpcionCaja
               icono={Plus}
               titulo="Crear una caja"
-              texto="Para una organización que todavía no usa DOMUS. Quedas como su coordinador."
+              texto={
+                sinCupo
+                  ? `Ya creaste ${creacion.limite} cajas, que es el máximo por cuenta. Puedes unirte a otras con un código.`
+                  : `Para una organización que todavía no usa DOMUS. Quedas como su coordinador.${
+                      restantes !== null && restantes < creacion!.limite
+                        ? ` Puedes crear ${restantes === 1 ? "una más" : `${restantes} más`}.`
+                        : ""
+                    }`
+              }
+              deshabilitada={sinCupo}
               onClick={() => navigate("/cajas/nueva")}
             />
             <OpcionCaja

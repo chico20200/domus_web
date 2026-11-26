@@ -62,7 +62,11 @@ router.get("/mis-cajas", async (req, res) => {
       politicas_aceptadas: aceptadas.has(m.cajas.id),
     }))
 
-  return res.json({ cajas })
+  // Cuántas cajas creó y el máximo (T9), para avisar antes del asistente. Si falla, la
+  // lista se entrega igual: crear_caja vuelve a comprobar el límite al crear.
+  const { data: creacion } = await req.db.rpc("cajas_creadas")
+
+  return res.json({ cajas, creacion: creacion ?? null })
 })
 
 // ─────────────────────────────────────────────

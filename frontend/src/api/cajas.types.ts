@@ -22,6 +22,8 @@ export interface MiCaja {
 
 export interface GetMisCajasResponse {
   cajas: MiCaja[]
+  /** Cajas que creó la cuenta (sin contar las eliminadas) y el máximo por cuenta */
+  creacion: { creadas: number; limite: number } | null
 }
 
 export interface CreateCajaRequest {
