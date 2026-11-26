@@ -17,6 +17,7 @@ import AhorrosPage from "./pages/AhorrosPage"
 import ConfiguracionPage from "./pages/ConfiguracionPage"
 import CreditosPage from "./pages/CreditosPage"
 import PagosPage from "./pages/PagosPage"
+import FondosPage from "./pages/FondosPage"
 import { RolRoute } from "./components/RolRoute"
 import { NotifProvider } from "./context/NotifProvider"
 import ReportesPage from "./pages/ReportesPage"
@@ -150,6 +151,16 @@ export default function App() {
                     <ProtectedRoute>
                       <RolRoute rolMinimo="tesorero">
                         <PagosPage />
+                      </RolRoute>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/fondos"
+                  element={
+                    <ProtectedRoute>
+                      <RolRoute rolMinimo="tesorero">
+                        <FondosPage />
                       </RolRoute>
                     </ProtectedRoute>
                   }

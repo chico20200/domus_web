@@ -192,7 +192,8 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
     .reduce((s, p) => s + parseFloat(p.monto_interes ?? 0), 0)
     .toFixed(2)
 
-  // 6. Dinero disponible en caja
+  // 6. Dinero disponible en caja (para prestar). No incluye los Fondos de caja (T18):
+  // ese dinero es de la organización para sus actividades y no se presta
   const enCaja = +(totalAhorros + interesHistorico - porCobrar).toFixed(2)
 
   return res.json({

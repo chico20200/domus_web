@@ -19,6 +19,8 @@ const PERMISOS = {
   // solicitudes de crédito, pagos de cuota, prepagos y abonos
   "movimientos.registrar": "tesorero",
   "creditos.aprobar": "tesorero",
+  // Crear, renombrar, cerrar y reabrir Fondos de caja (T18, migración 014)
+  "fondos.gestionar": "tesorero",
   // Generar la distribución de intereses y el estado de la caja
   "reportes.generar": "tesorero",
 
