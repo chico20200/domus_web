@@ -1,9 +1,10 @@
 // src/pages/CreditosPage.tsx
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { CreditCard, Plus, Search } from "lucide-react"
+import { CreditCard, FileSpreadsheet, Plus, Search } from "lucide-react"
 import { PageShell } from "../components/layout/PageShell"
 import { Button } from "../components/Button"
+import { ImportarExcelModal } from "../components/ImportarExcelModal"
 import { TextField } from "../components/TextField"
 import { Badge } from "../components/Badge"
 import { DataTable } from "../components/DataTable"
@@ -70,6 +71,7 @@ function Creditos({
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const [nuevaSolicitud, setNuevaSolicitud] = useState(false)
+  const [importando, setImportando] = useState(false)
   // Se queda al abrir un crédito y volver: la lista vuelve filtrada como estaba
   const [busqueda, setBusqueda] = useState("")
 
@@ -107,12 +109,21 @@ function Creditos({
           />
         </div>
         {puedeOperar && (
-          <Button
-            label="Nueva solicitud"
-            icon={Plus}
-            disabled={cargando}
-            onClick={() => setNuevaSolicitud(true)}
-          />
+          <div className="flex flex-wrap gap-3">
+            <Button
+              label="Importar desde Excel"
+              variant="secondary"
+              icon={FileSpreadsheet}
+              disabled={cargando}
+              onClick={() => setImportando(true)}
+            />
+            <Button
+              label="Nueva solicitud"
+              icon={Plus}
+              disabled={cargando}
+              onClick={() => setNuevaSolicitud(true)}
+            />
+          </div>
         )}
       </div>
 
@@ -216,6 +227,7 @@ function Creditos({
           }}
         />
       )}
+      {importando && <ImportarExcelModal modulo="creditos" onCerrar={() => setImportando(false)} />}
     </PageShell>
   )
 }

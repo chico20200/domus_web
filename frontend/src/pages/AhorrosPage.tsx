@@ -1,9 +1,10 @@
 // src/pages/AhorrosPage.tsx
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { PiggyBank, Plus, Search, UserRoundX } from "lucide-react"
+import { FileSpreadsheet, PiggyBank, Plus, Search, UserRoundX } from "lucide-react"
 import { PageShell } from "../components/layout/PageShell"
 import { Button } from "../components/Button"
+import { ImportarExcelModal } from "../components/ImportarExcelModal"
 import { TextField } from "../components/TextField"
 import { Badge } from "../components/Badge"
 import { DataTable, type Columna } from "../components/DataTable"
@@ -59,6 +60,7 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
   const { datos, cargando, error, recargar } = useDatos(cargar)
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const [nueva, setNueva] = useState(false)
+  const [importando, setImportando] = useState(false)
   // Se queda al abrir una cuenta y volver: la lista vuelve filtrada como estaba
   const [busqueda, setBusqueda] = useState("")
 
@@ -96,12 +98,21 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
             icon={Search}
           />
         </div>
-        <Button
-          label="Abrir cuenta"
-          icon={Plus}
-          disabled={cargando || !!error}
-          onClick={() => setNueva(true)}
-        />
+        <div className="flex flex-wrap gap-3">
+          <Button
+            label="Importar desde Excel"
+            variant="secondary"
+            icon={FileSpreadsheet}
+            disabled={cargando}
+            onClick={() => setImportando(true)}
+          />
+          <Button
+            label="Abrir cuenta"
+            icon={Plus}
+            disabled={cargando || !!error}
+            onClick={() => setNueva(true)}
+          />
+        </div>
       </div>
 
       {!cargando && !error && (
@@ -155,6 +166,7 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
           }}
         />
       )}
+      {importando && <ImportarExcelModal modulo="ahorros" onCerrar={() => setImportando(false)} />}
     </PageShell>
   )
 }
