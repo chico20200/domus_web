@@ -394,6 +394,7 @@ Lista los créditos de la caja con datos del socio.
 - Rol mínimo: `tesorero` (permiso `datos.ver`: el socio no ve los datos de los demás)
 - 200: `{ creditos }`. Cada crédito trae `mora`, calculada al leer (no se guarda): `{ cuotas_vencidas, monto_vencido, desde }` si tiene al menos una cuota vencida sin pagar, o `null` si está al día o no está en curso. Una cuota vence el último día de su mes y está vencida desde el mes siguiente; `desde` es el vencimiento de la más antigua. Solo los créditos `activo` o `vencido` pueden estar en mora.
 - `estado` es el de la base: `pendiente`, `activo`, `pagado` o `vencido`. La mora no es un estado: un crédito `activo` puede estar en mora.
+- `numero`: 1, 2, 3… dentro de la caja, en el orden de solicitud (migración `007`). Lo asigna la base al registrar la solicitud; lo que se envíe se ignora y después no se cambia. La tabla de amortización (`GET /creditos/:id/amortizacion`) también lo devuelve en `credito.numero`.
 
 ### GET /api/cajas/:cajaId/creditos/:creditoId
 

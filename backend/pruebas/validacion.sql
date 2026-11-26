@@ -8,7 +8,7 @@
 -- NO DEJA RASTRO y no depende de los datos de la base, igual que aislamiento.sql.
 --
 -- CÓMO SE CORRE: Supabase → SQL Editor, pegar el archivo y ejecutarlo. El resultado sale
--- como mensaje de error: "VALIDACION: 37 de 37 casos pasan" y la lista de casos.
+-- como mensaje de error: "VALIDACION: 41 de 41 casos pasan" y la lista de casos.
 
 begin;
 
@@ -201,6 +201,22 @@ begin
   perform pg_temp.anotar('Perfil válido: se guarda limpio', e = 'sin error' and t = 'María José O''Neil 0991234567', e || ' → ' || coalesce(t, 'nada'));
   e := pg_temp.error_de(format('update public.profiles set created_at = now() where id = %L', i.tes));
   perform pg_temp.anotar('Perfil: otras columnas no se editan', e = '42501', e);
+
+  -- Número de crédito por caja (007)
+  n := (select numero from public.creditos where id = i.credito);
+  perform pg_temp.anotar('Número: el primer crédito de la caja es el 1', n = 1, coalesce(n::text, 'nada'));
+  t := (select max(numero) + 1 from public.creditos where caja_id = i.caja)::text;
+  insert into public.creditos (caja_id, socio_id, monto_solicitado, tasa_interes, plazo_meses, numero)
+  values (i.caja, i.ficha, 200, 12, 2, 99) returning numero into n;
+  perform pg_temp.anotar('Número: el siguiente de la caja aunque se pida otro', n::text = t, n || ' (esperado ' || t || ')');
+  e := pg_temp.error_de(format('update public.creditos set numero = 7 where id = %L', i.credito));
+  perform pg_temp.anotar('Número: no se cambia después', e = '42501', e);
+  t := public.crear_caja('Otra caja de validación', 'Prueba', '2025-01-01', 1, 12, 'prueba')->>'id';
+  insert into public.socios (caja_id, cedula, nombre, apellido)
+  values (t::uuid, '1104680135', 'Pedro', 'Loja') returning id into e;
+  insert into public.creditos (caja_id, socio_id, monto_solicitado, tasa_interes, plazo_meses)
+  values (t::uuid, e::uuid, 100, 12, 1) returning numero into n;
+  perform pg_temp.anotar('Número: cada caja empieza en 1', n = 1, n::text);
 
   perform pg_temp.como(null);
   perform set_config('role', 'postgres', true);

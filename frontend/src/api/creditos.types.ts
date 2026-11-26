@@ -12,6 +12,8 @@ export interface MoraCredito {
 
 export interface Credito {
   id: string
+  /** 1, 2, 3… dentro de la caja, en el orden de solicitud. Lo pone la base (007) */
+  numero: number
   caja_id: string
   socio_id: string
   monto_solicitado: number

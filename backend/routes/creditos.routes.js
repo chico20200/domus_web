@@ -230,6 +230,7 @@ router.get("/:creditoId/amortizacion", requierePermiso("datos.ver"), async (req,
   return res.json({
     credito: {
       id: credito.id,
+      numero: credito.numero,
       socio: credito.socios,
       monto_solicitado: parseFloat(credito.monto_solicitado),
       tasa_interes: parseFloat(credito.tasa_interes),

@@ -17,7 +17,13 @@ import type { Credito } from "../api/creditos.types"
 import type { TipoPago } from "../api/pagos.types"
 import { moneda, porcentaje } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
-import { EN_CURSO, estadoCredito, nombreSocio } from "../lib/creditos"
+import {
+  EN_CURSO,
+  coincideCredito,
+  estadoCredito,
+  nombreSocio,
+  numeroCredito,
+} from "../lib/creditos"
 import { normalizar } from "../lib/texto"
 import { ElegirPagoModal } from "./pagos/ElegirPagoModal"
 
@@ -60,9 +66,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
 
   const creditos = datos ?? []
   const q = normalizar(busqueda.trim())
-  const filtrados = creditos.filter(
-    (c) => !q || normalizar(`${nombreSocio(c.socios)} ${c.socios?.cedula ?? ""}`).includes(q),
-  )
+  const filtrados = creditos.filter((c) => coincideCredito(c, q))
 
   async function registrar() {
     if (!pago?.tipo) return
@@ -95,7 +99,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por socio o cédula"
+          placeholder="Buscar por socio, cédula o número"
           icon={Search}
         />
         {!cargando && !error && (
@@ -124,7 +128,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
               <EmptyState
                 icono={Search}
                 titulo="Ningún crédito coincide con la búsqueda"
-                descripcion="Prueba con otra parte del nombre o con la cédula."
+                descripcion="Prueba con otra parte del nombre, con la cédula o con el número del crédito."
               />
             ) : (
               <EmptyState
@@ -142,7 +146,7 @@ function Pagos({ cajaId }: { cajaId: string }) {
                 <div className="flex flex-col">
                   <span className="font-medium text-primary">{nombreSocio(c.socios)}</span>
                   <span className="text-xs text-secondary">
-                    {c.plazo_meses} meses · {porcentaje(c.tasa_interes)}
+                    {numeroCredito(c.numero)} · {c.plazo_meses} meses · {porcentaje(c.tasa_interes)}
                   </span>
                 </div>
               ),

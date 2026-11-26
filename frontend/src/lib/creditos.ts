@@ -1,6 +1,7 @@
 import type { BadgeTono } from "../components/Badge"
 import type { EstadoCredito, MoraCredito } from "../api/creditos.types"
 import type { TipoPago } from "../api/pagos.types"
+import { coincideSocio } from "./texto"
 
 /**
  * Etiqueta y tono de Badge de cada estado de crédito. Un solo lugar para Créditos, Pagos
@@ -37,6 +38,28 @@ export function estadoCredito(credito: { estado: string; mora?: MoraCredito | nu
       tono: "neutral" as const,
     }
   )
+}
+
+/** "N.º 7": cómo se nombra un crédito en la lista, el detalle y las exportaciones */
+export function numeroCredito(numero: number) {
+  return `N.º ${numero}`
+}
+
+/**
+ * Si un crédito coincide con lo que se busca: por el socio (nombre, apellido o cédula) o
+ * por su número, escrito solo ("7") o como se muestra ("n.º 7", "#7", "no 7"). `consulta`
+ * ya viene normalizada.
+ */
+export function coincideCredito(
+  credito: {
+    numero: number
+    socios?: { nombre: string; apellido: string; cedula?: string } | null
+  },
+  consulta: string,
+) {
+  if (coincideSocio(credito.socios, consulta)) return true
+  const numero = consulta.replace(/^(#|n\.?\s*[oº°]\.?|no\.?|credito)\s*/, "")
+  return /^\d+$/.test(numero) && Number(numero) === credito.numero
 }
 
 export function nombreSocio(socio?: { nombre: string; apellido: string } | null) {

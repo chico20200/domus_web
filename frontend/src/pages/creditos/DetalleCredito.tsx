@@ -16,7 +16,7 @@ import { pagosService } from "../../api/pagos.service"
 import type { PagoCredito, TipoPago } from "../../api/pagos.types"
 import { fecha, moneda, porcentaje } from "../../lib/format"
 import { useDatos } from "../../lib/useDatos"
-import { EN_CURSO, estadoCredito, nombreSocio } from "../../lib/creditos"
+import { EN_CURSO, estadoCredito, nombreSocio, numeroCredito } from "../../lib/creditos"
 import { InfoTip } from "../../components/InfoTip"
 import { AYUDA } from "../../lib/ayuda"
 
@@ -171,7 +171,7 @@ export function DetalleCredito({
 
       <Panel
         titulo={socio}
-        descripcion={`${c.plazo_meses} meses · ${porcentaje(c.tasa_interes)} de interés anual${c.fecha_desembolso ? ` · desembolsado el ${fecha(c.fecha_desembolso)}` : ""}`}
+        descripcion={`Crédito ${numeroCredito(c.numero)} · ${c.plazo_meses} meses · ${porcentaje(c.tasa_interes)} de interés anual${c.fecha_desembolso ? ` · desembolsado el ${fecha(c.fecha_desembolso)}` : ""}`}
         acciones={<Badge tono={estado.tono} label={estado.etiqueta} />}
       >
         <dl className="grid grid-cols-2 gap-x-6 gap-y-4">

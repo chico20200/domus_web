@@ -16,8 +16,8 @@ import type { Credito } from "../api/creditos.types"
 import { moneda, porcentaje } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
 import { tieneRol } from "../lib/roles"
-import { estadoCredito, nombreSocio } from "../lib/creditos"
-import { coincideSocio, normalizar } from "../lib/texto"
+import { coincideCredito, estadoCredito, nombreSocio, numeroCredito } from "../lib/creditos"
+import { normalizar } from "../lib/texto"
 import { DetalleCredito } from "./creditos/DetalleCredito"
 import { NuevaSolicitudModal } from "./creditos/NuevaSolicitudModal"
 
@@ -85,19 +85,19 @@ function Creditos({
 
   const creditos = datos?.creditos ?? []
   const q = normalizar(busqueda.trim())
-  const filtrados = creditos.filter((c) => coincideSocio(c.socios, q))
+  const filtrados = creditos.filter((c) => coincideCredito(c, q))
 
   return (
     <PageShell titulo="Créditos" ancho="formulario">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="w-full max-w-sm">
           <TextField
-            label="Buscar créditos de un socio"
+            label="Buscar créditos por socio o número"
             ocultarEtiqueta
             type="search"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre o cédula"
+            placeholder="Buscar por nombre, cédula o número"
             icon={Search}
           />
         </div>
@@ -136,7 +136,7 @@ function Creditos({
               <EmptyState
                 icono={Search}
                 titulo="Ningún crédito coincide con la búsqueda"
-                descripcion="Prueba con otra parte del nombre o con la cédula del socio."
+                descripcion="Prueba con otra parte del nombre, con la cédula del socio o con el número del crédito."
               />
             ) : (
               <EmptyState
@@ -150,6 +150,12 @@ function Creditos({
           }
           columnas={[
             {
+              clave: "numero",
+              encabezado: "N.º",
+              alinear: "derecha",
+              celda: (c) => <span className="tabular-nums">{c.numero}</span>,
+            },
+            {
               clave: "socio",
               encabezado: "Socio",
               celda: (c) => (
@@ -157,6 +163,7 @@ function Creditos({
                   <button
                     type="button"
                     onClick={() => setSeleccionado(c.id)}
+                    aria-label={`${nombreSocio(c.socios)}, crédito ${numeroCredito(c.numero)}`}
                     className="w-fit text-left font-medium text-accion-texto hover:underline focus-visible:outline-2 focus-visible:outline-focus"
                   >
                     {nombreSocio(c.socios)}
