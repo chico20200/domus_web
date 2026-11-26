@@ -9,13 +9,14 @@ import { EmptyState } from "../../components/EmptyState"
 import { LoadingState } from "../../components/LoadingState"
 import { ConfirmarPagoModal } from "../../components/ConfirmarPagoModal"
 import { AbonoModal } from "../../components/AbonoModal"
+import { PagoAdelantadoModal } from "../../components/PagoAdelantadoModal"
 import { TablaAmortizacion } from "../../components/TablaAmortizacion"
 import { useNotif } from "../../context/NotifContext"
 import { creditosService } from "../../api/creditos.service"
 import { pagosService } from "../../api/pagos.service"
 import { adjuntarTrasRegistrar } from "../../api/comprobantes.service"
 import { BotonComprobante } from "../../components/BotonComprobante"
-import type { PagoCredito, TipoPago } from "../../api/pagos.types"
+import type { AdelantoResponse, PagoCredito, TipoPago } from "../../api/pagos.types"
 import { fecha, moneda, porcentaje } from "../../lib/format"
 import { useDatos } from "../../lib/useDatos"
 import { EN_CURSO, estadoCredito, nombreSocio, numeroCredito } from "../../lib/creditos"
@@ -59,6 +60,7 @@ export function DetalleCredito({
   const [procesando, setProcesando] = useState(false)
   const [pagoPorConfirmar, setPagoPorConfirmar] = useState<TipoPago | null>(null)
   const [verAbono, setVerAbono] = useState(false)
+  const [verAdelanto, setVerAdelanto] = useState(false)
   const [verTabla, setVerTabla] = useState(false)
 
   async function actualizar() {
@@ -155,23 +157,22 @@ export function DetalleCredito({
     }
   }
 
-  async function prepagar() {
-    const prepago = proxima.prepago_disponible
-    if (!prepago) return
-    const ok = await confirm({
-      titulo: `¿Registrar el pago adelantado de la cuota ${prepago.numero_cuota}?`,
-      mensaje: `Se cobra el capital de esa cuota (${moneda(prepago.capital)}) y se condonan ${moneda(prepago.interes_a_condonar)} de interés.`,
-      labelOk: "Registrar pago adelantado",
-    })
-    if (!ok) return
+  async function adelantar(monto: number, foto: Blob | null) {
     setProcesando(true)
     try {
-      const res = await pagosService.prepagar(cajaId, c.id)
+      const res = await pagosService.adelantar(cajaId, c.id, monto)
+      // Una foto para todo el adelanto: se une a cada pago que lo forma
+      let aviso: string | null = null
+      for (const p of res.pagos) {
+        aviso ??= await adjuntarTrasRegistrar(
+          { tipo: "pago", cajaId, creditoId: c.id, id: p.id },
+          foto,
+        )
+      }
+      setVerAdelanto(false)
       await actualizar()
-      toast(
-        "exito",
-        `Pago adelantado registrado. Interés condonado: ${moneda(res.interes_condonado)}`,
-      )
+      if (aviso) toast("advertencia", aviso)
+      else toast("exito", resumenAdelanto(res))
     } catch (err) {
       toast("error", err instanceof Error ? err.message : "No se pudo registrar el pago adelantado")
     } finally {
@@ -270,24 +271,24 @@ export function DetalleCredito({
             />
           </div>
 
-          {proxima.prepago_disponible && (
+          {proxima.adelanto && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-base pt-6">
               <div className="flex min-w-0 flex-col gap-1">
-                <p className="text-sm font-medium text-primary">
-                  Pago adelantado de la última cuota
-                </p>
+                <p className="text-sm font-medium text-primary">Pago adelantado</p>
                 <p className="text-sm text-secondary">
-                  Se cobra el capital de la cuota {proxima.prepago_disponible.numero_cuota} (
-                  {moneda(proxima.prepago_disponible.capital)}) y se condonan{" "}
-                  {moneda(proxima.prepago_disponible.interes_a_condonar)} de interés.
+                  {proxima.adelanto.disponible
+                    ? `Se puede adelantar hasta ${moneda(proxima.adelanto.maximo)} de capital, desde la última cuota hacia atrás.`
+                    : proxima.adelanto.motivo}
                 </p>
               </div>
-              <Button
-                label="Registrar pago adelantado"
-                variant="secondary"
-                loading={procesando}
-                onClick={prepagar}
-              />
+              {proxima.adelanto.disponible && (
+                <Button
+                  label="Registrar pago adelantado"
+                  variant="secondary"
+                  disabled={procesando}
+                  onClick={() => setVerAdelanto(true)}
+                />
+              )}
             </div>
           )}
         </Panel>
@@ -366,6 +367,16 @@ export function DetalleCredito({
           onCancelar={() => setVerAbono(false)}
         />
       )}
+      {verAdelanto && proxima.adelanto?.disponible && (
+        <PagoAdelantadoModal
+          maximo={proxima.adelanto.maximo}
+          cuotas={proxima.adelanto.cuotas}
+          nombreSocio={socio}
+          procesando={procesando}
+          onConfirmar={adelantar}
+          onCancelar={() => setVerAdelanto(false)}
+        />
+      )}
       {verTabla && (
         <TablaAmortizacion
           cajaId={cajaId}
@@ -376,4 +387,24 @@ export function DetalleCredito({
       )}
     </>
   )
+}
+
+/** "Pago adelantado de $230,00 registrado. Cuotas 6 y 5 pagadas (…). A la cuota 4 le quedan…" */
+function resumenAdelanto(res: AdelantoResponse): string {
+  if (res.credito_pagado) return "Pago adelantado registrado. El crédito quedó pagado por completo."
+  const partes = [`Pago adelantado de ${moneda(res.capital_pagado)} registrado.`]
+  const n = res.cuotas_adelantadas
+  if (n.length > 0) {
+    const lista =
+      n.length === 1
+        ? `Cuota ${n[0]} pagada`
+        : `Cuotas ${n.slice(0, -1).join(", ")} y ${n[n.length - 1]} pagadas`
+    partes.push(`${lista} (interés condonado: ${moneda(res.interes_condonado)}).`)
+  }
+  if (res.cuota_a_medias) {
+    partes.push(
+      `La cuota ${res.cuota_a_medias.numero_cuota} recibió ${moneda(res.cuota_a_medias.capital)} de capital y conserva su interés.`,
+    )
+  }
+  return partes.join(" ")
 }

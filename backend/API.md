@@ -44,7 +44,8 @@ Las escrituras que tocan dos tablas son funciones de Postgres, todo o nada:
 | Ruta                                             | Función                                             |
 | ------------------------------------------------ | --------------------------------------------------- |
 | `POST /cuentas/:id/deposito`, `/retiro`          | `registrar_movimiento`                              |
-| `POST /creditos/:id/pagos`, `/prepago`, `/abono` | `registrar_pago_credito`                            |
+| `POST /creditos/:id/pagos`, `/abono`            | `registrar_pago_credito`                            |
+| `POST /creditos/:id/pagos/prepago`               | `registrar_pago_adelantado` (varios pagos juntos)   |
 | `POST /api/cajas`                                | `crear_caja` (límite de 3 cajas creadas por cuenta) |
 | `POST /api/cajas/unirse`                         | `unirse_con_codigo`                                 |
 | `GET /cuentas/mias`                              | `vincular_mi_ficha`                                 |
@@ -75,7 +76,22 @@ Con el token de la persona y la clave pública se puede hablar directo con Supab
 
 Una regla incumplida responde `400` con el mismo mensaje del formulario. El backend revisa antes lo que la base no ve, como los tres decimales (una columna `numeric(12,2)` los redondea sin avisar) o un plazo con decimales.
 
-El prepago (en pantalla, "pago adelantado") se rechaza si hay cuotas vencidas, y `proxima-cuota` no lo ofrece en ese caso. El abono sí se acepta en un crédito `vencido`.
+El prepago (en pantalla, "pago adelantado") solo se acepta con el crédito al día; ver "Pago adelantado por monto". El abono sí se acepta en un crédito `vencido`.
+
+### Pago adelantado por monto (T30, migración 013)
+
+`GET …/pagos/proxima-cuota` trae `adelanto`:
+
+- `{ disponible: true, maximo, cuotas: [{ numero_cuota, falta_capital, interes }] }`: las cuotas que se pueden adelantar, de la última a la primera, y el capital que suman.
+- `{ disponible: false, motivo }`: por qué no. Pasa con el crédito no `activo`, con cuotas vencidas, con la cuota de este mes sin pagar, o cuando solo queda la próxima cuota.
+
+`POST …/pagos/prepago { monto }` adelanta ese capital. El backend lo reparte desde la última cuota hacia atrás. Una cuota cubierta entera queda pagada y se condona su interés (`es_prepago`). La cuota que queda a medias recibe un pago de solo capital y conserva su interés completo: el interés es fijo cada mes. La próxima cuota por pagar no se adelanta; se paga en su mes.
+
+Respuesta `201`: `{ pagos, capital_pagado, interes_condonado, cuotas_adelantadas: [6, 5], cuota_a_medias: { numero_cuota, capital } | null, saldo_pendiente, credito_pagado }`.
+
+Errores `400`: el monto no es mayor que 0 o tiene más de dos decimales; el monto supera el máximo ("Se pueden adelantar hasta $X de capital."); o el `motivo` de `proxima-cuota`.
+
+`registrar_pago_adelantado` registra todas las partes juntas, o ninguna. Además revisa que quien lo pide sea tesorero, que la caja sea operable y el crédito `activo`, que ninguna cuota venza este mes o antes, que no se repita una cuota y que el saldo no haya cambiado.
 
 Las pruebas `backend/pruebas/aislamiento.sql` y `backend/pruebas/validacion.sql` se corren en el SQL Editor de Supabase y no dejan rastro.
 
