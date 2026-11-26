@@ -230,7 +230,9 @@ router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, re
 
   if (!credito) return res.status(404).json({ error: "Crédito no encontrado" })
   if (credito.estado !== "activo") {
-    return res.status(400).json({ error: "Solo se puede prepagar un crédito activo" })
+    return res
+      .status(400)
+      .json({ error: "Solo se puede hacer un pago adelantado en un crédito activo" })
   }
 
   const { data: pagos } = await req.db.from("pagos_credito").select("*").eq("credito_id", creditoId)
@@ -241,14 +243,14 @@ router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, re
   // condonaría interés a quien está en mora
   if (vencidas.length > 0) {
     return res.status(400).json({
-      error: `Hay ${vencidas.length === 1 ? "una cuota vencida" : `${vencidas.length} cuotas vencidas`}. Primero se paga lo atrasado; después se puede prepagar.`,
+      error: `Hay ${vencidas.length === 1 ? "una cuota vencida" : `${vencidas.length} cuotas vencidas`}. Primero se paga lo atrasado; después se puede adelantar una cuota.`,
     })
   }
 
   if (!prepagable) {
     return res.status(400).json({
       error:
-        "No hay cuotas disponibles para prepagar. Solo se prepagan cuotas futuras, no la corriente.",
+        "No hay cuotas para pagar por adelantado. Solo se adelantan cuotas futuras, no la corriente.",
     })
   }
 
@@ -273,7 +275,7 @@ router.post("/prepago", requierePermiso("movimientos.registrar"), async (req, re
   const { pago } = registro
 
   return res.status(201).json({
-    message: `Prepago de la cuota ${prepagable.numero_cuota} registrado`,
+    message: `Pago adelantado de la cuota ${prepagable.numero_cuota} registrado`,
     pago,
     cuota_prepagada: prepagable.numero_cuota,
     capital_pagado: montoCapital,

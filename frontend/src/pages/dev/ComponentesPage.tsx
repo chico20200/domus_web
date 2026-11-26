@@ -360,9 +360,9 @@ export default function ComponentesPage() {
             label="Confirmación no destructiva"
             onClick={async () => {
               const ok = await confirm({
-                titulo: "¿Prepagar la última cuota?",
+                titulo: "¿Registrar el pago adelantado de la última cuota?",
                 mensaje: "Se abonará el capital y se condonará el interés de esa cuota.",
-                labelOk: "Prepagar",
+                labelOk: "Registrar pago adelantado",
               })
               setRespuesta(ok ? "Confirmó" : "Canceló")
             }}

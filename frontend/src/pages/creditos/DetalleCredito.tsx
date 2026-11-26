@@ -23,7 +23,7 @@ import { InfoTip } from "../../components/InfoTip"
 import { AYUDA } from "../../lib/ayuda"
 
 /**
- * Detalle de un crédito: cifras, aprobación, pagos, prepago e historial.
+ * Detalle de un crédito: cifras, aprobación, pagos, pago adelantado e historial.
  * `puedeOperar` (tesorero o coordinador) muestra las acciones; sin él, solo lectura.
  */
 
@@ -159,18 +159,21 @@ export function DetalleCredito({
     const prepago = proxima.prepago_disponible
     if (!prepago) return
     const ok = await confirm({
-      titulo: `¿Prepagar la cuota ${prepago.numero_cuota}?`,
+      titulo: `¿Registrar el pago adelantado de la cuota ${prepago.numero_cuota}?`,
       mensaje: `Se cobra el capital de esa cuota (${moneda(prepago.capital)}) y se condonan ${moneda(prepago.interes_a_condonar)} de interés.`,
-      labelOk: "Registrar prepago",
+      labelOk: "Registrar pago adelantado",
     })
     if (!ok) return
     setProcesando(true)
     try {
       const res = await pagosService.prepagar(cajaId, c.id)
       await actualizar()
-      toast("exito", `Prepago registrado. Interés condonado: ${moneda(res.interes_condonado)}`)
+      toast(
+        "exito",
+        `Pago adelantado registrado. Interés condonado: ${moneda(res.interes_condonado)}`,
+      )
     } catch (err) {
-      toast("error", err instanceof Error ? err.message : "No se pudo registrar el prepago")
+      toast("error", err instanceof Error ? err.message : "No se pudo registrar el pago adelantado")
     } finally {
       setProcesando(false)
     }
@@ -232,15 +235,18 @@ export function DetalleCredito({
               : undefined
           }
         >
-          <div className="flex flex-wrap gap-3">
+          {/* Las cuatro formas de pago en una fila centrada; si no caben, siguen centradas */}
+          <div className="flex flex-wrap justify-center gap-2">
             <Button
               label="Pago completo"
+              compacto
               icon={Wallet}
               disabled={procesando}
               onClick={() => setPagoPorConfirmar("completo")}
             />
             <Button
               label="Solo capital"
+              compacto
               variant="secondary"
               icon={Coins}
               disabled={procesando}
@@ -248,6 +254,7 @@ export function DetalleCredito({
             />
             <Button
               label="Solo interés"
+              compacto
               variant="secondary"
               icon={Coins}
               disabled={procesando}
@@ -255,6 +262,7 @@ export function DetalleCredito({
             />
             <Button
               label="Abono parcial"
+              compacto
               variant="secondary"
               icon={HandCoins}
               disabled={procesando}
@@ -265,7 +273,9 @@ export function DetalleCredito({
           {proxima.prepago_disponible && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-base pt-6">
               <div className="flex min-w-0 flex-col gap-1">
-                <p className="text-sm font-medium text-primary">Prepagar la última cuota</p>
+                <p className="text-sm font-medium text-primary">
+                  Pago adelantado de la última cuota
+                </p>
                 <p className="text-sm text-secondary">
                   Se cobra el capital de la cuota {proxima.prepago_disponible.numero_cuota} (
                   {moneda(proxima.prepago_disponible.capital)}) y se condonan{" "}
@@ -273,7 +283,7 @@ export function DetalleCredito({
                 </p>
               </div>
               <Button
-                label="Registrar prepago"
+                label="Registrar pago adelantado"
                 variant="secondary"
                 loading={procesando}
                 onClick={prepagar}

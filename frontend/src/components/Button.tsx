@@ -20,6 +20,11 @@ interface ButtonProps {
   loading?: boolean
   /** Ocupa todo el ancho del contenedor */
   fullWidth?: boolean
+  /**
+   * Menos relleno a los lados (12 px en vez de 16) y el texto en una sola línea. Para una
+   * fila de varios botones que tiene que caber entera, como las formas de pago
+   */
+  compacto?: boolean
   icon?: LucideIcon
   /**
    * Nombre completo para el lector de pantalla cuando el texto visible se repite, como
@@ -42,9 +47,9 @@ const VARIANTES: Record<ButtonVariant, string> = {
 }
 
 const BASE = [
-  "inline-flex items-center justify-center gap-2",
+  "inline-flex items-center justify-center",
   // Todas las variantes tienen borde de 1 px (transparente salvo secondary): miden lo mismo
-  "rounded-lg border px-4 py-2",
+  "rounded-lg border py-2",
   "text-sm font-medium",
   "transition-colors cursor-pointer",
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
@@ -58,11 +63,17 @@ export function Button({
   disabled = false,
   loading = false,
   fullWidth = false,
+  compacto = false,
   icon: Icon,
   ariaLabel,
   onClick,
 }: ButtonProps) {
-  const clases = [BASE, VARIANTES[variant], fullWidth ? "w-full" : ""].join(" ")
+  const clases = [
+    BASE,
+    compacto ? "gap-1.5 px-3 whitespace-nowrap" : "gap-2 px-4",
+    VARIANTES[variant],
+    fullWidth ? "w-full" : "",
+  ].join(" ")
 
   return (
     <button
