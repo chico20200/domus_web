@@ -54,6 +54,9 @@ Las escrituras que tocan dos tablas son funciones de Postgres, todo o nada:
 | `POST …/comprobante` (foto de un registro)        | `adjuntar_comprobante`                              |
 | `PUT`/`DELETE /api/profiles/me/foto`             | `poner_foto_perfil`                                 |
 | `PUT`/`DELETE /api/cajas/:id/foto`               | `poner_foto_caja`                                   |
+| `POST /api/cajas/:id/fondos`, `PUT …/:fondoId`  | `crear_fondo`, `editar_fondo`                       |
+| `PUT …/fondos/:fondoId/estado`                   | `cambiar_estado_fondo`                              |
+| `POST …/fondos/:fondoId/deposito`, `/retiro`     | `registrar_movimiento_fondo`                        |
 
 Errores que pueden devolver además de los de cada ruta:
 
@@ -77,6 +80,21 @@ Con el token de la persona y la clave pública se puede hablar directo con Supab
 Una regla incumplida responde `400` con el mismo mensaje del formulario. El backend revisa antes lo que la base no ve, como los tres decimales (una columna `numeric(12,2)` los redondea sin avisar) o un plazo con decimales.
 
 El prepago (en pantalla, "pago adelantado") solo se acepta con el crédito al día; ver "Pago adelantado por monto". El abono sí se acepta en un crédito `vencido`.
+
+### Fondos de caja (T18, migración 014)
+
+Dinero de la organización para sus actividades, aparte del que se presta. Cada caja crea sus fondos con nombre; cada uno tiene su saldo, sus depósitos y sus retiros. Los movimientos no se relacionan con socios. Los fondos no cuentan en el "disponible en caja" de Reportes (`en_caja`), que es el dinero para prestar. Los ve y los maneja el tesorero o el coordinador.
+
+| Ruta                                              | Permiso                 | Cuerpo y respuesta                                                                                          |
+| ------------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `GET /api/cajas/:cajaId/fondos`                   | `datos.ver`             | `{ fondos: [{ id, nombre, descripcion, saldo, activo, created_at }], total }`, abiertos primero              |
+| `POST /api/cajas/:cajaId/fondos`                  | `fondos.gestionar`      | `{ nombre, descripcion? }` → `201 { fondo }`                                                                |
+| `PUT /api/cajas/:cajaId/fondos/:fondoId`          | `fondos.gestionar`      | `{ nombre, descripcion? }` → `{ fondo }`                                                                    |
+| `PUT /api/cajas/:cajaId/fondos/:fondoId/estado`   | `fondos.gestionar`      | `{ activo: boolean }` → `{ fondo }`. Cerrar pide saldo 0; un fondo cerrado se puede abrir de nuevo         |
+| `GET /api/cajas/:cajaId/fondos/:fondoId/movimientos` | `datos.ver`          | `{ fondo, movimientos: [{ id, tipo, monto, saldo_anterior, saldo_posterior, descripcion, fecha, created_at }] }`, el más reciente primero |
+| `POST /api/cajas/:cajaId/fondos/:fondoId/deposito`, `/retiro` | `movimientos.registrar` | `{ monto, descripcion }` → `201 { movimiento, saldo_anterior, saldo_posterior }`                |
+
+Reglas (en la base): nombre de 3 a 60 caracteres, único en la caja sin importar mayúsculas (`409`); descripción del fondo de hasta 200; monto mayor que 0 con hasta dos decimales; descripción del movimiento obligatoria, de 3 a 200 caracteres; un retiro no supera el saldo (`400`); un fondo cerrado no recibe movimientos (`409`). Nadie escribe un saldo ni un movimiento a mano, y los movimientos no se editan ni se borran. Prueba: `backend/pruebas/fondos.sql`.
 
 ### Pago adelantado por monto (T30, migración 013)
 
