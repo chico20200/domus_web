@@ -69,7 +69,7 @@ begin
   select string_agg(ingreso || '→' || coalesce(salida::text, 'abierto'), ', ') into t from public.periodos_socio where socio_id = ana;
   perform pg_temp.anotar('Desactivar cierra el periodo hoy', t = '2024-01-01→' || hoy, t);
 
-  update public.socios set activo = true, updated_at = now() where id = ana;
+  update public.socios set activo = true, direccion = 'Calle nueva 2', updated_at = now() where id = ana;
   select string_agg(ingreso || '→' || coalesce(salida::text, 'abierto'), ', ' order by ingreso, salida nulls last) into t from public.periodos_socio where socio_id = ana;
   perform pg_temp.anotar('Reactivar abre un periodo nuevo desde hoy', t = '2024-01-01→' || hoy || ', ' || hoy || '→abierto', t);
   select fecha_ingreso::text into t from public.socios where id = ana;

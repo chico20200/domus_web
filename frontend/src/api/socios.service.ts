@@ -51,6 +51,18 @@ export const sociosService = {
     )
   },
 
+  /**
+   * Reactiva a un socio que salió (T8, solo coordinador): los datos revisados y la
+   * dirección escrita de nuevo. La base abre un periodo nuevo desde hoy
+   */
+  async reactivar(
+    cajaId: string,
+    socioId: string,
+    data: Omit<CreateSocioRequest, "fecha_ingreso">,
+  ): Promise<SocioResponse> {
+    return apiClient.post<SocioResponse>(`/cajas/${cajaId}/socios/${socioId}/reactivar`, data)
+  },
+
   async desactivar(cajaId: string, socioId: string): Promise<{ message: string }> {
     return apiClient.delete(`/cajas/${cajaId}/socios/${socioId}`)
   },

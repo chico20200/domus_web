@@ -8,6 +8,7 @@ import {
   Link2,
   Pencil,
   Search,
+  UserCheck,
   UserPlus,
   Users,
   UserX,
@@ -71,6 +72,8 @@ function Socios({
   const [importando, setImportando] = useState(false)
   // null: cerrado; "nuevo": ficha nueva; un Socio: edición
   const [modal, setModal] = useState<Socio | "nuevo" | null>(null)
+  // Reactivar a quien salió (T8): el mismo formulario, prellenado salvo la dirección
+  const [reactivar, setReactivar] = useState(false)
   // Solo el coordinador (el mismo permiso que desactivar): corregir la fecha de ingreso
   const [corrigiendo, setCorrigiendo] = useState<Socio | null>(null)
   // La salida con liquidación (activo) o el historial de sus liquidaciones (inactivo)
@@ -217,7 +220,10 @@ function Socios({
                     <BotonFila
                       etiqueta={`Editar a ${nombre}`}
                       icono={Pencil}
-                      onClick={() => setModal(s)}
+                      onClick={() => {
+                        setReactivar(false)
+                        setModal(s)
+                      }}
                     />
                     {puedeDesactivar &&
                       (s.activo ? (
@@ -227,7 +233,15 @@ function Socios({
                           onClick={() => setCorrigiendo(s)}
                         />
                       ) : (
-                        <span className="h-9 w-9" aria-hidden="true" />
+                        // Quien salió puede volver (T8): su ficha prellenada salvo la dirección
+                        <BotonFila
+                          etiqueta={`Reactivar a ${nombre}`}
+                          icono={UserCheck}
+                          onClick={() => {
+                            setReactivar(true)
+                            setModal(s)
+                          }}
+                        />
                       ))}
                     {s.activo && puedeDesactivar ? (
                       <BotonFila
@@ -291,16 +305,20 @@ function Socios({
         <SocioModal
           cajaId={cajaId}
           socio={modal === "nuevo" ? undefined : modal}
+          reactivar={reactivar}
           onCerrar={() => setModal(null)}
           onGuardado={async (s) => {
             const nuevo = modal === "nuevo"
+            const reactivado = modal !== "nuevo" && !modal.activo && reactivar
             setModal(null)
             await recargar()
             toast(
               "exito",
               nuevo
                 ? `${s.nombre} ${s.apellido} quedó registrado`
-                : `Ficha de ${s.nombre} ${s.apellido} actualizada`,
+                : reactivado
+                  ? `${s.nombre} ${s.apellido} volvió a la caja. Sus cuentas se reabren desde Ahorros`
+                  : `Ficha de ${s.nombre} ${s.apellido} actualizada`,
             )
           }}
         />

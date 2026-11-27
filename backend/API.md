@@ -366,6 +366,16 @@ Desactiva (soft delete) un socio.
 - Rol mínimo: `coordinador`
 - 200: `{ message: 'Socio desactivado correctamente' }`
 
+### POST /api/cajas/:cajaId/socios/:socioId/reactivar
+
+Reactiva a un socio que salió (Etapa 7, T8). Llegan sus datos revisados y la dirección escrita de nuevo. La base borra la fecha de salida y abre un periodo nuevo desde hoy (migraciones `018` y `020`); sus cuentas siguen cerradas hasta que se reabran. Si vuelve a usar DOMUS, entra a la caja con un código de invitación.
+
+- Rol mínimo: `coordinador`. Desde la migración `023`, la base también exige el coordinador para cambiar el estado de una ficha, en los dos sentidos.
+- Body: `{ nombre, apellido, cedula, telefono?, email?, direccion }`
+- 200: `{ message, socio }`
+- 400: faltan nombre, apellido o cédula; falta la dirección (`campo: "direccion"`); la cédula es de otra ficha de la caja.
+- 404: la ficha no existe. 409: la ficha ya está activa.
+
 ### GET /api/cajas/:cajaId/socios/:socioId/correcciones-ingreso
 
 Correcciones de la fecha de ingreso del socio, la más reciente primero (Etapa 6, T14; migración `009`).

@@ -63,7 +63,7 @@ begin
   perform pg_temp.anotar('Editar la ficha inactiva no cambia la fecha', d = hoy, coalesce(d::text, 'null'));
   e := pg_temp.error_de(format('update public.socios set fecha_salida = %L where id = %L', '2024-06-01', ana));
   perform pg_temp.anotar('Nadie escribe la fecha de salida a mano', e like '42501%', e);
-  update public.socios set activo = true, updated_at = now() where id = ana;
+  update public.socios set activo = true, direccion = 'Calle nueva 2', updated_at = now() where id = ana;
   select fecha_salida into d from public.socios where id = ana;
   perform pg_temp.anotar('Al reactivarlo, se quita', d is null, coalesce(d::text, 'null'));
 

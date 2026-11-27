@@ -70,7 +70,7 @@ begin
   e := pg_temp.error_de(format('update public.cuentas_ahorro set estado = %L where id = %L', 'activa', cta));
   perform pg_temp.anotar('Con el titular inactivo no se reabre', e like 'DM409%', e);
 
-  update public.socios set activo = true, updated_at = now() where id = ana;
+  update public.socios set activo = true, direccion = 'Calle nueva 2', updated_at = now() where id = ana;
   e := pg_temp.error_de(format('update public.cuentas_ahorro set estado = %L where id = %L', 'activa', cta));
   select estado, fecha_cierre into c from public.cuentas_ahorro where id = cta;
   perform pg_temp.anotar('Con la ficha activa se reabre y pierde la fecha de cierre', e = 'sin error' and c.estado = 'activa' and c.fecha_cierre is null, e || ' ' || c.estado);

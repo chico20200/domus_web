@@ -11,6 +11,8 @@ export interface Socio {
   direccion: string
   fecha_ingreso: string
   activo: boolean
+  /** La última salida; null mientras está activo (migración 018) */
+  fecha_salida: string | null
   created_at: string
 }
 

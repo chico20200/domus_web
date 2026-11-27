@@ -147,6 +147,69 @@ router.delete("/:socioId", requierePermiso("socios.eliminar"), async (req, res) 
 })
 
 // ─────────────────────────────────────────────
+// POST /api/cajas/:cajaId/socios/:socioId/reactivar
+//   { nombre, apellido, cedula, telefono, email, direccion }
+// Reactiva a un socio que salió (Etapa 7, T8) — solo coordinador. Llegan los datos de la
+// ficha revisados y la dirección escrita de nuevo (obligatoria). La base borra la fecha
+// de salida y abre un periodo nuevo desde hoy (018, 020) y exige la dirección y el rol
+// (023). Sus cuentas siguen cerradas hasta que se reabran; si vuelve a usar DOMUS, entra
+// a la caja con un código de invitación.
+// ─────────────────────────────────────────────
+router.post("/:socioId/reactivar", requierePermiso("socios.eliminar"), async (req, res) => {
+  const { cajaId, socioId } = req.params
+  const { nombre, apellido, cedula, telefono, email, direccion } = req.body ?? {}
+
+  if (!nombre?.trim() || !apellido?.trim() || !cedula?.trim()) {
+    return res.status(400).json({ error: "Nombre, apellido y cédula son requeridos" })
+  }
+  if (!direccion?.trim()) {
+    return res.status(400).json({ error: "Escribe su dirección actual", campo: "direccion" })
+  }
+
+  const { data: ficha, error: errorFicha } = await req.db
+    .from("socios")
+    .select("id, activo")
+    .eq("id", socioId)
+    .eq("caja_id", cajaId)
+    .maybeSingle()
+  if (errorFicha) return responderError(res, errorFicha)
+  if (!ficha) return res.status(404).json({ error: "Socio no encontrado" })
+  if (ficha.activo) return res.status(409).json({ error: "La ficha ya está activa" })
+
+  // Si cambió la cédula, que no sea la de otra ficha de la caja
+  const { data: otra } = await req.db
+    .from("socios")
+    .select("id")
+    .eq("caja_id", cajaId)
+    .eq("cedula", soloDigitos(cedula))
+    .neq("id", socioId)
+    .maybeSingle()
+  if (otra) {
+    return res.status(400).json({ error: "Ya existe otro socio con esa cédula en esta caja" })
+  }
+
+  const { data, error } = await req.db
+    .from("socios")
+    .update({
+      nombre: nombre.trim(),
+      apellido: apellido.trim(),
+      cedula: cedula.trim(),
+      telefono: telefono?.trim() ?? "",
+      email: email?.trim() ?? "",
+      direccion: direccion.trim(),
+      activo: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", socioId)
+    .eq("caja_id", cajaId)
+    .select()
+    .single()
+
+  if (error) return responderError(res, error)
+  return res.json({ message: "Socio reactivado", socio: data })
+})
+
+// ─────────────────────────────────────────────
 // GET /api/cajas/:cajaId/socios/:socioId/correcciones-ingreso
 // Correcciones de la fecha de ingreso de un socio, la más reciente primero (T14)
 // ─────────────────────────────────────────────
