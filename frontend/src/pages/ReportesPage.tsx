@@ -31,6 +31,7 @@ import { useDatos } from "../lib/useDatos"
 import { tieneRol } from "../lib/roles"
 import { mesCorto } from "./reportes/meses"
 import { descargarReporte } from "./reportes/pdfReporte"
+import { descargarReporteExcel } from "./reportes/excelReporte"
 import { PasarSobranteModal } from "./reportes/PasarSobranteModal"
 import { DetalleSocioModal } from "./reportes/DetalleSocioModal"
 
@@ -62,6 +63,8 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
   const [vista, setVista] = useState<Vista>("socios")
   const [detalle, setDetalle] = useState<InteresSocio | null>(null)
   const [pasandoSobrante, setPasandoSobrante] = useState(false)
+  const [exportando, setExportando] = useState(false)
+  const [errorExcel, setErrorExcel] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     const ciclo = cicloPedido ?? undefined
@@ -267,6 +270,23 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
             </div>
           )}
           <Button
+            label={exportando ? "Preparando el Excel…" : "Descargar Excel"}
+            icon={Download}
+            variant="secondary"
+            disabled={actualizando || exportando}
+            onClick={async () => {
+              setExportando(true)
+              setErrorExcel(null)
+              try {
+                await descargarReporteExcel(dist, estado)
+              } catch {
+                setErrorExcel("No se pudo preparar el Excel. Inténtalo de nuevo.")
+              } finally {
+                setExportando(false)
+              }
+            }}
+          />
+          <Button
             label="Descargar PDF"
             icon={Download}
             disabled={actualizando}
@@ -274,6 +294,11 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
           />
         </div>
       </div>
+      {errorExcel && (
+        <p role="alert" className="text-sm text-destructivo">
+          {errorExcel}
+        </p>
+      )}
 
       <div
         aria-busy={actualizando}

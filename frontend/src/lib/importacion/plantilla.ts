@@ -1,6 +1,7 @@
 // src/lib/importacion/plantilla.ts
 import type { Worksheet } from "exceljs"
 import { MODULOS, type Columna, type ModuloImportacion } from "./modulos"
+import { descargarBlob, TIPO_XLSX } from "../descargar"
 
 /**
  * Arma y descarga la plantilla de Excel de un módulo (T20). La primera hoja explica cómo
@@ -101,17 +102,7 @@ export async function descargarPlantilla(modulo: ModuloImportacion) {
   }
 
   const buffer = await libro.xlsx.writeBuffer()
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `${def.archivo}.xlsx`
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  descargarBlob(new Blob([buffer], { type: TIPO_XLSX }), `${def.archivo}.xlsx`)
 }
 
 function estiloEncabezado(fila: ReturnType<Worksheet["getRow"]>) {
