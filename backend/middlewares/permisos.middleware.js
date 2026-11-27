@@ -26,6 +26,8 @@ const PERMISOS = {
 
   // Configurar la caja: nombre, descripción y ciclos
   "caja.configurar": "coordinador",
+  // Eliminar la caja al final de su vida (Etapa 7, T9)
+  "caja.eliminar": "coordinador",
   // Cambiar roles, quitar miembros e invitar
   "miembros.gestionar": "coordinador",
   "socios.eliminar": "coordinador",

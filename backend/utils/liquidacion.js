@@ -23,7 +23,9 @@ const d = (centavos) => centavos / 100
  * @param creditos [{ id, numero, estado, monto_solicitado, tasa_interes, plazo_meses,
  *                    fecha_desembolso, pagos: [...] }]
  * @param acceso  { tiene: si su cuenta de usuario entra a la caja (la pierde al salir),
- *                  propia: si quien consulta es el mismo socio (no registra su salida) }
+ *                  propia: si quien consulta es el mismo socio, ultimo: si es el último
+ *                  socio activo. Su propia salida solo la registra el último, y conserva
+ *                  el acceso para eliminar la caja (025) }
  * @param interes { ciclo: { numero, label, inicio, fin } | null, monto, tipo } o null si la
  *                caja no tiene configurado su periodo
  */
@@ -74,10 +76,11 @@ function calcularLiquidacion({ socio, cuentas, creditos, interes, acceso = {} })
       mensaje: "La ficha ya está inactiva: ya salió de la caja.",
     })
   }
-  if (acceso.propia) {
+  if (acceso.propia && !acceso.ultimo) {
     impedimentos.push({
       codigo: "propia",
-      mensaje: "Es tu propia ficha: tu salida la registra otro coordinador.",
+      mensaje:
+        "Es tu propia ficha: mientras haya otros socios activos, tu salida la registra otro coordinador.",
     })
   }
   if (ahorros < deuda) {
@@ -95,7 +98,8 @@ function calcularLiquidacion({ socio, cuentas, creditos, interes, acceso = {} })
       cedula: socio.cedula,
       activo: socio.activo,
       // Su cuenta de usuario entra hoy a la caja: al salir pierde el acceso (022)
-      pierde_acceso: Boolean(acceso.tiene),
+      // Salvo el último socio que registra su propia salida: conserva el acceso (025)
+      pierde_acceso: Boolean(acceso.tiene) && !acceso.propia,
     },
     cuentas: conSaldo,
     ahorros: d(ahorros),

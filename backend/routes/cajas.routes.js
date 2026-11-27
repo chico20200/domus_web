@@ -285,6 +285,38 @@ router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) =>
 })
 
 // ─────────────────────────────────────────────
+// GET /api/cajas/:cajaId/eliminacion
+// Lo que falta para eliminar la caja (Etapa 7, T9): créditos, ahorros, fondos y socios
+// activos. Solo el coordinador.
+// ─────────────────────────────────────────────
+router.get("/:cajaId/eliminacion", requierePermiso("caja.eliminar"), async (req, res) => {
+  const { data, error } = await req.db.rpc("requisitos_eliminar_caja", {
+    p_caja: req.params.cajaId,
+  })
+  if (error) return responderError(res, error)
+  return res.json(data)
+})
+
+// ─────────────────────────────────────────────
+// POST /api/cajas/:cajaId/eliminar   { nombre }
+// Elimina la caja (Etapa 7, T9; migración 024): queda 'eliminada', con sus datos, y nadie
+// registra nada en ella. La base vuelve a comprobar que no quede nada en curso y que el
+// nombre escrito sea el de la caja. Solo el coordinador.
+// ─────────────────────────────────────────────
+router.post("/:cajaId/eliminar", requierePermiso("caja.eliminar"), async (req, res) => {
+  const nombre = typeof req.body?.nombre === "string" ? req.body.nombre : ""
+  if (!nombre.trim()) {
+    return res.status(400).json({ error: "Escribe el nombre de la caja para confirmar" })
+  }
+  const { data, error } = await req.db.rpc("eliminar_caja", {
+    p_caja: req.params.cajaId,
+    p_nombre: nombre,
+  })
+  if (error) return responderError(res, error)
+  return res.json({ message: "Caja eliminada", caja: data })
+})
+
+// ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId
 // Edita nombre/descripción — solo coordinador
 // ─────────────────────────────────────────────

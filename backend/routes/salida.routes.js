@@ -142,6 +142,19 @@ async function leerLiquidacion(db, cajaId, socioId, usuarioId) {
     tieneAcceso = Boolean(m?.activo)
   }
 
+  // Su propia ficha (025): solo la registra si es el último socio activo de la caja
+  const propia = Boolean(socio.user_id) && socio.user_id === usuarioId
+  let ultimo = false
+  if (propia) {
+    const { data: activos, error: e } = await db
+      .from("socios")
+      .select("id")
+      .eq("caja_id", cajaId)
+      .eq("activo", true)
+    if (e) throw e
+    ultimo = (activos ?? []).every((s) => s.id === socioId)
+  }
+
   const [cuentas, creditos, caja] = await Promise.all([
     db
       .from("cuentas_ahorro")
@@ -182,7 +195,7 @@ async function leerLiquidacion(db, cajaId, socioId, usuarioId) {
       pagos: pagos.filter((p) => p.credito_id === cr.id),
     })),
     interes: await interesDelCiclo(db, cajaId, caja.data, socioId),
-    acceso: { tiene: tieneAcceso, propia: Boolean(socio.user_id) && socio.user_id === usuarioId },
+    acceso: { tiene: tieneAcceso, propia, ultimo },
   })
 }
 

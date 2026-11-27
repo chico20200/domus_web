@@ -310,6 +310,23 @@ Fija o quita el monto máximo de un crédito.
 - 400: falta el campo, o el monto no es válido
 - La base lo aplica en cada solicitud nueva (`POST /creditos`): por encima responde 400 con "El monto máximo de crédito de esta caja es $1.500,00". Los créditos ya solicitados no cambian.
 
+### GET /api/cajas/:cajaId/eliminacion
+
+Lo que falta para eliminar la caja (Etapa 7, T9; `requisitos_eliminar_caja`, migración `024`).
+
+- Rol mínimo: `coordinador`
+- 200: `{ creditos, cuentas_con_saldo, ahorros, fondos_con_saldo, saldo_fondos, socios_activos, puede_eliminar }`. `creditos` cuenta los pendientes, activos y vencidos; `puede_eliminar` es que todo esté en 0.
+
+### POST /api/cajas/:cajaId/eliminar
+
+Elimina la caja (Etapa 7, T9; `eliminar_caja`, migración `024`). No borra nada: la caja pasa a `eliminada`, con quién y cuándo (`eliminada_por`, `estado_cambiado_en`), sus códigos de invitación se desactivan y nadie registra nada más en ella. La base vuelve a comprobar los requisitos con la caja bloqueada para escritura.
+
+- Rol mínimo: `coordinador`
+- Body: `{ nombre }`, el nombre de la caja escrito como confirmación (se compara sin espacios al inicio ni al final).
+- 200: `{ message, caja: { id, nombre, estado, estado_cambiado_en } }`
+- 400: falta el nombre o no coincide.
+- 409: queda algún socio activo, crédito pendiente o en curso, ahorro o fondo con saldo (el mensaje dice cuál); la caja ya está eliminada o la bloqueó la administración de DOMUS.
+
 ### POST /api/cajas/unirse
 
 El usuario se une a una caja mediante un código de invitación. Quien fue removido de la caja vuelve a entrar con el rol del código nuevo. Si existe un socio en la caja con el mismo email (sin distinguir mayúsculas) y sin `user_id` vinculado, se vincula automáticamente.
@@ -775,12 +792,12 @@ Vista previa de la liquidación de salida (Etapa 7, T3). No cambia nada; el cál
   - `solicitudes`: créditos sin aprobar `[{ id, numero, monto }]`; se anulan al registrar la salida.
   - `neto` = ahorros + interés − deuda.
   - `socio.pierde_acceso`: su cuenta de usuario entra hoy a la caja; al salir pierde el acceso (migración `022`).
-  - `impedimentos`: `[{ codigo, mensaje }]`, con `codigo` `inactivo` (la ficha ya salió), `propia` (es la ficha de quien consulta: su salida la registra otro coordinador) o `deuda` (sus ahorros no cubren la deuda). `puede_salir` es que no haya ninguno.
+  - `impedimentos`: `[{ codigo, mensaje }]`, con `codigo` `inactivo` (la ficha ya salió), `propia` (es la ficha de quien consulta y quedan otros socios activos: su salida la registra otro coordinador; si es el último socio, no hay impedimento y `pierde_acceso` es false) o `deuda` (sus ahorros no cubren la deuda). `puede_salir` es que no haya ninguno.
 - 404: la ficha no existe en la caja.
 
 ### POST /api/cajas/:cajaId/socios/:socioId/salida
 
-Registra la salida (Etapa 7, T4). Vuelve a calcular la liquidación en el servidor y, si el neto coincide con el que vio la pantalla, la registra toda junta con `registrar_salida` (migración `021`): paga cada crédito en curso (cuotas vencidas con su interés; las demás solo capital, con el interés condonado), anula las solicitudes sin aprobar, retira de sus cuentas primero lo que pagó los créditos y después lo que se le entrega, cierra las cuentas, desactiva la ficha (fecha de salida y fin de su periodo), le quita el acceso a la caja si entraba con su cuenta (migración `022`; vuelve con un código de invitación) y guarda la liquidación (`detalle.acceso_retirado`). Nadie registra su propia salida.
+Registra la salida (Etapa 7, T4). Vuelve a calcular la liquidación en el servidor y, si el neto coincide con el que vio la pantalla, la registra toda junta con `registrar_salida` (migración `021`): paga cada crédito en curso (cuotas vencidas con su interés; las demás solo capital, con el interés condonado), anula las solicitudes sin aprobar, retira de sus cuentas primero lo que pagó los créditos y después lo que se le entrega, cierra las cuentas, desactiva la ficha (fecha de salida y fin de su periodo), le quita el acceso a la caja si entraba con su cuenta (migración `022`; vuelve con un código de invitación) y guarda la liquidación (`detalle.acceso_retirado`). Nadie registra su propia salida, salvo el último socio activo de la caja, que además conserva el acceso para poder eliminarla (migración `025`).
 
 - Rol mínimo: `coordinador`
 - Body: `{ neto_esperado, ahorros_entregados: true, interes_entregado: true }`
