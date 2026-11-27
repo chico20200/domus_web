@@ -457,7 +457,10 @@ Cambia el estado de la cuenta.
 - Rol mínimo: `coordinador`
 - Body: `{ estado }` — uno de `activa | cerrada | suspendida`
 - 200: `{ message, cuenta }`
-- 400: `{ error: 'Estado inválido' }`
+- 400: `{ error: 'Estado inválido' }`, o la cuenta tiene saldo y se pidió cerrarla (`DM400`: "Para cerrar la cuenta, el saldo tiene que estar en 0…"). Al cerrarla, la base pone `fecha_cierre` en hoy.
+- 409: se pidió reabrir una cuenta cerrada y la ficha del titular está inactiva (`DM409`, migración `019`).
+
+El detalle (`GET /:cuentaId`) trae `socios.activo`, para que la pantalla sepa si se puede reabrir.
 
 ---
 

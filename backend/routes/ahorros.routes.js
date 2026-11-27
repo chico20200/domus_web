@@ -85,7 +85,7 @@ router.get("/:cuentaId", requierePermiso("caja.ver"), async (req, res) => {
 
   const { data: cuenta, error } = await req.db
     .from("cuentas_ahorro")
-    .select(`*, socios ( nombre, apellido, cedula, user_id )`)
+    .select(`*, socios ( nombre, apellido, cedula, activo, user_id )`)
     .eq("id", cuentaId)
     .eq("caja_id", cajaId)
     .single()
@@ -263,7 +263,8 @@ router.get(
 
 // ─────────────────────────────────────────────
 // PUT /api/cajas/:cajaId/cuentas/:cuentaId/estado
-// Cambia estado de cuenta — solo coordinador
+// Cambia estado de cuenta — solo coordinador. La base exige saldo 0 para cerrarla y la
+// ficha del titular activa para reabrirla (migraciones 005 y 019)
 // ─────────────────────────────────────────────
 router.put("/:cuentaId/estado", requierePermiso("cuentas.cambiar_estado"), async (req, res) => {
   const { cajaId, cuentaId } = req.params

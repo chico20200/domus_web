@@ -7,10 +7,14 @@ export interface CuentaAhorro {
   saldo: number
   estado: "activa" | "cerrada" | "suspendida"
   fecha_apertura: string
+  /** Día en que se cerró; null si está abierta */
+  fecha_cierre?: string | null
   socios?: {
     nombre: string
     apellido: string
     cedula: string
+    /** Solo en el detalle: si la ficha del titular está activa (para reabrir la cuenta) */
+    activo?: boolean
   }
 }
 
