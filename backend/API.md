@@ -748,6 +748,19 @@ Las últimas 200 acciones, la más reciente primero: bloqueos y restablecimiento
 
 ---
 
+## Pendientes — `/api/cajas/:cajaId/pendientes`
+
+### GET /api/cajas/:cajaId/pendientes
+
+Lo que muestra la campana de la barra superior (T29). Se calcula al leer, con el token de la persona; no se guarda ni se marca como leído.
+
+- Rol mínimo: `socio`
+- 200: `{ solicitudes, mora, ciclo_por_cerrar, nuevos_miembros, mis_cuotas }`
+  - Solo `tesorero` y `coordinador` (para el socio, `null`): `solicitudes` (créditos `pendiente`), `mora` (`{ creditos, cuotas, monto }` de los créditos en mora, o `null`), `ciclo_por_cerrar` (`{ numero, label, fin, dias }` si el ciclo actual cierra en 30 días o menos, o `null`) y `nuevos_miembros` (`{ total, sin_ficha, dias: 14 }`: miembros activos que entraron en los últimos 14 días y cuántos no tienen ficha vinculada, o `null`).
+  - Para todos: `mis_cuotas`, la próxima cuota de cada crédito en curso de la ficha de quien consulta (`{ credito_id, numero, numero_cuota, fecha_vencimiento, falta_total, dias, vencidas, monto_vencido }`), la que vence antes primero. Sin ficha, `[]`.
+
+---
+
 ## Resumen de montaje de rutas (`server.js`)
 
 ```
