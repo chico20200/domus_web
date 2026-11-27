@@ -89,7 +89,14 @@ function calcularLiquidacion({ socio, cuentas, creditos, interes }) {
     },
     cuentas: conSaldo,
     ahorros: d(ahorros),
-    interes: interes ? { ciclo: interes.ciclo, tipo: interes.tipo, monto: d(interesCiclo) } : null,
+    interes: interes
+      ? {
+          ciclo: interes.ciclo,
+          tipo: interes.tipo,
+          monto: d(interesCiclo),
+          por_mes: interes.por_mes ?? [],
+        }
+      : null,
     creditos: deudas,
     deuda: d(deuda),
     solicitudes,

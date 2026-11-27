@@ -61,7 +61,36 @@ async function distribucionDelCiclo(db, cajaId, ciclo) {
     transacciones: txPlanas,
     pagosInteres: pagosInteres ?? [],
     tipo: await tipoDeReparto(db, cajaId, ciclo.inicio),
+    fijos: await interesesFijos(db, cajaId, ciclo.inicio),
   })
+}
+
+/**
+ * El interés ya entregado en las liquidaciones de salida del ciclo (Etapa 7, T5), por
+ * socio: { hasta, por_mes, total }. Si un socio salió dos veces en el mismo ciclo, manda
+ * la última liquidación: su detalle mes a mes ya incluye lo de la primera, y `total` es
+ * la suma de las dos. Una liquidación sin detalle mes a mes pone todo en el mes de salida.
+ */
+async function interesesFijos(db, cajaId, inicio) {
+  const { data, error } = await db
+    .from("liquidaciones")
+    .select("socio_id, fecha, interes, detalle, created_at")
+    .eq("caja_id", cajaId)
+    .eq("ciclo_inicio", inicio)
+    .order("created_at")
+  if (error) throw error
+
+  const fijos = {}
+  for (const l of data ?? []) {
+    const hasta = l.fecha.slice(0, 7)
+    const total = +((fijos[l.socio_id]?.total ?? 0) + Number(l.interes)).toFixed(2)
+    const detalle = l.detalle?.interes?.por_mes
+    const por_mes = Array.isArray(detalle)
+      ? Object.fromEntries(detalle.map((m) => [m.mes, Number(m.interes)]))
+      : { [hasta]: total }
+    fijos[l.socio_id] = { hasta, por_mes, total }
+  }
+  return fijos
 }
 
 module.exports = { distribucionDelCiclo }

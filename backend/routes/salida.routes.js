@@ -162,8 +162,20 @@ async function interesDelCiclo(db, cajaId, caja, socioId) {
     caja.duracion_ciclo,
   )
   if (!cicloActual) return null
-  const dist = await distribucionDelCiclo(db, cajaId, cicloActual)
+  const [dist, previas] = await Promise.all([
+    distribucionDelCiclo(db, cajaId, cicloActual),
+    db
+      .from("liquidaciones")
+      .select("interes")
+      .eq("socio_id", socioId)
+      .eq("ciclo_inicio", cicloActual.inicio),
+  ])
+  if (previas.error) throw previas.error
   const suyo = (dist.por_socio ?? []).find((s) => s.socio_id === socioId)
+  const total = suyo?.interes_total ?? 0
+  // Si ya salió una vez en este ciclo y volvió, lo que se le entregó entonces no se repite
+  const yaEntregado = (previas.data ?? []).reduce((s, l) => s + Math.round(l.interes * 100), 0)
+
   return {
     ciclo: {
       numero: cicloActual.numero,
@@ -172,8 +184,20 @@ async function interesDelCiclo(db, cajaId, caja, socioId) {
       fin: cicloActual.fin,
     },
     tipo: dist.tipo,
-    monto: suyo?.interes_total ?? 0,
+    monto: Math.max(Math.round(total * 100) - yaEntregado, 0) / 100,
+    // Mes a mes, en centavos exactos que suman su total del ciclo: la liquidación lo
+    // guarda y desde ahí su interés de este ciclo queda fijo (T5)
+    por_mes: porMesExacto(suyo?.por_mes ?? [], total),
   }
+}
+
+/** Ajusta el último mes con interés para que la suma sea exactamente el total */
+function porMesExacto(porMes, total) {
+  const meses = porMes.map((m) => ({ mes: m.mes, interes: Math.round(m.interes * 100) }))
+  const diferencia = Math.round(total * 100) - meses.reduce((s, m) => s + m.interes, 0)
+  const ultimo = [...meses].reverse().find((m) => m.interes > 0) ?? meses[meses.length - 1]
+  if (ultimo) ultimo.interes += diferencia
+  return meses.map((m) => ({ mes: m.mes, interes: m.interes / 100 }))
 }
 
 module.exports = router

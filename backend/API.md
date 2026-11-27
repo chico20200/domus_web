@@ -113,7 +113,7 @@ Reglas del sobrante (en la base, `pasar_sobrante_a_fondo`): el ciclo tiene que h
 
 ### Reportes por las fechas del ciclo (T24, migración 018)
 
-- **Socios del ciclo:** `distribucion-interes` incluye a los socios que estuvieron en el ciclo: ingresaron hasta su fin y no habían salido antes de su inicio, aunque hoy estén inactivos. Cada socio trae `activo` y `fecha_salida`. En la equitativa recibe los meses en que estuvo; el mes en que entró y el mes en que salió cuentan enteros. Desde la migración `020` se usan sus **periodos de membresía** (`periodos_socio`): quien salió y volvió cuenta en los meses de cada periodo y no en los que estuvo fuera.
+- **Socios del ciclo:** `distribucion-interes` incluye a los socios que estuvieron en el ciclo: ingresaron hasta su fin y no habían salido antes de su inicio, aunque hoy estén inactivos. Cada socio trae `activo` y `fecha_salida`. En la equitativa recibe los meses en que estuvo; el mes en que entró y el mes en que salió cuentan enteros. Desde la migración `020` se usan sus **periodos de membresía** (`periodos_socio`): quien salió y volvió cuenta en los meses de cada periodo y no en los que estuvo fuera. Desde T5, quien salió con liquidación en el ciclo trae `interes_entregado: true`: hasta el mes de su salida recibe exactamente lo que se le entregó (el detalle mes a mes guardado en la liquidación) y el resto del interés de esos meses se reparte entre los demás; lo cobrado después ya no le toca.
 - **Fecha de salida:** `socios.fecha_salida` la pone la base al desactivar la ficha (hoy) y la quita si vuelve a activarse. Nadie la escribe a mano. Prueba: `backend/pruebas/salida.sql`.
 - **Saldos al corte:** `estado-caja` mide todo a `corte`: el fin del ciclo si ya cerró, hoy si está en curso. Devuelve `corte` y `ciclo.cerrado`. Al corte se calculan:
   - ahorros = suma de los movimientos hasta esa fecha;
@@ -760,7 +760,7 @@ Vista previa de la liquidación de salida (Etapa 7, T3). No cambia nada; el cál
 - Rol mínimo: `tesorero`
 - 200: `{ socio, cuentas, ahorros, interes, creditos, deuda, solicitudes, neto, puede_salir, impedimentos }`
   - `cuentas`: `[{ id, numero_cuenta, estado, saldo }]`; `ahorros` es la suma de sus saldos.
-  - `interes`: `{ ciclo: { numero, label, inicio, fin }, tipo, monto }`, lo que le toca del reparto del ciclo actual hasta hoy (el mismo cálculo de Reportes, `utils/repartoCiclo.js`); `null` si la caja no tiene configurado su periodo.
+  - `interes`: `{ ciclo: { numero, label, inicio, fin }, tipo, monto, por_mes }`, lo que le toca del reparto del ciclo actual hasta hoy (el mismo cálculo de Reportes, `utils/repartoCiclo.js`), menos lo que ya se le entregó si salió antes en el mismo ciclo; `por_mes` es su detalle mes a mes en centavos exactos, que la liquidación guarda para fijarlo (T5). `null` si la caja no tiene configurado su periodo.
   - `creditos`: cada crédito en curso con `{ id, numero, capital_pendiente, interes_vencido, cuotas_vencidas, interes_condonado, deuda }`. `deuda` = capital pendiente + interés de las cuotas vencidas; `interes_condonado` es el de las cuotas que aún no vencen, que no se cobra.
   - `solicitudes`: créditos sin aprobar `[{ id, numero, monto }]`; se anulan al registrar la salida.
   - `neto` = ahorros + interés − deuda.
