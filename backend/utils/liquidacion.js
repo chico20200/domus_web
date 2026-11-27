@@ -46,6 +46,8 @@ function calcularLiquidacion({ socio, cuentas, creditos, interes }) {
       return {
         id: cr.id,
         numero: cr.numero,
+        saldo_pendiente: d(c(cr.saldo_pendiente)),
+        partes: partesDelPago(filas),
         capital_pendiente: d(capital),
         interes_vencido: d(interesVencido),
         cuotas_vencidas: vencidas.length,
@@ -95,6 +97,39 @@ function calcularLiquidacion({ socio, cuentas, creditos, interes }) {
     puede_salir: impedimentos.length === 0,
     impedimentos,
   }
+}
+
+/**
+ * Los pagos con que la salida salda un crédito (T4), cuota por cuota: las vencidas con su
+ * capital y su interés; las demás solo con capital y su interés condonado (como un pago
+ * adelantado). Una cuota sin capital por pagar cuyo interés se condona no puede ser un
+ * pago por sí sola (registrar_pago_credito pide un monto mayor que 0): su interés se
+ * condona junto con la última cuota que sí lleva capital.
+ */
+function partesDelPago(filas) {
+  const partes = []
+  let huerfano = 0
+  for (const f of filas) {
+    const capital = c(f.falta_capital)
+    const interes = c(f.falta_interes)
+    if (capital === 0 && interes === 0) continue
+    if (f.vencida) {
+      partes.push({ numero_cuota: f.numero_cuota, capital, interes, interes_condonado: 0 })
+    } else if (capital > 0) {
+      partes.push({ numero_cuota: f.numero_cuota, capital, interes: 0, interes_condonado: interes })
+    } else {
+      huerfano += interes
+    }
+  }
+  const conCapital = partes.filter((p) => p.capital > 0)
+  if (huerfano > 0 && conCapital.length)
+    conCapital[conCapital.length - 1].interes_condonado += huerfano
+  return partes.map((p) => ({
+    numero_cuota: p.numero_cuota,
+    capital: d(p.capital),
+    interes: d(p.interes),
+    interes_condonado: d(p.interes_condonado),
+  }))
 }
 
 /** $1.234,56, igual que el frontend */

@@ -767,6 +767,18 @@ Vista previa de la liquidación de salida (Etapa 7, T3). No cambia nada; el cál
   - `impedimentos`: `[{ codigo, mensaje }]`, con `codigo` `inactivo` (la ficha ya salió) o `deuda` (sus ahorros no cubren la deuda). `puede_salir` es que no haya ninguno.
 - 404: la ficha no existe en la caja.
 
+### POST /api/cajas/:cajaId/socios/:socioId/salida
+
+Registra la salida (Etapa 7, T4). Vuelve a calcular la liquidación en el servidor y, si el neto coincide con el que vio la pantalla, la registra toda junta con `registrar_salida` (migración `021`): paga cada crédito en curso (cuotas vencidas con su interés; las demás solo capital, con el interés condonado), anula las solicitudes sin aprobar, retira de sus cuentas primero lo que pagó los créditos y después lo que se le entrega, cierra las cuentas, desactiva la ficha (fecha de salida y fin de su periodo) y guarda la liquidación.
+
+- Rol mínimo: `coordinador`
+- Body: `{ neto_esperado, ahorros_entregados: true, interes_entregado: true }`
+- 201: `{ message, liquidacion }`, la fila de `liquidaciones` (`ahorros`, `interes`, `ciclo_*`, `tipo_reparto`, `deuda`, `interes_condonado`, `neto`, `detalle`, `fecha`, …)
+- 400: falta marcar la lista (ahorros e interés entregados).
+- 409: `{ error, liquidacion }` si no puede salir (el primer impedimento) o si la liquidación cambió desde la vista previa (`liquidacion` trae las cifras nuevas). La base también responde 409 si un saldo, un crédito o una solicitud cambió, o si el plan no cubre todo el capital pendiente.
+
+Desde la migración `021`, `DELETE /socios/:socioId` (desactivar) responde 409 si la ficha tiene ahorros o créditos en curso: esa ficha sale con la liquidación.
+
 ---
 
 ## Pendientes — `/api/cajas/:cajaId/pendientes`

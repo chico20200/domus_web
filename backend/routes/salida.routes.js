@@ -26,6 +26,79 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   }
 })
 
+// ─────────────────────────────────────────────
+// POST /api/cajas/:cajaId/socios/:socioId/salida
+//   { neto_esperado, ahorros_entregados, interes_entregado }
+// Registra la salida (Etapa 7, T4): vuelve a calcular la liquidación aquí, sin fiarse de
+// lo que vio la pantalla, y si el neto es el mismo la registra toda junta con
+// registrar_salida (migración 021): pagos de los créditos, retiros, cuentas cerradas,
+// ficha inactiva y la liquidación guardada. Solo el coordinador.
+// ─────────────────────────────────────────────
+router.post("/", requierePermiso("socios.eliminar"), async (req, res) => {
+  const { cajaId, socioId } = req.params
+  const { neto_esperado, ahorros_entregados, interes_entregado } = req.body ?? {}
+
+  if (ahorros_entregados !== true || interes_entregado !== true) {
+    return res.status(400).json({
+      error:
+        "Antes de registrar la salida, confirma que se le entregaron sus ahorros y el interés del ciclo",
+    })
+  }
+  try {
+    const liq = await leerLiquidacion(req.db, cajaId, socioId)
+    if (!liq) return res.status(404).json({ error: "Socio no encontrado" })
+    if (!liq.puede_salir) {
+      return res.status(409).json({ error: liq.impedimentos[0].mensaje, liquidacion: liq })
+    }
+    if (Number(neto_esperado) !== liq.neto) {
+      return res.status(409).json({
+        error:
+          "La liquidación cambió mientras la revisabas. Revisa las cifras nuevas antes de registrarla.",
+        liquidacion: liq,
+      })
+    }
+
+    const { data, error } = await req.db.rpc("registrar_salida", {
+      p_caja: cajaId,
+      p_socio: socioId,
+      p_plan: planDeSalida(liq, { ahorros_entregados, interes_entregado }),
+    })
+    if (error) return responderError(res, error)
+    return res.status(201).json({ message: "Salida registrada", liquidacion: data })
+  } catch (err) {
+    return responderError(res, err)
+  }
+})
+
+/** Lo que recibe registrar_salida: los saldos que se vieron, los pagos y el detalle */
+function planDeSalida(liq, checks) {
+  return {
+    cuentas: liq.cuentas.map((cta) => ({ id: cta.id, saldo: cta.saldo })),
+    creditos: liq.creditos.map((cr) => ({
+      id: cr.id,
+      saldo_pendiente: cr.saldo_pendiente,
+      partes: cr.partes,
+    })),
+    solicitudes: liq.solicitudes.map((s) => s.id),
+    interes: liq.interes && {
+      monto: liq.interes.monto,
+      ciclo_numero: liq.interes.ciclo?.numero ?? null,
+      ciclo_inicio: liq.interes.ciclo?.inicio ?? null,
+      ciclo_fin: liq.interes.ciclo?.fin ?? null,
+      tipo: liq.interes.tipo,
+    },
+    // Lo que se muestra después en el historial y en el PDF (T6, T7)
+    detalle: {
+      socio: liq.socio,
+      cuentas: liq.cuentas,
+      creditos: liq.creditos.map(({ partes, saldo_pendiente, ...cr }) => cr), // eslint-disable-line no-unused-vars
+      solicitudes: liq.solicitudes,
+      interes: liq.interes,
+    },
+    ...checks,
+  }
+}
+
 /** Lee lo que necesita la liquidación y la calcula; null si la ficha no existe */
 async function leerLiquidacion(db, cajaId, socioId) {
   const { data: socio, error } = await db
@@ -46,7 +119,9 @@ async function leerLiquidacion(db, cajaId, socioId) {
       .order("numero_cuenta"),
     db
       .from("creditos")
-      .select("id, numero, estado, monto_solicitado, tasa_interes, plazo_meses, fecha_desembolso")
+      .select(
+        "id, numero, estado, monto_solicitado, tasa_interes, plazo_meses, fecha_desembolso, saldo_pendiente",
+      )
       .eq("caja_id", cajaId)
       .eq("socio_id", socioId)
       .in("estado", ["pendiente", "activo", "vencido"])
@@ -103,3 +178,4 @@ async function interesDelCiclo(db, cajaId, caja, socioId) {
 
 module.exports = router
 module.exports.leerLiquidacion = leerLiquidacion
+module.exports.planDeSalida = planDeSalida
