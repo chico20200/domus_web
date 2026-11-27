@@ -12,6 +12,7 @@ import { cajasService } from "../../api/cajas.service"
 import type { RequisitosEliminarCaja } from "../../api/cajas.types"
 import { moneda } from "../../lib/format"
 import { useDatos } from "../../lib/useDatos"
+import { AYUDA } from "../../lib/ayuda"
 
 /**
  * Eliminar la caja (Etapa 7, T10; especificaciones §12). Solo el coordinador.
@@ -76,6 +77,7 @@ export function EliminarCaja({ cajaId, nombreCaja }: { cajaId: string; nombreCaj
   return (
     <Panel
       titulo="Eliminar la caja"
+      ayuda={AYUDA.eliminarCaja}
       descripcion="Al final de su vida, cuando todos sus socios salieron con su liquidación. Nadie podrá registrar nada más en ella; sus datos se conservan y sus miembros la verán como caja eliminada."
     >
       {cargando && <LoadingState texto="Revisando lo que falta…" />}

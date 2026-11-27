@@ -10,10 +10,11 @@
 -- NO DEJA RASTRO: termina con un error a propósito que lleva el resumen. El error
 -- deshace la transacción entera; no hace falta borrar nada. No depende de los datos que
 -- haya en la base: sirve igual sobre una base recién reiniciada (con las migraciones
--- 001 a 004 aplicadas).
+-- 001 a 026 aplicadas). Desde la Etapa 7 también cubre las liquidaciones de salida, los
+-- periodos de membresía y las funciones para eliminar una caja o quitarla de la lista.
 --
 -- CÓMO SE CORRE: en Supabase → SQL Editor, pegar este archivo completo y ejecutarlo. El
--- resultado sale como mensaje de error: "AISLAMIENTO: 39 de 39 casos pasan" seguido de
+-- resultado sale como mensaje de error: "AISLAMIENTO: 52 de 52 casos pasan" seguido de
 -- cada caso. Si alguno dice FALLA, el aislamiento tiene un hueco.
 
 begin;
@@ -140,6 +141,11 @@ begin
   insert into public.cuentas_ahorro (caja_id, socio_id, numero_cuenta, saldo, estado)
   values (caja_b, ficha_b, 'CA-PRUEBA-B', 0, 'activa') returning id into cuenta_b;
   perform public.registrar_movimiento(caja_b, cuenta_b, 'deposito', 75, 'prueba');
+  -- Etapa 7: la ficha de B sale con su liquidación (deja una liquidación y un periodo cerrado)
+  perform public.registrar_salida(caja_b, ficha_b, jsonb_build_object(
+    'cuentas', jsonb_build_array(jsonb_build_object('id', cuenta_b, 'saldo', 75)),
+    'creditos', '[]'::jsonb, 'solicitudes', '[]'::jsonb, 'interes', null,
+    'ahorros_entregados', true, 'interes_entregado', true));
 
   perform pg_temp.como(null);
   perform set_config('role', 'postgres', true);
@@ -156,7 +162,8 @@ declare
   i ids;
   n bigint;
   e text;
-  tablas text[] := array['socios', 'cuentas_ahorro', 'transacciones', 'creditos', 'pagos_credito', 'invitaciones_caja'];
+  tablas text[] := array['socios', 'cuentas_ahorro', 'transacciones', 'creditos', 'pagos_credito', 'invitaciones_caja',
+                          'liquidaciones', 'periodos_socio'];
   t text;
 begin
   select * into i from ids;
@@ -251,7 +258,36 @@ begin
   e := pg_temp.error_de('select public.crear_caja(''A4'', ''d'', ''2025-01-01'', 1, 12, ''prueba'')');
   perform pg_temp.anotar('Una cuenta no crea una cuarta caja', e = 'DM409', e);
 
-  -- 7. Caja bloqueada por el administrador: se lee, no se escribe
+  -- 7. Etapa 7: salida, liquidaciones y eliminar la caja, siempre dentro de la propia caja
+  perform pg_temp.como(i.tes_a);
+  n := pg_temp.contar(format('select 1 from public.periodos_socio where caja_id = %L', i.caja_a));
+  perform pg_temp.anotar('Tesorero de A ve los periodos de las 2 fichas de su caja', n = 2, n::text);
+  perform pg_temp.como(i.coord_a);
+  e := pg_temp.error_de(format('select public.registrar_salida(%L, %L, ''{}''::jsonb)', i.caja_b, i.ficha_b));
+  perform pg_temp.anotar('Coordinador de A no registra salidas en B', e = 'DM404', e);
+  e := pg_temp.error_de(format('select public.registrar_salida(%L, %L, ''{}''::jsonb)', i.caja_a, i.ficha_b));
+  perform pg_temp.anotar('Ni pasando una ficha de B como si fuera de A', e in ('DM404', 'DM400'), e);
+  e := pg_temp.error_de(format('select public.requisitos_eliminar_caja(%L)', i.caja_b));
+  perform pg_temp.anotar('Coordinador de A no ve lo que le falta a B para eliminarse', e = 'DM404', e);
+  e := pg_temp.error_de(format('select public.eliminar_caja(%L, ''Caja B de prueba'')', i.caja_b));
+  perform pg_temp.anotar('Coordinador de A no elimina la caja B', e = 'DM404', e);
+  e := pg_temp.error_de(format('select public.quitar_caja_eliminada(%L)', i.caja_b));
+  perform pg_temp.anotar('Coordinador de A no toca las membresías de B', e = 'DM404', e);
+  perform pg_temp.como(i.socio_a);
+  n := pg_temp.contar('select 1 from public.periodos_socio');
+  perform pg_temp.anotar('Socio de A ve solo su propio periodo', n = 1, n::text);
+  n := pg_temp.contar('select 1 from public.liquidaciones');
+  perform pg_temp.anotar('Socio de A no ve liquidaciones ajenas', n = 0, n::text);
+  e := pg_temp.error_de(format('select public.requisitos_eliminar_caja(%L)', i.caja_a));
+  perform pg_temp.anotar('Socio de A no consulta la eliminación de su caja', e = 'DM404', e);
+  perform pg_temp.como(i.coord_b);
+  n := pg_temp.contar(format('select 1 from public.liquidaciones where caja_id = %L', i.caja_b));
+  perform pg_temp.anotar('Coordinador de B ve la liquidación de su caja', n = 1, n::text);
+  perform pg_temp.como(null);
+  e := pg_temp.error_de('select 1 from public.liquidaciones');
+  perform pg_temp.anotar('Sin sesión no se leen liquidaciones', e = '42501', e);
+
+  -- 8. Caja bloqueada por el administrador: se lee, no se escribe
   perform pg_temp.como(null);
   perform set_config('role', 'postgres', true);
   update public.cajas set estado = 'bloqueada', estado_motivo = 'prueba' where id = i.caja_a;

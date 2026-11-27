@@ -1,6 +1,7 @@
 import { useCallback, useState, type ReactNode } from "react"
 import { AlertTriangle, CheckCircle2, Download, Info } from "lucide-react"
 import { Modal } from "../../components/Modal"
+import { AYUDA } from "../../lib/ayuda"
 import { Button } from "../../components/Button"
 import { CheckboxField } from "../../components/CheckboxField"
 import { LoadingState } from "../../components/LoadingState"
@@ -123,6 +124,7 @@ export function SalidaModal({
       abierto
       onCerrar={onCerrar}
       titulo={registrar ? `Salida de ${nombre}` : `Liquidaciones de ${nombre}`}
+      ayuda={AYUDA.salidaSocio}
       descripcion={
         registrada
           ? "Su ficha quedó inactiva y sus cuentas, cerradas."

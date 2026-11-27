@@ -138,7 +138,7 @@ Errores `400`: el monto no es mayor que 0 o tiene más de dos decimales; el mont
 
 `registrar_pago_adelantado` registra todas las partes juntas, o ninguna. Además revisa que quien lo pide sea tesorero, que la caja sea operable y el crédito `activo`, que ninguna cuota venza este mes o antes, que no se repita una cuota y que el saldo no haya cambiado.
 
-Las pruebas `backend/pruebas/aislamiento.sql` y `backend/pruebas/validacion.sql` se corren en el SQL Editor de Supabase y no dejan rastro.
+Las pruebas `backend/pruebas/aislamiento.sql` y `backend/pruebas/validacion.sql` se corren en el SQL Editor de Supabase y no dejan rastro. Lo mismo las de la Etapa 7: `liquidacion.sql` (salida con liquidación), `salida.sql` (fecha de salida), `reactivar.sql` (reactivar una ficha) y `eliminar_caja.sql` (eliminar la caja y quitarla de la lista). Cada una termina con un error a propósito que trae el resumen, por ejemplo "ELIMINAR CAJA: 28 de 28 casos pasan", y deshace todo lo que creó.
 
 ---
 

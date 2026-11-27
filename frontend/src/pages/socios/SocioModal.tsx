@@ -120,7 +120,7 @@ export function SocioModal({ cajaId, socio, reactivar = false, onCerrar, onGuard
             ? `Editar a ${socio.nombre} ${socio.apellido}`
             : "Registrar socio"
       }
-      ayuda={editando ? undefined : AYUDA.crearSocio}
+      ayuda={reactivando ? AYUDA.reactivarSocio : editando ? undefined : AYUDA.crearSocio}
       descripcion={
         reactivando
           ? `Vuelve a la caja desde hoy. Revisa sus datos de antes y escribe su dirección actual.`
