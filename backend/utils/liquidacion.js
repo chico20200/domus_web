@@ -22,10 +22,12 @@ const d = (centavos) => centavos / 100
  * @param cuentas [{ id, numero_cuenta, estado, saldo }]
  * @param creditos [{ id, numero, estado, monto_solicitado, tasa_interes, plazo_meses,
  *                    fecha_desembolso, pagos: [...] }]
+ * @param acceso  { tiene: si su cuenta de usuario entra a la caja (la pierde al salir),
+ *                  propia: si quien consulta es el mismo socio (no registra su salida) }
  * @param interes { ciclo: { numero, label, inicio, fin } | null, monto, tipo } o null si la
  *                caja no tiene configurado su periodo
  */
-function calcularLiquidacion({ socio, cuentas, creditos, interes }) {
+function calcularLiquidacion({ socio, cuentas, creditos, interes, acceso = {} }) {
   const conSaldo = (cuentas ?? []).map((cta) => ({
     id: cta.id,
     numero_cuenta: cta.numero_cuenta,
@@ -72,6 +74,12 @@ function calcularLiquidacion({ socio, cuentas, creditos, interes }) {
       mensaje: "La ficha ya está inactiva: ya salió de la caja.",
     })
   }
+  if (acceso.propia) {
+    impedimentos.push({
+      codigo: "propia",
+      mensaje: "Es tu propia ficha: tu salida la registra otro coordinador.",
+    })
+  }
   if (ahorros < deuda) {
     impedimentos.push({
       codigo: "deuda",
@@ -86,6 +94,8 @@ function calcularLiquidacion({ socio, cuentas, creditos, interes }) {
       apellido: socio.apellido,
       cedula: socio.cedula,
       activo: socio.activo,
+      // Su cuenta de usuario entra hoy a la caja: al salir pierde el acceso (022)
+      pierde_acceso: Boolean(acceso.tiene),
     },
     cuentas: conSaldo,
     ahorros: d(ahorros),

@@ -18,7 +18,7 @@ router.use(verifyToken)
 router.get("/", requierePermiso("datos.ver"), async (req, res) => {
   const { cajaId, socioId } = req.params
   try {
-    const liquidacion = await leerLiquidacion(req.db, cajaId, socioId)
+    const liquidacion = await leerLiquidacion(req.db, cajaId, socioId, req.user.id)
     if (!liquidacion) return res.status(404).json({ error: "Socio no encontrado" })
     return res.json(liquidacion)
   } catch (err) {
@@ -45,7 +45,7 @@ router.post("/", requierePermiso("socios.eliminar"), async (req, res) => {
     })
   }
   try {
-    const liq = await leerLiquidacion(req.db, cajaId, socioId)
+    const liq = await leerLiquidacion(req.db, cajaId, socioId, req.user.id)
     if (!liq) return res.status(404).json({ error: "Socio no encontrado" })
     if (!liq.puede_salir) {
       return res.status(409).json({ error: liq.impedimentos[0].mensaje, liquidacion: liq })
@@ -100,15 +100,28 @@ function planDeSalida(liq, checks) {
 }
 
 /** Lee lo que necesita la liquidación y la calcula; null si la ficha no existe */
-async function leerLiquidacion(db, cajaId, socioId) {
+async function leerLiquidacion(db, cajaId, socioId, usuarioId) {
   const { data: socio, error } = await db
     .from("socios")
-    .select("id, nombre, apellido, cedula, activo")
+    .select("id, nombre, apellido, cedula, activo, user_id")
     .eq("id", socioId)
     .eq("caja_id", cajaId)
     .maybeSingle()
   if (error) throw error
   if (!socio) return null
+
+  // Si su cuenta de usuario entra a la caja, la salida le quita el acceso (022)
+  let tieneAcceso = false
+  if (socio.user_id) {
+    const { data: m, error: e } = await db
+      .from("miembros_caja")
+      .select("activo")
+      .eq("caja_id", cajaId)
+      .eq("user_id", socio.user_id)
+      .maybeSingle()
+    if (e) throw e
+    tieneAcceso = Boolean(m?.activo)
+  }
 
   const [cuentas, creditos, caja] = await Promise.all([
     db
@@ -150,6 +163,7 @@ async function leerLiquidacion(db, cajaId, socioId) {
       pagos: pagos.filter((p) => p.credito_id === cr.id),
     })),
     interes: await interesDelCiclo(db, cajaId, caja.data, socioId),
+    acceso: { tiene: tieneAcceso, propia: Boolean(socio.user_id) && socio.user_id === usuarioId },
   })
 }
 

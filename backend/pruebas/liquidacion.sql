@@ -1,4 +1,4 @@
--- Prueba de la salida de un socio con liquidación (Etapa 7, T4; migración 021).
+-- Prueba de la salida de un socio con liquidación (Etapa 7, T4; migraciones 021 y 022).
 --
 -- QUÉ HACE: dentro de una transacción crea una caja con tres socios. Ana tiene $1.500 en
 -- dos cuentas, un crédito de $1.200 al 12 % a 12 meses con la cuota 1 pagada y dos
@@ -7,6 +7,8 @@
 -- $394,37 de neto. Comprueba quién puede, que la base rechace un plan que cambió o que
 -- condona capital, que la salida válida deje todo en su lugar, que Luis no salga si sus
 -- ahorros no cubren su deuda y que una ficha con ahorros no se desactive sin liquidación.
+-- Desde la 022: Ana, que entra con su propia cuenta, pierde el acceso a la caja al salir,
+-- y el coordinador no puede registrar su propia salida.
 --
 -- NO DEJA RASTRO, igual que aislamiento.sql.
 --
@@ -44,6 +46,8 @@ do $casos$
 declare
   coord uuid := 'd0000000-0000-4000-8000-0000000000f5';
   tes uuid := 'd0000000-0000-4000-8000-0000000000f6';
+  usu_ana uuid := 'd0000000-0000-4000-8000-0000000000f7';
+  propia uuid;
   caja uuid; ana uuid; luis uuid; rosa uuid; a1 uuid; a2 uuid; l1 uuid; cr uuid; crl uuid; sol uuid;
   e text; t text; n int; r json; plan jsonb; malo jsonb; liq record;
   hoy date := (now() at time zone 'America/Guayaquil')::date;
@@ -52,14 +56,18 @@ declare
 begin
   insert into auth.users (id, email, aud, role) values
     (coord, 'coord.liq@prueba.domus', 'authenticated', 'authenticated'),
-    (tes, 'tes.liq@prueba.domus', 'authenticated', 'authenticated');
+    (tes, 'tes.liq@prueba.domus', 'authenticated', 'authenticated'),
+    (usu_ana, 'ana.liq@prueba.domus', 'authenticated', 'authenticated');
   perform pg_temp.como(coord);
   caja := (public.crear_caja('Caja de salidas', 'Prueba', '2024-01-01', 1, 12, 'prueba')->>'id')::uuid;
 
   perform set_config('role', 'postgres', true);
-  insert into public.miembros_caja (caja_id, user_id, rol, activo) values (caja, tes, 'tesorero', true);
-  insert into public.socios (caja_id, cedula, nombre, apellido, fecha_ingreso) values
-    (caja, '0102030400', 'Ana', 'Pérez', '2024-01-01') returning id into ana;
+  insert into public.miembros_caja (caja_id, user_id, rol, activo) values
+    (caja, tes, 'tesorero', true), (caja, usu_ana, 'socio', true);
+  insert into public.socios (caja_id, cedula, nombre, apellido, fecha_ingreso, user_id) values
+    (caja, '0102030400', 'Ana', 'Pérez', '2024-01-01', usu_ana) returning id into ana;
+  insert into public.socios (caja_id, cedula, nombre, apellido, fecha_ingreso, user_id) values
+    (caja, '1104680135', 'Coord', 'Inador', '2024-01-01', coord) returning id into propia;
   insert into public.socios (caja_id, cedula, nombre, apellido, fecha_ingreso) values
     (caja, '1710034065', 'Luis', 'Mora', '2024-01-01') returning id into luis;
   insert into public.socios (caja_id, cedula, nombre, apellido, fecha_ingreso) values
@@ -145,6 +153,12 @@ begin
     format('%s %s %s %s %s', liq.ahorros, liq.interes, liq.deuda, liq.neto, liq.interes_condonado));
   e := pg_temp.error_de(format(q_salida, caja, ana, plan));
   perform pg_temp.anotar('No sale dos veces', e like 'DM409%inactiva%', e);
+  select activo::text into t from public.miembros_caja where caja_id = caja and user_id = usu_ana;
+  perform pg_temp.anotar('Ana pierde el acceso a la caja (022)', t = 'false', t);
+  perform pg_temp.anotar('La liquidación lo anota', (liq.detalle->>'acceso_retirado') = 'true', liq.detalle::text);
+  e := pg_temp.error_de(format(q_salida, caja, propia, jsonb_build_object('cuentas', '[]'::jsonb, 'creditos', '[]'::jsonb,
+    'solicitudes', '[]'::jsonb, 'ahorros_entregados', true, 'interes_entregado', true)));
+  perform pg_temp.anotar('El coordinador no registra su propia salida', e like 'DM409%propia%', e);
 
   -- Luis: $100 de ahorro y $600 de deuda
   plan := jsonb_build_object(
@@ -171,6 +185,10 @@ begin
   perform pg_temp.como(tes);
   n := (select count(*) from public.liquidaciones where caja_id = caja);
   perform pg_temp.anotar('El tesorero ve la liquidación', n = 1, n::text);
+  perform pg_temp.como(usu_ana);
+  n := (select count(*) from public.liquidaciones where caja_id = caja);
+  perform pg_temp.anotar('Ana, ya fuera de la caja, sigue viendo su liquidación', n = 1, n::text);
+  perform pg_temp.como(tes);
   e := pg_temp.error_de(format('update public.liquidaciones set neto = 0 where caja_id = %L', caja));
   perform pg_temp.anotar('Nadie la cambia a mano', e like '42501%', e);
 end

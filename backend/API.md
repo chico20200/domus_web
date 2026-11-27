@@ -764,12 +764,13 @@ Vista previa de la liquidación de salida (Etapa 7, T3). No cambia nada; el cál
   - `creditos`: cada crédito en curso con `{ id, numero, capital_pendiente, interes_vencido, cuotas_vencidas, interes_condonado, deuda }`. `deuda` = capital pendiente + interés de las cuotas vencidas; `interes_condonado` es el de las cuotas que aún no vencen, que no se cobra.
   - `solicitudes`: créditos sin aprobar `[{ id, numero, monto }]`; se anulan al registrar la salida.
   - `neto` = ahorros + interés − deuda.
-  - `impedimentos`: `[{ codigo, mensaje }]`, con `codigo` `inactivo` (la ficha ya salió) o `deuda` (sus ahorros no cubren la deuda). `puede_salir` es que no haya ninguno.
+  - `socio.pierde_acceso`: su cuenta de usuario entra hoy a la caja; al salir pierde el acceso (migración `022`).
+  - `impedimentos`: `[{ codigo, mensaje }]`, con `codigo` `inactivo` (la ficha ya salió), `propia` (es la ficha de quien consulta: su salida la registra otro coordinador) o `deuda` (sus ahorros no cubren la deuda). `puede_salir` es que no haya ninguno.
 - 404: la ficha no existe en la caja.
 
 ### POST /api/cajas/:cajaId/socios/:socioId/salida
 
-Registra la salida (Etapa 7, T4). Vuelve a calcular la liquidación en el servidor y, si el neto coincide con el que vio la pantalla, la registra toda junta con `registrar_salida` (migración `021`): paga cada crédito en curso (cuotas vencidas con su interés; las demás solo capital, con el interés condonado), anula las solicitudes sin aprobar, retira de sus cuentas primero lo que pagó los créditos y después lo que se le entrega, cierra las cuentas, desactiva la ficha (fecha de salida y fin de su periodo) y guarda la liquidación.
+Registra la salida (Etapa 7, T4). Vuelve a calcular la liquidación en el servidor y, si el neto coincide con el que vio la pantalla, la registra toda junta con `registrar_salida` (migración `021`): paga cada crédito en curso (cuotas vencidas con su interés; las demás solo capital, con el interés condonado), anula las solicitudes sin aprobar, retira de sus cuentas primero lo que pagó los créditos y después lo que se le entrega, cierra las cuentas, desactiva la ficha (fecha de salida y fin de su periodo), le quita el acceso a la caja si entraba con su cuenta (migración `022`; vuelve con un código de invitación) y guarda la liquidación (`detalle.acceso_retirado`). Nadie registra su propia salida.
 
 - Rol mínimo: `coordinador`
 - Body: `{ neto_esperado, ahorros_entregados: true, interes_entregado: true }`
