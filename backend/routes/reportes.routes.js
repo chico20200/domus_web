@@ -4,12 +4,8 @@ const { responderError } = require("../utils/errores")
 const router = express.Router({ mergeParams: true })
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
-const {
-  calcularDistribucionInteres,
-  estuvoEntre,
-  faltaPorCobrar,
-  tipoDeReparto,
-} = require("../utils/reportes")
+const { faltaPorCobrar } = require("../utils/reportes")
+const { distribucionDelCiclo } = require("../utils/repartoCiclo")
 const { fechaLocal } = require("../utils/fechas")
 const { calcularCiclos } = require("../utils/ciclos")
 const { EN_CURSO, agregarMora } = require("../utils/mora")
@@ -50,50 +46,6 @@ async function cicloPedido(req, res, numero) {
     return null
   }
   return { caja, ciclos, ciclo }
-}
-
-/** El reparto de intereses de un ciclo, con su tipo */
-async function distribucionDelCiclo(db, cajaId, ciclo) {
-  // Los socios que estuvieron en el ciclo, aunque hoy estén inactivos (T24)
-  const { data: fichas, error: errorSocios } = await db
-    .from("socios")
-    .select("id, nombre, apellido, cedula, fecha_ingreso, fecha_salida, activo")
-    .eq("caja_id", cajaId)
-    .order("apellido")
-  if (errorSocios) throw errorSocios
-  const socios = (fichas ?? []).filter((s) => estuvoEntre(s, ciclo.inicio, ciclo.fin))
-
-  // Transacciones de ahorro
-  const { data: transacciones, error: errorTx } = await db
-    .from("transacciones")
-    .select("tipo, monto, fecha, cuentas_ahorro!inner ( socio_id )")
-    .eq("caja_id", cajaId)
-    .order("fecha")
-  if (errorTx) throw errorTx
-
-  const txPlanas = (transacciones ?? []).map((t) => ({
-    socio_id: t.cuentas_ahorro.socio_id,
-    tipo: t.tipo,
-    monto: t.monto,
-    fecha: t.fecha,
-  }))
-
-  // Pagos de interés dentro del ciclo — con la fecha fin correcta
-  const { data: pagosInteres, error: errorPagos } = await db
-    .from("pagos_credito")
-    .select("monto_interes, fecha_pago")
-    .eq("caja_id", cajaId)
-    .gte("fecha_pago", ciclo.inicio)
-    .lte("fecha_pago", ciclo.fin)
-  if (errorPagos) throw errorPagos
-
-  return calcularDistribucionInteres({
-    meses: ciclo.meses,
-    socios,
-    transacciones: txPlanas,
-    pagosInteres: pagosInteres ?? [],
-    tipo: await tipoDeReparto(db, cajaId, ciclo.inicio),
-  })
 }
 
 // ─────────────────────────────────────────────

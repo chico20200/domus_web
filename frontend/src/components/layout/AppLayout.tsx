@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react"
-import { Lock } from "lucide-react"
+import { Lock, Trash2 } from "lucide-react"
 import { useCaja } from "../../context/CajaContext"
 import { conPunto } from "../../lib/texto"
+import { fecha } from "../../lib/format"
 import { Sidebar } from "./Sidebar"
 import { TopBar } from "./TopBar"
 
@@ -43,6 +44,24 @@ export function AppLayout({ children, titulo }: AppLayoutProps) {
                   Motivo: {conPunto(cajaActiva.estado_motivo)}
                 </span>
               )}
+            </p>
+          </div>
+        )}
+        {/* Caja eliminada por su coordinador (Etapa 7, T11): igual, solo consulta */}
+        {cajaActiva?.estado === "eliminada" && (
+          <div
+            role="status"
+            className="flex items-start gap-3 border-b border-base border-l-[3px] border-l-destructivo bg-surface-2 px-6 py-3 text-sm"
+          >
+            <Trash2 size={18} className="mt-0.5 shrink-0 text-destructivo" aria-hidden="true" />
+            <p className="text-primary">
+              <span className="font-medium">
+                Esta caja fue eliminada
+                {cajaActiva.estado_cambiado_en ? ` el ${fecha(cajaActiva.estado_cambiado_en)}` : ""}
+                .
+              </span>{" "}
+              Puedes consultar su historia, pero no registrar nada nuevo. Desde Mis cajas puedes
+              quitarla de tu lista.
             </p>
           </div>
         )}

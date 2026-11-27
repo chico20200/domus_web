@@ -113,7 +113,7 @@ Reglas del sobrante (en la base, `pasar_sobrante_a_fondo`): el ciclo tiene que h
 
 ### Reportes por las fechas del ciclo (T24, migración 018)
 
-- **Socios del ciclo:** `distribucion-interes` incluye a los socios que estuvieron en el ciclo: ingresaron hasta su fin y no habían salido antes de su inicio, aunque hoy estén inactivos. Cada socio trae `activo` y `fecha_salida`. En la equitativa recibe los meses en que estuvo; el mes en que entró y el mes en que salió cuentan enteros.
+- **Socios del ciclo:** `distribucion-interes` incluye a los socios que estuvieron en el ciclo: ingresaron hasta su fin y no habían salido antes de su inicio, aunque hoy estén inactivos. Cada socio trae `activo` y `fecha_salida`. En la equitativa recibe los meses en que estuvo; el mes en que entró y el mes en que salió cuentan enteros. Desde la migración `020` se usan sus **periodos de membresía** (`periodos_socio`): quien salió y volvió cuenta en los meses de cada periodo y no en los que estuvo fuera. Desde T5, quien salió con liquidación en el ciclo trae `interes_entregado: true`: hasta el mes de su salida recibe exactamente lo que se le entregó (el detalle mes a mes guardado en la liquidación) y el resto del interés de esos meses se reparte entre los demás; lo cobrado después ya no le toca.
 - **Fecha de salida:** `socios.fecha_salida` la pone la base al desactivar la ficha (hoy) y la quita si vuelve a activarse. Nadie la escribe a mano. Prueba: `backend/pruebas/salida.sql`.
 - **Saldos al corte:** `estado-caja` mide todo a `corte`: el fin del ciclo si ya cerró, hoy si está en curso. Devuelve `corte` y `ciclo.cerrado`. Al corte se calculan:
   - ahorros = suma de los movimientos hasta esa fecha;
@@ -138,7 +138,7 @@ Errores `400`: el monto no es mayor que 0 o tiene más de dos decimales; el mont
 
 `registrar_pago_adelantado` registra todas las partes juntas, o ninguna. Además revisa que quien lo pide sea tesorero, que la caja sea operable y el crédito `activo`, que ninguna cuota venza este mes o antes, que no se repita una cuota y que el saldo no haya cambiado.
 
-Las pruebas `backend/pruebas/aislamiento.sql` y `backend/pruebas/validacion.sql` se corren en el SQL Editor de Supabase y no dejan rastro.
+Las pruebas `backend/pruebas/aislamiento.sql` y `backend/pruebas/validacion.sql` se corren en el SQL Editor de Supabase y no dejan rastro. Lo mismo las de la Etapa 7: `liquidacion.sql` (salida con liquidación), `salida.sql` (fecha de salida), `reactivar.sql` (reactivar una ficha) y `eliminar_caja.sql` (eliminar la caja y quitarla de la lista). Cada una termina con un error a propósito que trae el resumen, por ejemplo "ELIMINAR CAJA: 28 de 28 casos pasan", y deshace todo lo que creó.
 
 ---
 
@@ -237,9 +237,9 @@ Todas requieren Auth (Bearer token).
 
 ### GET /api/cajas/mis-cajas
 
-Lista las cajas activas a las que pertenece el usuario, junto con su rol en cada una.
+Lista las cajas a las que pertenece el usuario, junto con su rol en cada una. Incluye las bloqueadas y, desde T11, las eliminadas: se entran solo a consultar hasta que cada miembro las quite de su lista.
 
-- 200: `{ cajas: [{ id, nombre, descripcion, rol, politicas_aceptadas, estado, estado_motivo, foto_url }], creacion }`.
+- 200: `{ cajas: [{ id, nombre, descripcion, rol, politicas_aceptadas, estado, estado_motivo, estado_cambiado_en, foto_url }], creacion }`. `estado` es `activa`, `bloqueada` o `eliminada`; `estado_cambiado_en`, cuándo se bloqueó o se eliminó.
 - `politicas_aceptadas`: si aceptó la versión vigente de las políticas de esa caja (HU-S04).
 - `foto_url`: enlace firmado de la foto de la caja, válido por una hora, o `null` (T17). Todos los enlaces se firman en una sola llamada.
 
@@ -310,6 +310,31 @@ Fija o quita el monto máximo de un crédito.
 - 400: falta el campo, o el monto no es válido
 - La base lo aplica en cada solicitud nueva (`POST /creditos`): por encima responde 400 con "El monto máximo de crédito de esta caja es $1.500,00". Los créditos ya solicitados no cambian.
 
+### POST /api/cajas/:cajaId/quitar-de-mi-lista
+
+Quita de "Mis cajas" una caja eliminada (Etapa 7, T11; `quitar_caja_eliminada`, migración `026`): desactiva la propia membresía. Los datos de la caja y el acceso de los demás miembros no cambian.
+
+- Permiso `caja.ver` (todo miembro)
+- 200: `{ message }`
+- 409: la caja no está eliminada (de una caja que opera se sale con la liquidación o lo quita el coordinador).
+
+### GET /api/cajas/:cajaId/eliminacion
+
+Lo que falta para eliminar la caja (Etapa 7, T9; `requisitos_eliminar_caja`, migración `024`).
+
+- Rol mínimo: `coordinador`
+- 200: `{ creditos, cuentas_con_saldo, ahorros, fondos_con_saldo, saldo_fondos, socios_activos, puede_eliminar }`. `creditos` cuenta los pendientes, activos y vencidos; `puede_eliminar` es que todo esté en 0.
+
+### POST /api/cajas/:cajaId/eliminar
+
+Elimina la caja (Etapa 7, T9; `eliminar_caja`, migración `024`). No borra nada: la caja pasa a `eliminada`, con quién y cuándo (`eliminada_por`, `estado_cambiado_en`), sus códigos de invitación se desactivan y nadie registra nada más en ella. La base vuelve a comprobar los requisitos con la caja bloqueada para escritura.
+
+- Rol mínimo: `coordinador`
+- Body: `{ nombre }`, el nombre de la caja escrito como confirmación (se compara sin espacios al inicio ni al final).
+- 200: `{ message, caja: { id, nombre, estado, estado_cambiado_en } }`
+- 400: falta el nombre o no coincide.
+- 409: queda algún socio activo, crédito pendiente o en curso, ahorro o fondo con saldo (el mensaje dice cuál); la caja ya está eliminada o la bloqueó la administración de DOMUS.
+
 ### POST /api/cajas/unirse
 
 El usuario se une a una caja mediante un código de invitación. Quien fue removido de la caja vuelve a entrar con el rol del código nuevo. Si existe un socio en la caja con el mismo email (sin distinguir mayúsculas) y sin `user_id` vinculado, se vincula automáticamente.
@@ -365,6 +390,16 @@ Desactiva (soft delete) un socio.
 
 - Rol mínimo: `coordinador`
 - 200: `{ message: 'Socio desactivado correctamente' }`
+
+### POST /api/cajas/:cajaId/socios/:socioId/reactivar
+
+Reactiva a un socio que salió (Etapa 7, T8). Llegan sus datos revisados y la dirección escrita de nuevo. La base borra la fecha de salida y abre un periodo nuevo desde hoy (migraciones `018` y `020`); sus cuentas siguen cerradas hasta que se reabran. Si vuelve a usar DOMUS, entra a la caja con un código de invitación.
+
+- Rol mínimo: `coordinador`. Desde la migración `023`, la base también exige el coordinador para cambiar el estado de una ficha, en los dos sentidos.
+- Body: `{ nombre, apellido, cedula, telefono?, email?, direccion }`
+- 200: `{ message, socio }`
+- 400: faltan nombre, apellido o cédula; falta la dirección (`campo: "direccion"`); la cédula es de otra ficha de la caja.
+- 404: la ficha no existe. 409: la ficha ya está activa.
 
 ### GET /api/cajas/:cajaId/socios/:socioId/correcciones-ingreso
 
@@ -457,7 +492,10 @@ Cambia el estado de la cuenta.
 - Rol mínimo: `coordinador`
 - Body: `{ estado }` — uno de `activa | cerrada | suspendida`
 - 200: `{ message, cuenta }`
-- 400: `{ error: 'Estado inválido' }`
+- 400: `{ error: 'Estado inválido' }`, o la cuenta tiene saldo y se pidió cerrarla (`DM400`: "Para cerrar la cuenta, el saldo tiene que estar en 0…"). Al cerrarla, la base pone `fecha_cierre` en hoy.
+- 409: se pidió reabrir una cuenta cerrada y la ficha del titular está inactiva (`DM409`, migración `019`).
+
+El detalle (`GET /:cuentaId`) trae `socios.activo`, para que la pantalla sepa si se puede reabrir.
 
 ---
 
@@ -745,6 +783,44 @@ Las últimas 200 acciones, la más reciente primero: bloqueos y restablecimiento
 
 - 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, caja_id, caja_nombre, motivo, version, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer` (sobre una cuenta: `cuenta_correo`) o `bloquear_caja` o `restablecer_caja` (sobre una caja: `caja_nombre`, el nombre al momento de la acción), o `aceptar_acuerdo` (`version` aceptada, `motivo` null, `admin_correo` es quien aceptó).
 - Las aceptaciones se leen de `aceptaciones_confidencialidad` al consultar, no se copian a `bitacora_administracion`: salen también las de antes de T28.
+
+---
+
+## Salida de un socio — `/api/cajas/:cajaId/socios/:socioId/salida`
+
+### GET /api/cajas/:cajaId/socios/:socioId/salida
+
+Vista previa de la liquidación de salida (Etapa 7, T3). No cambia nada; el cálculo está en `utils/liquidacion.js`.
+
+- Rol mínimo: `tesorero`
+- 200: `{ socio, cuentas, ahorros, interes, creditos, deuda, solicitudes, neto, puede_salir, impedimentos }`
+  - `cuentas`: `[{ id, numero_cuenta, estado, saldo }]`; `ahorros` es la suma de sus saldos.
+  - `interes`: `{ ciclo: { numero, label, inicio, fin }, tipo, monto, por_mes }`, lo que le toca del reparto del ciclo actual hasta hoy (el mismo cálculo de Reportes, `utils/repartoCiclo.js`), menos lo que ya se le entregó si salió antes en el mismo ciclo; `por_mes` es su detalle mes a mes en centavos exactos, que la liquidación guarda para fijarlo (T5). `null` si la caja no tiene configurado su periodo.
+  - `creditos`: cada crédito en curso con `{ id, numero, capital_pendiente, interes_vencido, cuotas_vencidas, interes_condonado, deuda }`. `deuda` = capital pendiente + interés de las cuotas vencidas; `interes_condonado` es el de las cuotas que aún no vencen, que no se cobra.
+  - `solicitudes`: créditos sin aprobar `[{ id, numero, monto }]`; se anulan al registrar la salida.
+  - `neto` = ahorros + interés − deuda.
+  - `socio.pierde_acceso`: su cuenta de usuario entra hoy a la caja; al salir pierde el acceso (migración `022`).
+  - `impedimentos`: `[{ codigo, mensaje }]`, con `codigo` `inactivo` (la ficha ya salió), `propia` (es la ficha de quien consulta y quedan otros socios activos: su salida la registra otro coordinador; si es el último socio, no hay impedimento y `pierde_acceso` es false) o `deuda` (sus ahorros no cubren la deuda). `puede_salir` es que no haya ninguno.
+- 404: la ficha no existe en la caja.
+
+### POST /api/cajas/:cajaId/socios/:socioId/salida
+
+Registra la salida (Etapa 7, T4). Vuelve a calcular la liquidación en el servidor y, si el neto coincide con el que vio la pantalla, la registra toda junta con `registrar_salida` (migración `021`): paga cada crédito en curso (cuotas vencidas con su interés; las demás solo capital, con el interés condonado), anula las solicitudes sin aprobar, retira de sus cuentas primero lo que pagó los créditos y después lo que se le entrega, cierra las cuentas, desactiva la ficha (fecha de salida y fin de su periodo), le quita el acceso a la caja si entraba con su cuenta (migración `022`; vuelve con un código de invitación) y guarda la liquidación (`detalle.acceso_retirado`). Nadie registra su propia salida, salvo el último socio activo de la caja, que además conserva el acceso para poder eliminarla (migración `025`).
+
+- Rol mínimo: `coordinador`
+- Body: `{ neto_esperado, ahorros_entregados: true, interes_entregado: true }`
+- 201: `{ message, liquidacion }`, la fila de `liquidaciones` (`ahorros`, `interes`, `ciclo_*`, `tipo_reparto`, `deuda`, `interes_condonado`, `neto`, `detalle`, `fecha`, …)
+- 400: falta marcar la lista (ahorros e interés entregados).
+- 409: `{ error, liquidacion }` si no puede salir (el primer impedimento) o si la liquidación cambió desde la vista previa (`liquidacion` trae las cifras nuevas). La base también responde 409 si un saldo, un crédito o una solicitud cambió, o si el plan no cubre todo el capital pendiente.
+
+Desde la migración `021`, `DELETE /socios/:socioId` (desactivar) responde 409 si la ficha tiene ahorros o créditos en curso: esa ficha sale con la liquidación. Desde T6 la pantalla ya no lo usa: toda salida va por la liquidación.
+
+### GET /api/cajas/:cajaId/socios/:socioId/salida/liquidaciones
+
+Historial de sus liquidaciones de salida (T6), la más reciente primero: una por cada vez que salió.
+
+- Rol mínimo: `tesorero`
+- 200: `{ liquidaciones: [{ id, fecha, ahorros, interes, deuda, interes_condonado, neto, ciclo_numero, tipo_reparto, detalle, created_at }] }`
 
 ---
 

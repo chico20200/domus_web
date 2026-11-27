@@ -111,6 +111,9 @@ begin
         from public.correcciones_fecha_ingreso where socio_id = nuevo);
   perform pg_temp.anotar('Queda registrada: antes, después, motivo sin espacios y quién',
     t = hoy || ' ' || vigente || ' Se registró con la fecha del día true', coalesce(t, 'nada'));
+  t := (select string_agg(ingreso::text, ', ') from public.periodos_socio where socio_id = nuevo);
+  perform pg_temp.anotar('Y el primer periodo de membresía empieza en la fecha nueva (migración 020)',
+    t = vigente::text, coalesce(t, 'nada'));
   e := pg_temp.error_de(format(corregir, otro, (hoy - interval '5 years')::date, 'La caja no tiene periodo todavía'));
   perform pg_temp.anotar('Caja sin periodo: cualquier fecha pasada vale', e = 'sin error', e);
 

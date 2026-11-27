@@ -2,7 +2,9 @@
 import type { TextoAyuda } from "../components/InfoTip"
 
 /**
- * Los once textos de ayuda de las especificaciones §8, uno por concepto, para `InfoTip`.
+ * Los once textos de ayuda de las especificaciones §8, uno por concepto, para `InfoTip`,
+ * más los tres de la Etapa 7 (§12): salida con liquidación, reactivar una ficha y
+ * eliminar la caja.
  *
  * BORRADOR: están escritos a partir de §8 y de lo que hace el código hoy. Deben coincidir
  * con el Marco Teórico del documento de TIC, que no está en el repositorio; ver ESTADO.md.
@@ -22,6 +24,9 @@ export type ConceptoAyuda =
   | "distribucionIntereses"
   | "estadoCuenta"
   | "rolMembresia"
+  | "salidaSocio"
+  | "reactivarSocio"
+  | "eliminarCaja"
 
 export const AYUDA: Record<ConceptoAyuda, TextoAyuda> = {
   crearCaja: {
@@ -96,5 +101,25 @@ export const AYUDA: Record<ConceptoAyuda, TextoAyuda> = {
     que: "Ser miembro de una caja es tener acceso a ella. El rol dice qué puedes hacer ahí: socio consulta sus ahorros, créditos y solicitudes sin modificarlos, tesorero registra la operación y coordinador además configura la caja.",
     pasa: "El rol es de cada caja: la misma cuenta puede ser coordinador en una caja y socio en otra. Lo asigna el coordinador con el código de invitación y puede cambiarlo después.",
     necesitas: "Un código de invitación, o crear la caja, que te deja como coordinador.",
+  },
+  salidaSocio: {
+    titulo: "Salida con liquidación",
+    que: "Es el cierre de cuentas de un socio que deja la caja: recibe sus ahorros y su parte del interés del ciclo hasta el día de su salida, y de eso se le retiene lo que aún debe de sus créditos.",
+    pasa: "Sus créditos quedan pagados con lo retenido (el interés de las cuotas que aún no vencían no se cobra), sus solicitudes sin aprobar se anulan, sus cuentas se cierran y su ficha queda inactiva. Si tenía acceso a la caja en DOMUS, lo pierde. La liquidación queda guardada y se descarga en PDF para firmar.",
+    necesitas:
+      "Ser coordinador, y que sus ahorros alcancen para cubrir lo que debe. Tu propia salida solo la registras si eres el último socio activo; si hay otros, la registra otro coordinador.",
+  },
+  reactivarSocio: {
+    titulo: "Reactivar una ficha",
+    que: "Es el reingreso de una persona que salió de la caja: su ficha vuelve a estar activa, con su historia anterior y su liquidación guardadas.",
+    pasa: "Empieza un periodo nuevo de membresía desde hoy; el tiempo que estuvo fuera no cuenta para el reparto de intereses. Sus cuentas siguen cerradas hasta que se reabran en Ahorros, y si quiere volver a entrar a DOMUS necesita un código de invitación.",
+    necesitas: "Ser coordinador, revisar sus datos de antes y escribir su dirección actual.",
+  },
+  eliminarCaja: {
+    titulo: "Eliminar la caja",
+    que: "Es el cierre definitivo de la caja, cuando la organización deja de funcionar y todos sus socios ya salieron con su liquidación.",
+    pasa: "Nadie puede registrar nada más en ella y sus códigos de invitación dejan de servir. Sus datos se conservan: sus miembros la ven como caja eliminada, pueden consultarla y quitarla de su lista cuando quieran. No se deshace.",
+    necesitas:
+      "Ser coordinador, que no queden socios activos, créditos pendientes ni en curso, ahorros, ni dinero en los fondos de caja, y escribir el nombre de la caja para confirmar.",
   },
 }

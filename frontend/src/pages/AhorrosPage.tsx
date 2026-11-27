@@ -40,7 +40,10 @@ export default function AhorrosPage() {
   if (!cajaActiva) return null
   const puedeOperar = tieneRol(cajaActiva.rol, "tesorero")
   return puedeOperar ? (
-    <AhorrosCaja cajaId={cajaActiva.id} />
+    <AhorrosCaja
+      cajaId={cajaActiva.id}
+      puedeCambiarEstado={tieneRol(cajaActiva.rol, "coordinador")}
+    />
   ) : (
     <MisAhorros cajaId={cajaActiva.id} />
   )
@@ -48,7 +51,13 @@ export default function AhorrosPage() {
 
 // ── Tesorero y coordinador ────────────────────────────────────
 
-function AhorrosCaja({ cajaId }: { cajaId: string }) {
+function AhorrosCaja({
+  cajaId,
+  puedeCambiarEstado,
+}: {
+  cajaId: string
+  puedeCambiarEstado: boolean
+}) {
   const { toast } = useNotif()
   const cargar = useCallback(async () => {
     const [cuentas, socios] = await Promise.all([
@@ -71,6 +80,7 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
           cajaId={cajaId}
           cuentaId={seleccionada}
           puedeOperar
+          puedeCambiarEstado={puedeCambiarEstado}
           textoVolver="Volver a cuentas"
           onVolver={() => setSeleccionada(null)}
           onCambio={recargar}

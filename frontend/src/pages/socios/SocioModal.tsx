@@ -15,12 +15,17 @@ import { soloDigitos, validarCedula, validarCorreo, validarTelefono } from "../.
  * la persona en esta caja; la crea el tesorero o el coordinador porque no todo socio
  * tiene dispositivo. Se vincula a una cuenta de usuario cuando la persona entra a la caja
  * con un código de invitación y su correo coincide con el de la ficha.
+ *
+ * Con un socio inactivo, el mismo formulario lo reactiva (Etapa 7, T8): sus datos de
+ * antes, para revisarlos, salvo la dirección, que se escribe de nuevo y es obligatoria.
  */
 
 interface Props {
   cajaId: string
   /** Sin socio: ficha nueva */
   socio?: Socio
+  /** Reactivar la ficha inactiva (T8) en lugar de editarla */
+  reactivar?: boolean
   onCerrar: () => void
   onGuardado: (socio: Socio) => void | Promise<void>
 }
@@ -28,15 +33,17 @@ interface Props {
 type Campo = "nombre" | "apellido" | "cedula" | "telefono" | "email" | "direccion" | "fecha_ingreso"
 type Errores = Partial<Record<Campo, string>>
 
-export function SocioModal({ cajaId, socio, onCerrar, onGuardado }: Props) {
+export function SocioModal({ cajaId, socio, reactivar = false, onCerrar, onGuardado }: Props) {
   const editando = !!socio
+  const reactivando = !!socio && !socio.activo && reactivar
   const [form, setForm] = useState<Record<Campo, string>>({
     nombre: socio?.nombre ?? "",
     apellido: socio?.apellido ?? "",
     cedula: socio?.cedula ?? "",
     telefono: socio?.telefono ?? "",
     email: socio?.email ?? "",
-    direccion: socio?.direccion ?? "",
+    // Al reactivar, la dirección de antes puede ya no ser la suya: se escribe de nuevo
+    direccion: reactivando ? "" : (socio?.direccion ?? ""),
     fecha_ingreso: socio?.fecha_ingreso ?? hoyISO(),
   })
   const [errores, setErrores] = useState<Errores>({})
@@ -64,6 +71,7 @@ export function SocioModal({ cajaId, socio, onCerrar, onGuardado }: Props) {
     if (t) e.telefono = t
     const m = validarCorreo(form.email)
     if (m) e.email = m
+    if (reactivando && !form.direccion.trim()) e.direccion = "Escribe su dirección actual"
     if (!editando && !form.fecha_ingreso) e.fecha_ingreso = "Indica la fecha de ingreso"
     if (!editando && form.fecha_ingreso > hoyISO()) {
       e.fecha_ingreso = "La fecha de ingreso no puede ser futura"
@@ -86,9 +94,11 @@ export function SocioModal({ cajaId, socio, onCerrar, onGuardado }: Props) {
     }
     setGuardando(true)
     try {
-      const res = editando
-        ? await sociosService.actualizar(cajaId, socio.id, datos)
-        : await sociosService.crear(cajaId, { ...datos, fecha_ingreso: form.fecha_ingreso })
+      const res = reactivando
+        ? await sociosService.reactivar(cajaId, socio.id, datos)
+        : editando
+          ? await sociosService.actualizar(cajaId, socio.id, datos)
+          : await sociosService.crear(cajaId, { ...datos, fecha_ingreso: form.fecha_ingreso })
       await onGuardado(res.socio)
     } catch (err) {
       setErrorGeneral(err instanceof Error ? err.message : "No se pudo guardar la ficha")
@@ -103,12 +113,20 @@ export function SocioModal({ cajaId, socio, onCerrar, onGuardado }: Props) {
     <Modal
       abierto
       onCerrar={onCerrar}
-      titulo={editando ? `Editar a ${socio.nombre} ${socio.apellido}` : "Registrar socio"}
-      ayuda={editando ? undefined : AYUDA.crearSocio}
+      titulo={
+        reactivando
+          ? `Reactivar a ${socio.nombre} ${socio.apellido}`
+          : editando
+            ? `Editar a ${socio.nombre} ${socio.apellido}`
+            : "Registrar socio"
+      }
+      ayuda={reactivando ? AYUDA.reactivarSocio : editando ? undefined : AYUDA.crearSocio}
       descripcion={
-        editando
-          ? undefined
-          : "La ficha es el registro contable de la persona en esta caja. Puede registrarse aunque la persona no use DOMUS."
+        reactivando
+          ? `Vuelve a la caja desde hoy. Revisa sus datos de antes y escribe su dirección actual.`
+          : editando
+            ? undefined
+            : "La ficha es el registro contable de la persona en esta caja. Puede registrarse aunque la persona no use DOMUS."
       }
       ancho="amplio"
       cerrarAlClicFuera={false}
@@ -120,7 +138,9 @@ export function SocioModal({ cajaId, socio, onCerrar, onGuardado }: Props) {
           <>
             <Button
               type="submit"
-              label={editando ? "Guardar cambios" : "Registrar socio"}
+              label={
+                reactivando ? "Reactivar socio" : editando ? "Guardar cambios" : "Registrar socio"
+              }
               loading={guardando}
             />
             <Button label="Cancelar" variant="ghost" onClick={onCerrar} />
@@ -193,10 +213,27 @@ export function SocioModal({ cajaId, socio, onCerrar, onGuardado }: Props) {
               onChange={cambiar("direccion")}
               placeholder="Calle, número, sector"
               maxLength={160}
-              hint="Opcional."
+              hint={
+                reactivando
+                  ? socio.direccion
+                    ? `Antes: ${socio.direccion}. Escríbela de nuevo, aunque no haya cambiado.`
+                    : "Escribe dónde vive ahora."
+                  : "Opcional."
+              }
+              error={errores.direccion}
+              required={reactivando}
             />
           </div>
-          {editando ? (
+          {reactivando ? (
+            <div className="flex flex-col gap-1 text-sm sm:col-span-2">
+              <span className="font-medium text-primary">Reingreso</span>
+              <span className="text-secondary">
+                Desde hoy. Su primer ingreso fue el {fecha(socio.fecha_ingreso)} y salió el{" "}
+                {fecha(socio.fecha_salida)}; el reparto de intereses no lo cuenta en los meses en
+                que estuvo fuera. Sus cuentas siguen cerradas: se reabren desde Ahorros.
+              </span>
+            </div>
+          ) : editando ? (
             <div className="flex flex-col gap-1 text-sm">
               <span className="font-medium text-primary">Fecha de ingreso</span>
               <span className="text-secondary">

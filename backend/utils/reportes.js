@@ -8,15 +8,21 @@ function finDeMes(mesISO) {
   return `${y}-${String(m).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
+/** Si [ingreso, salida] toca [inicio, fin]: entró hasta el fin y no salió antes del inicio */
+const toca = (ingreso, salida, inicio, fin) =>
+  (!ingreso || ingreso <= fin) && (!salida || salida >= inicio)
+
 /**
- * Si un socio estuvo en el periodo [inicio, fin] (T24, migración 018): ingresó hasta el
- * fin y no había salido antes del inicio. Sirve para el ciclo y para cada mes.
+ * Si un socio estuvo en el periodo [inicio, fin]. Sirve para el ciclo y para cada mes.
+ * Con sus periodos de membresía (migración 020), basta que uno toque el rango: quien salió
+ * y volvió no cuenta en los meses en que estuvo fuera. Sin ellos, sus fechas de ingreso y
+ * de salida de la ficha (T24, migración 018).
  */
 function estuvoEntre(socio, inicio, fin) {
-  return (
-    (!socio.fecha_ingreso || socio.fecha_ingreso <= fin) &&
-    (!socio.fecha_salida || socio.fecha_salida >= inicio)
-  )
+  if (socio.periodos?.length) {
+    return socio.periodos.some((p) => toca(p.ingreso, p.salida, inicio, fin))
+  }
+  return toca(socio.fecha_ingreso, socio.fecha_salida, inicio, fin)
 }
 
 /** Los dos tipos de reparto (T23). Sin elegir, la diferenciada: la de siempre */
@@ -39,6 +45,14 @@ const TIPOS_REPARTO = ["diferenciada", "equitativa"]
  * al centavo. Lo que sobra (menos de un centavo por socio) es el `sobrante`, que va a
  * Fondos de caja. Si en un mes nadie puede recibir (sin capital en la diferenciada, sin
  * socios en la equitativa), ese interés queda `sin_repartir` y el reparto no cuadra.
+ *
+ * Quien salió de la caja en el ciclo (Etapa 7, T5) ya recibió su interés en la
+ * liquidación, y esa cifra queda fija. `fijos[socio_id] = { hasta, por_mes, total }`: hasta
+ * el mes de su salida (`hasta`, "AAAA-MM") recibe en cada mes exactamente lo que se le
+ * entregó (`por_mes`), y el resto del interés de ese mes se reparte entre los demás con
+ * la regla del ciclo. Lo que se cobre después de su salida ya no le toca. En los meses
+ * anteriores a la salida el resultado es el mismo de antes: su parte fija es la que ya
+ * tenía. Si volvió a la caja, desde el mes siguiente participa como cualquiera.
  */
 function calcularDistribucionInteres({
   meses,
@@ -46,6 +60,7 @@ function calcularDistribucionInteres({
   transacciones,
   pagosInteres,
   tipo = "diferenciada",
+  fijos = {},
 }) {
   // ── Índice de transacciones por socio ────────────────────────
   // Cada transacción tiene: socio_id, tipo (deposito/retiro), monto y fecha (el día del
@@ -106,23 +121,33 @@ function calcularDistribucionInteres({
     // 2. Interés recaudado en este mes
     const interesMes = +(interesPorMes[mes] ?? 0).toFixed(2)
 
-    // 3. Tasa del mes — el corazón del modelo
-    //    Si no hay capital, la tasa es 0 (evita división por cero)
-    const tasaMes = capitalTotal > 0 ? +((interesMes / capitalTotal) * 100).toFixed(6) : 0
+    // 3. Lo que ya se entregó este mes a quienes salieron (T5): sale del interés del mes
+    //    y ellos no entran en el reparto del resto
+    const fijoEn = (s) => fijos[s.id] && mes <= fijos[s.id].hasta
+    const fijoMes = socios.filter(fijoEn).reduce((t, s) => t + (fijos[s.id].por_mes[mes] ?? 0), 0)
+    const distribuible = Math.max(+(interesMes - fijoMes).toFixed(2), 0)
+    const libres = socios.filter((s) => !fijoEn(s))
+    const capitalLibre = +libres.reduce((t, s) => t + saldos[s.id], 0).toFixed(2)
 
-    // 4. Reparto a cada socio, sin redondear (se redondea el total del ciclo)
+    // 4. Tasa del mes — el corazón del modelo
+    //    Si no hay capital, la tasa es 0 (evita división por cero). Sin salidas en el
+    //    mes, distribuible = interés del mes y capitalLibre = capital total
+    const tasaMes = capitalLibre > 0 ? +((distribuible / capitalLibre) * 100).toFixed(6) : 0
+
+    // 5. Reparto a cada socio, sin redondear (se redondea el total del ciclo)
     const reparto = {}
     const participantes =
-      tipo === "equitativa" ? socios.filter((s) => estuvoEntre(s, `${mes}-01`, corte)) : []
-    const parte = participantes.length ? interesMes / participantes.length : 0
+      tipo === "equitativa" ? libres.filter((s) => estuvoEntre(s, `${mes}-01`, corte)) : []
+    const parte = participantes.length ? distribuible / participantes.length : 0
     socios.forEach((s) => {
-      const cuota =
-        tipo === "equitativa"
+      const cuota = fijoEn(s)
+        ? (fijos[s.id].por_mes[mes] ?? 0)
+        : tipo === "equitativa"
           ? participantes.includes(s)
             ? parte
             : 0
-          : capitalTotal > 0
-            ? (interesMes * saldos[s.id]) / capitalTotal
+          : capitalLibre > 0
+            ? (distribuible * saldos[s.id]) / capitalLibre
             : 0
       reparto[s.id] = cuota
       acumSocio[s.id] += cuota
@@ -153,6 +178,8 @@ function calcularDistribucionInteres({
     // Quien ya salió de la caja sigue en los ciclos en que estuvo (T24)
     activo: s.activo ?? true,
     fecha_salida: s.fecha_salida ?? null,
+    // Su interés de este ciclo ya se le entregó al salir y quedó fijo (T5)
+    interes_entregado: Boolean(fijos[s.id]),
     // Saldo final del socio (último mes del periodo)
     saldo_final: filasMes.length ? filasMes[filasMes.length - 1].saldos[s.id] : 0,
     // Interés mes a mes

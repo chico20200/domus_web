@@ -21,6 +21,8 @@ export interface InteresSocio {
   /** Quien ya salió sigue en los ciclos en que estuvo (T24) */
   activo: boolean
   fecha_salida: string | null
+  /** Salió en este ciclo con liquidación: su interés se le entregó y quedó fijo (T5) */
+  interes_entregado?: boolean
   por_mes: { mes: string; interes: number }[]
   interes_total: number
 }

@@ -97,8 +97,16 @@ export function armarReporte(dist: DistribucionResponse, estado: EstadoCajaRespo
     )
   }
 
-  const nombreSocio = (s: DistribucionResponse["por_socio"][number]) =>
-    !s.activo && s.fecha_salida ? `${s.nombre} (salió el ${fecha(s.fecha_salida)})` : s.nombre
+  // Quien salió con liquidación en este ciclo ya recibió su interés: su cifra no cambia
+  // aunque después se cobre más (T5)
+  const nombreSocio = (s: DistribucionResponse["por_socio"][number]) => {
+    if (!s.activo && s.fecha_salida) {
+      return s.interes_entregado
+        ? `${s.nombre} (salió el ${fecha(s.fecha_salida)}; interés entregado)`
+        : `${s.nombre} (salió el ${fecha(s.fecha_salida)})`
+    }
+    return s.interes_entregado ? `${s.nombre} (volvió; parte del interés ya entregada)` : s.nombre
+  }
 
   const socios: TablaReporte = equitativa
     ? {

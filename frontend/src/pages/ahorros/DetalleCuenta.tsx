@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import { ArrowDownToLine, ArrowUpFromLine, History, Undo2 } from "lucide-react"
+import { ArrowDownToLine, ArrowUpFromLine, History, Lock, LockOpen, Undo2 } from "lucide-react"
 import { Panel } from "../../components/Panel"
 import { Button } from "../../components/Button"
 import { Badge } from "../../components/Badge"
@@ -18,13 +18,17 @@ import { BotonComprobante } from "../../components/BotonComprobante"
 
 /**
  * Detalle de una cuenta: saldo, estado, depósito y retiro (solo tesorero o coordinador,
- * y solo con la cuenta activa) e historial de movimientos.
+ * y solo con la cuenta activa) e historial de movimientos. El coordinador además la cierra,
+ * con el saldo en 0, y la reabre si el titular sigue activo (Etapa 7, T1). La base revisa
+ * las dos reglas otra vez (migraciones 005 y 019).
  */
 
 interface Props {
   cajaId: string
   cuentaId: string
   puedeOperar: boolean
+  /** Coordinador: puede cerrar y reabrir la cuenta */
+  puedeCambiarEstado?: boolean
   /** Texto del botón de volver: "Volver a cuentas" o "Volver a mis cuentas" */
   textoVolver: string
   onVolver: () => void
@@ -36,14 +40,16 @@ export function DetalleCuenta({
   cajaId,
   cuentaId,
   puedeOperar,
+  puedeCambiarEstado = false,
   textoVolver,
   onVolver,
   onCambio,
 }: Props) {
-  const { toast } = useNotif()
+  const { toast, confirm } = useNotif()
   const cargar = useCallback(() => ahorrosService.getCuenta(cajaId, cuentaId), [cajaId, cuentaId])
   const { datos, cargando, error, recargar } = useDatos(cargar)
   const [operacion, setOperacion] = useState<TipoOperacion | null>(null)
+  const [cambiando, setCambiando] = useState(false)
 
   const volver = (
     <div>
@@ -78,6 +84,38 @@ export function DetalleCuenta({
   const estado = estadoCuenta(cuenta.estado)
   const titular = nombreSocio(cuenta.socios)
   const operable = puedeOperar && cuenta.estado === "activa"
+  const cerrada = cuenta.estado === "cerrada"
+  const conSaldo = Number(cuenta.saldo) > 0
+  const titularActivo = cuenta.socios?.activo !== false
+
+  async function cambiarEstado(nuevo: "activa" | "cerrada") {
+    const ok = await confirm(
+      nuevo === "cerrada"
+        ? {
+            titulo: `¿Cerrar la cuenta ${cuenta.numero_cuenta}?`,
+            mensaje: `Ya no admitirá depósitos ni retiros. Sus movimientos se conservan y se puede reabrir mientras la ficha de ${titular} siga activa.`,
+            labelOk: "Cerrar cuenta",
+            peligroso: true,
+          }
+        : {
+            titulo: `¿Reabrir la cuenta ${cuenta.numero_cuenta}?`,
+            mensaje: "Vuelve a admitir depósitos y retiros, con el saldo en $0,00.",
+            labelOk: "Reabrir cuenta",
+          },
+    )
+    if (!ok) return
+    setCambiando(true)
+    try {
+      await ahorrosService.cambiarEstado(cajaId, cuenta.id, nuevo)
+      await recargar()
+      onCambio()
+      toast("exito", nuevo === "cerrada" ? "Cuenta cerrada" : "Cuenta reabierta")
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "No se pudo cambiar el estado")
+    } finally {
+      setCambiando(false)
+    }
+  }
 
   return (
     <>
@@ -110,8 +148,50 @@ export function DetalleCuenta({
         )}
         {puedeOperar && cuenta.estado !== "activa" && (
           <p className="text-sm text-secondary">
-            La cuenta está {estado.etiqueta.toLowerCase()}: no admite depósitos ni retiros.
+            {cerrada && cuenta.fecha_cierre
+              ? `Cerrada el ${fecha(cuenta.fecha_cierre)}: no admite depósitos ni retiros.`
+              : `La cuenta está ${estado.etiqueta.toLowerCase()}: no admite depósitos ni retiros.`}
           </p>
+        )}
+        {puedeCambiarEstado && !cerrada && (
+          <div className="flex flex-col gap-2 border-t border-base pt-4">
+            <div>
+              <Button
+                label="Cerrar cuenta"
+                variant="ghost"
+                icon={Lock}
+                disabled={conSaldo}
+                loading={cambiando}
+                onClick={() => cambiarEstado("cerrada")}
+              />
+            </div>
+            {conSaldo && (
+              <p className="text-xs text-secondary">
+                Para cerrarla, el saldo tiene que estar en $0,00: registra primero el retiro de{" "}
+                {moneda(cuenta.saldo)}.
+              </p>
+            )}
+          </div>
+        )}
+        {puedeCambiarEstado && cerrada && (
+          <div className="flex flex-col gap-2">
+            {titularActivo ? (
+              <div>
+                <Button
+                  label="Reabrir cuenta"
+                  variant="secondary"
+                  icon={LockOpen}
+                  loading={cambiando}
+                  onClick={() => cambiarEstado("activa")}
+                />
+              </div>
+            ) : (
+              <p className="text-xs text-secondary">
+                La ficha de {titular} está inactiva: para reabrir la cuenta, primero reactívala en
+                Socios.
+              </p>
+            )}
+          </div>
         )}
       </Panel>
 

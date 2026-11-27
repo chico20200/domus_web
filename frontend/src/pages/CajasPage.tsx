@@ -10,6 +10,7 @@ import {
   Plus,
   Shield,
   ShieldCheck,
+  Trash2,
   UserRound,
   Users,
   type LucideIcon,
@@ -29,6 +30,7 @@ import { ETIQUETA_ROL, inicioDeRol, type RolCaja } from "../lib/roles"
 import { useDatos } from "../lib/useDatos"
 import { AYUDA } from "../lib/ayuda"
 import { conPunto } from "../lib/texto"
+import { fecha } from "../lib/format"
 import { UnirseModal } from "./cajas/UnirseModal"
 
 /**
@@ -81,7 +83,7 @@ function OpcionCaja({
 export default function CajasPage() {
   const navigate = useNavigate()
   const { setCajaActiva } = useCaja()
-  const { toast } = useNotif()
+  const { toast, confirm } = useNotif()
   const cargar = useCallback(() => cajasService.getMisCajas(), [])
   const { datos, cargando, error, recargar } = useDatos(cargar)
   // El enlace al panel de administración solo para quien administra DOMUS. Si el perfil
@@ -99,6 +101,26 @@ export default function CajasPage() {
   function entrar(caja: MiCaja) {
     setCajaActiva(caja)
     navigate(inicioDeRol(caja.rol))
+  }
+
+  // Una caja eliminada (T11) se puede consultar y quitar de la lista; quitarla solo cambia
+  // la membresía propia
+  async function quitar(caja: MiCaja) {
+    const ok = await confirm({
+      titulo: `¿Quitar ${caja.nombre} de tu lista?`,
+      mensaje:
+        "Ya no podrás entrar a consultarla. Sus datos se conservan y los demás miembros la siguen viendo hasta que la quiten.",
+      labelOk: "Quitar de mi lista",
+      peligroso: true,
+    })
+    if (!ok) return
+    try {
+      await cajasService.quitarDeMiLista(caja.id)
+      await recargar()
+      toast("exito", `${caja.nombre} ya no aparece en tu lista`)
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "No se pudo quitar la caja")
+    }
   }
 
   const cajas = datos?.cajas ?? []
@@ -183,6 +205,9 @@ export default function CajasPage() {
                     {caja.estado === "bloqueada" && (
                       <Badge tono="destructivo" icon={Lock} label="Bloqueada" />
                     )}
+                    {caja.estado === "eliminada" && (
+                      <Badge tono="neutral" icon={Trash2} label="Caja eliminada" />
+                    )}
                   </span>
                   {caja.estado === "bloqueada" && (
                     <span className="text-sm text-secondary">
@@ -190,9 +215,27 @@ export default function CajasPage() {
                       {caja.estado_motivo && ` Motivo: ${conPunto(caja.estado_motivo)}`}
                     </span>
                   )}
+                  {caja.estado === "eliminada" && (
+                    <span className="text-sm text-secondary">
+                      Solo consulta: su coordinador la eliminó
+                      {caja.estado_cambiado_en ? ` el ${fecha(caja.estado_cambiado_en)}` : ""}.
+                    </span>
+                  )}
                 </span>
                 <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden="true" />
               </button>
+              {caja.estado === "eliminada" && (
+                <div className="mt-1 flex justify-end">
+                  <Button
+                    label="Quitar de mi lista"
+                    variant="ghost"
+                    compacto
+                    icon={Trash2}
+                    ariaLabel={`Quitar ${caja.nombre} de mi lista`}
+                    onClick={() => quitar(caja)}
+                  />
+                </div>
+              )}
             </li>
           ))}
         </ul>

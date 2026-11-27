@@ -30,6 +30,17 @@ export const ahorrosService = {
     return apiClient.post<CuentaCreatedResponse>(`/cajas/${cajaId}/cuentas`, { socio_id: socioId })
   },
 
+  /** Cierra (saldo en 0) o reabre (titular activo) una cuenta: solo el coordinador */
+  async cambiarEstado(
+    cajaId: string,
+    cuentaId: string,
+    estado: "activa" | "cerrada",
+  ): Promise<{ message: string }> {
+    return apiClient.put<{ message: string }>(`/cajas/${cajaId}/cuentas/${cuentaId}/estado`, {
+      estado,
+    })
+  },
+
   async depositar(
     cajaId: string,
     cuentaId: string,
