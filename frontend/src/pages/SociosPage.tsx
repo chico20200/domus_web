@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import {
   CalendarClock,
   FileSpreadsheet,
+  History,
   Link2,
   Pencil,
   Search,
@@ -22,16 +23,18 @@ import { useCaja } from "../context/CajaContext"
 import { useNotif } from "../context/NotifContext"
 import { sociosService } from "../api/socios.service"
 import type { Socio } from "../api/socios.types"
-import { fecha } from "../lib/format"
+import { fecha, moneda } from "../lib/format"
 import { useDatos } from "../lib/useDatos"
 import { tieneRol } from "../lib/roles"
 import { coincideSocio, normalizar } from "../lib/texto"
 import { SocioModal } from "./socios/SocioModal"
 import { CorregirIngresoModal } from "./socios/CorregirIngresoModal"
+import { SalidaModal } from "./socios/SalidaModal"
 
 /**
  * Fichas de socio de la caja. El tesorero y el coordinador registran y editan fichas;
- * solo el coordinador desactiva. Desactivar conserva cuentas y créditos.
+ * solo el coordinador registra la salida de un socio, con su liquidación (Etapa 7, T6).
+ * De quien ya salió se ven sus liquidaciones.
  */
 export default function SociosPage() {
   const navigate = useNavigate()
@@ -47,7 +50,7 @@ export default function SociosPage() {
 
 // La búsqueda ignora tildes y mayúsculas: "perez" encuentra a "Pérez" (normalizar)
 function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: boolean }) {
-  const { toast, confirm } = useNotif()
+  const { toast } = useNotif()
   const cargar = useCallback(async () => (await sociosService.getSocios(cajaId)).socios, [cajaId])
   const { datos, cargando, error, recargar } = useDatos(cargar)
   const [busqueda, setBusqueda] = useState("")
@@ -56,6 +59,8 @@ function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: 
   const [modal, setModal] = useState<Socio | "nuevo" | null>(null)
   // Solo el coordinador (el mismo permiso que desactivar): corregir la fecha de ingreso
   const [corrigiendo, setCorrigiendo] = useState<Socio | null>(null)
+  // La salida con liquidación (activo) o el historial de sus liquidaciones (inactivo)
+  const [saliendo, setSaliendo] = useState<Socio | null>(null)
 
   const socios = datos ?? []
   const activos = socios.filter((s) => s.activo).length
@@ -69,24 +74,6 @@ function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: 
         a.apellido.localeCompare(b.apellido, "es") ||
         a.nombre.localeCompare(b.nombre, "es"),
     )
-
-  async function desactivar(socio: Socio) {
-    const ok = await confirm({
-      titulo: `¿Desactivar a ${socio.nombre} ${socio.apellido}?`,
-      mensaje:
-        "Su ficha queda inactiva y deja de aparecer al abrir cuentas o solicitar créditos. Sus cuentas y créditos se conservan.",
-      labelOk: "Desactivar",
-      peligroso: true,
-    })
-    if (!ok) return
-    try {
-      await sociosService.desactivar(cajaId, socio.id)
-      await recargar()
-      toast("exito", `${socio.nombre} ${socio.apellido} quedó inactivo`)
-    } catch (err) {
-      toast("error", err instanceof Error ? err.message : "No se pudo desactivar")
-    }
-  }
 
   return (
     <PageShell titulo="Socios" ancho="completo">
@@ -228,18 +215,23 @@ function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: 
                       ) : (
                         <span className="h-9 w-9" aria-hidden="true" />
                       ))}
-                    {puedeDesactivar &&
-                      (s.activo ? (
-                        <BotonFila
-                          etiqueta={`Desactivar a ${nombre}`}
-                          icono={UserX}
-                          peligroso
-                          onClick={() => desactivar(s)}
-                        />
-                      ) : (
-                        // Hueco del mismo ancho: el lápiz queda alineado con el de las otras filas
-                        <span className="h-9 w-9" aria-hidden="true" />
-                      ))}
+                    {s.activo && puedeDesactivar ? (
+                      <BotonFila
+                        etiqueta={`Registrar la salida de ${nombre}`}
+                        icono={UserX}
+                        peligroso
+                        onClick={() => setSaliendo(s)}
+                      />
+                    ) : !s.activo ? (
+                      <BotonFila
+                        etiqueta={`Ver las liquidaciones de ${nombre}`}
+                        icono={History}
+                        onClick={() => setSaliendo(s)}
+                      />
+                    ) : (
+                      // Hueco del mismo ancho: el lápiz queda alineado con el de las otras filas
+                      <span className="h-9 w-9" aria-hidden="true" />
+                    )}
                   </div>
                 )
               },
@@ -258,6 +250,24 @@ function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: 
             setCorrigiendo(null)
             await recargar()
             toast("exito", `Fecha de ingreso de ${s.nombre} ${s.apellido}: ${fecha(nueva)}`)
+          }}
+        />
+      )}
+
+      {saliendo && (
+        <SalidaModal
+          cajaId={cajaId}
+          socio={saliendo}
+          puedeRegistrar={puedeDesactivar}
+          onCerrar={() => setSaliendo(null)}
+          onRegistrada={async (l) => {
+            const s = saliendo
+            setSaliendo(null)
+            await recargar()
+            toast(
+              "exito",
+              `Salida de ${s.nombre} ${s.apellido} registrada: recibió ${moneda(Number(l.neto))}`,
+            )
           }}
         />
       )}

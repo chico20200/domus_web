@@ -778,7 +778,14 @@ Registra la salida (Etapa 7, T4). Vuelve a calcular la liquidación en el servid
 - 400: falta marcar la lista (ahorros e interés entregados).
 - 409: `{ error, liquidacion }` si no puede salir (el primer impedimento) o si la liquidación cambió desde la vista previa (`liquidacion` trae las cifras nuevas). La base también responde 409 si un saldo, un crédito o una solicitud cambió, o si el plan no cubre todo el capital pendiente.
 
-Desde la migración `021`, `DELETE /socios/:socioId` (desactivar) responde 409 si la ficha tiene ahorros o créditos en curso: esa ficha sale con la liquidación.
+Desde la migración `021`, `DELETE /socios/:socioId` (desactivar) responde 409 si la ficha tiene ahorros o créditos en curso: esa ficha sale con la liquidación. Desde T6 la pantalla ya no lo usa: toda salida va por la liquidación.
+
+### GET /api/cajas/:cajaId/socios/:socioId/salida/liquidaciones
+
+Historial de sus liquidaciones de salida (T6), la más reciente primero: una por cada vez que salió.
+
+- Rol mínimo: `tesorero`
+- 200: `{ liquidaciones: [{ id, fecha, ahorros, interes, deuda, interes_condonado, neto, ciclo_numero, tipo_reparto, detalle, created_at }] }`
 
 ---
 

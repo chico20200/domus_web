@@ -27,6 +27,25 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
 })
 
 // ─────────────────────────────────────────────
+// GET /api/cajas/:cajaId/socios/:socioId/salida/liquidaciones
+// Historial de sus liquidaciones de salida (T6), la más reciente primero. Quien salió y
+// volvió tiene una por cada salida.
+// ─────────────────────────────────────────────
+router.get("/liquidaciones", requierePermiso("datos.ver"), async (req, res) => {
+  const { cajaId, socioId } = req.params
+  const { data, error } = await req.db
+    .from("liquidaciones")
+    .select(
+      "id, fecha, ahorros, interes, deuda, interes_condonado, neto, ciclo_numero, tipo_reparto, detalle, created_at",
+    )
+    .eq("caja_id", cajaId)
+    .eq("socio_id", socioId)
+    .order("created_at", { ascending: false })
+  if (error) return responderError(res, error)
+  return res.json({ liquidaciones: data ?? [] })
+})
+
+// ─────────────────────────────────────────────
 // POST /api/cajas/:cajaId/socios/:socioId/salida
 //   { neto_esperado, ahorros_entregados, interes_entregado }
 // Registra la salida (Etapa 7, T4): vuelve a calcular la liquidación aquí, sin fiarse de
