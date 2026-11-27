@@ -47,7 +47,10 @@ export default function ConfiguracionPage() {
       {esCoordinador && <CreditoCaja cajaId={cajaActiva.id} />}
       {esCoordinador && <CodigoInvitacion cajaId={cajaActiva.id} />}
       <MiembrosCaja cajaId={cajaActiva.id} esCoordinador={esCoordinador} />
-      {esCoordinador && <EliminarCaja cajaId={cajaActiva.id} nombreCaja={cajaActiva.nombre} />}
+      {/* Solo una caja que opera se elimina: la bloqueada o la ya eliminada, no */}
+      {esCoordinador && (cajaActiva.estado ?? "activa") === "activa" && (
+        <EliminarCaja cajaId={cajaActiva.id} nombreCaja={cajaActiva.nombre} />
+      )}
     </PageShell>
   )
 }

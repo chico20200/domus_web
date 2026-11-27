@@ -1,4 +1,4 @@
--- Prueba de eliminar una caja (Etapa 7, T9; migraciones 024 y 025).
+-- Prueba de eliminar una caja (Etapa 7, T9 y T11; migraciones 024, 025 y 026).
 --
 -- QUÉ HACE: dentro de una transacción crea una caja con un coordinador, un tesorero y a
 -- Ana, con $100 de ahorro y una solicitud de crédito, un fondo con $50 y un código de
@@ -9,6 +9,8 @@
 -- que una caja bloqueada por la administración no se elimine. Desde la 025, el
 -- coordinador también tiene su ficha con $20: no registra su propia salida mientras Ana
 -- siga activa, pero como último socio sí, y conserva el acceso para eliminar la caja.
+-- Desde la 026: una caja que opera no se quita de la lista; la eliminada sí, y quien la
+-- quita deja de verla, sin tocar los datos ni el acceso de los demás.
 --
 -- NO DEJA RASTRO, igual que aislamiento.sql.
 --
@@ -76,6 +78,9 @@ begin
     values (caja, ana, 50, 12, 3) returning id into sol;
   fondo := (public.crear_fondo(caja, 'Fondo de cierre')->>'id')::uuid;
   perform public.registrar_movimiento_fondo(caja, fondo, 'deposito', 50, 'prueba');
+
+  e := pg_temp.error_de(format('select public.quitar_caja_eliminada(%L)', caja));
+  perform pg_temp.anotar('Una caja que opera no se quita de la lista', e like 'DM409%eliminada%', e);
 
   perform pg_temp.como(tes);
   e := pg_temp.error_de(format(q_req, caja));
@@ -146,6 +151,15 @@ begin
      + (select count(*) from public.transacciones where caja_id = caja)
      + (select count(*) from public.socios where caja_id = caja);
   perform pg_temp.anotar('Sus datos se conservan y se leen (2 liquidaciones, 4 movimientos, 2 fichas)', n = 8, n::text);
+  e := pg_temp.error_de(format('select public.quitar_caja_eliminada(%L)', caja));
+  perform pg_temp.anotar('El tesorero la quita de su lista (026)', e = 'sin error', e);
+  n := (select count(*) from public.cajas where id = caja) + (select count(*) from public.liquidaciones where caja_id = caja);
+  perform pg_temp.anotar('Y ya no la ve, ni sus datos', n = 0, n::text);
+  e := pg_temp.error_de(format('select public.quitar_caja_eliminada(%L)', caja));
+  perform pg_temp.anotar('No la quita dos veces', e like 'DM404%', e);
+  perform pg_temp.como(coord);
+  n := (select count(*) from public.liquidaciones where caja_id = caja);
+  perform pg_temp.anotar('El coordinador la sigue viendo con sus datos', n = 2, n::text);
 
   perform set_config('role', 'postgres', true);
   update public.cajas set estado = 'bloqueada' where id = otra;

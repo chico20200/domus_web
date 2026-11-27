@@ -20,8 +20,10 @@ export interface MiCaja {
   politicas_aceptadas: boolean
   /** "bloqueada": el administrador de DOMUS la bloqueó; se lee pero no se registra (T10).
    *  Opcional porque una caja guardada antes de T10 no lo trae hasta revalidarse. */
-  estado?: "activa" | "bloqueada"
+  estado?: "activa" | "bloqueada" | "eliminada"
   estado_motivo?: string | null
+  /** Cuándo se bloqueó o se eliminó (Etapa 7, T11) */
+  estado_cambiado_en?: string | null
   /** Enlace firmado de la foto de la caja (T17), válido una hora; null si no tiene */
   foto_url?: string | null
 }

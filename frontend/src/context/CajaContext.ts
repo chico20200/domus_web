@@ -19,8 +19,10 @@ export interface Caja {
    * Se toma al revalidar la caja, una vez por sesión; si la bloquean a mitad de sesión,
    * cada registro responde "La caja no admite registros nuevos".
    */
-  estado?: "activa" | "bloqueada"
+  estado?: "activa" | "bloqueada" | "eliminada"
   estado_motivo?: string | null
+  /** Cuándo se bloqueó o se eliminó: el aviso de caja eliminada muestra la fecha (T11) */
+  estado_cambiado_en?: string | null
 }
 
 export interface CajaContextType {

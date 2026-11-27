@@ -237,9 +237,9 @@ Todas requieren Auth (Bearer token).
 
 ### GET /api/cajas/mis-cajas
 
-Lista las cajas activas a las que pertenece el usuario, junto con su rol en cada una.
+Lista las cajas a las que pertenece el usuario, junto con su rol en cada una. Incluye las bloqueadas y, desde T11, las eliminadas: se entran solo a consultar hasta que cada miembro las quite de su lista.
 
-- 200: `{ cajas: [{ id, nombre, descripcion, rol, politicas_aceptadas, estado, estado_motivo, foto_url }], creacion }`.
+- 200: `{ cajas: [{ id, nombre, descripcion, rol, politicas_aceptadas, estado, estado_motivo, estado_cambiado_en, foto_url }], creacion }`. `estado` es `activa`, `bloqueada` o `eliminada`; `estado_cambiado_en`, cuándo se bloqueó o se eliminó.
 - `politicas_aceptadas`: si aceptó la versión vigente de las políticas de esa caja (HU-S04).
 - `foto_url`: enlace firmado de la foto de la caja, válido por una hora, o `null` (T17). Todos los enlaces se firman en una sola llamada.
 
@@ -309,6 +309,14 @@ Fija o quita el monto máximo de un crédito.
 - 200: `{ message, monto_maximo_credito }`
 - 400: falta el campo, o el monto no es válido
 - La base lo aplica en cada solicitud nueva (`POST /creditos`): por encima responde 400 con "El monto máximo de crédito de esta caja es $1.500,00". Los créditos ya solicitados no cambian.
+
+### POST /api/cajas/:cajaId/quitar-de-mi-lista
+
+Quita de "Mis cajas" una caja eliminada (Etapa 7, T11; `quitar_caja_eliminada`, migración `026`): desactiva la propia membresía. Los datos de la caja y el acceso de los demás miembros no cambian.
+
+- Permiso `caja.ver` (todo miembro)
+- 200: `{ message }`
+- 409: la caja no está eliminada (de una caja que opera se sale con la liquidación o lo quita el coordinador).
 
 ### GET /api/cajas/:cajaId/eliminacion
 

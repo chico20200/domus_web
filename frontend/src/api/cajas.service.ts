@@ -44,6 +44,10 @@ export const cajasService = {
   requisitosEliminar(cajaId: string): Promise<RequisitosEliminarCaja> {
     return apiClient.get<RequisitosEliminarCaja>(`/cajas/${cajaId}/eliminacion`)
   },
+  /** Quita de Mis cajas una caja eliminada (T11): la propia membresía, nada más */
+  quitarDeMiLista(cajaId: string): Promise<{ message: string }> {
+    return apiClient.post<{ message: string }>(`/cajas/${cajaId}/quitar-de-mi-lista`, {})
+  },
   /** La base vuelve a revisar todo; `nombre` es el de la caja, escrito para confirmar */
   eliminar(cajaId: string, nombre: string): Promise<{ message: string }> {
     return apiClient.post<{ message: string }>(`/cajas/${cajaId}/eliminar`, { nombre })

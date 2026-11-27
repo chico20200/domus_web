@@ -37,6 +37,7 @@ router.get("/mis-cajas", async (req, res) => {
         activa,
         estado,
         estado_motivo,
+        estado_cambiado_en,
         foto
       )
     `,
@@ -61,8 +62,9 @@ router.get("/mis-cajas", async (req, res) => {
   // Transforma el resultado para aplanar la estructura
   const cajas = data
     // Las bloqueadas por el administrador se listan con su motivo: sus miembros siguen
-    // viendo sus datos (T10). Las eliminadas quedan para la Etapa 7.
-    .filter((m) => m.cajas && m.cajas.activa && m.cajas.estado !== "eliminada")
+    // viendo sus datos (T10). Las eliminadas también, como "caja eliminada", hasta que
+    // cada uno la quite de su lista (Etapa 7, T11)
+    .filter((m) => m.cajas && m.cajas.activa)
     .map((m) => ({
       id: m.cajas.id,
       nombre: m.cajas.nombre,
@@ -71,6 +73,8 @@ router.get("/mis-cajas", async (req, res) => {
       politicas_aceptadas: aceptadas.has(m.cajas.id),
       estado: m.cajas.estado ?? "activa",
       estado_motivo: m.cajas.estado_motivo ?? null,
+      // Cuándo se eliminó (o se bloqueó)
+      estado_cambiado_en: m.cajas.estado_cambiado_en ?? null,
       foto: m.cajas.foto,
     }))
 
@@ -282,6 +286,17 @@ router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) =>
     console.error("Error en resumen:", err.message)
     return responderError(res, err)
   }
+})
+
+// ─────────────────────────────────────────────
+// POST /api/cajas/:cajaId/quitar-de-mi-lista
+// Quita de "Mis cajas" una caja eliminada (Etapa 7, T11; migración 026): desactiva la
+// propia membresía. Los datos de la caja y el acceso de los demás no cambian.
+// ─────────────────────────────────────────────
+router.post("/:cajaId/quitar-de-mi-lista", requierePermiso("caja.ver"), async (req, res) => {
+  const { error } = await req.db.rpc("quitar_caja_eliminada", { p_caja: req.params.cajaId })
+  if (error) return responderError(res, error)
+  return res.json({ message: "La caja ya no aparece en tu lista" })
 })
 
 // ─────────────────────────────────────────────
