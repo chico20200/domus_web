@@ -18,6 +18,7 @@ const pagosRoutes = require("./routes/pagos.routes")
 const reportesRoutes = require("./routes/reportes.routes")
 const fondosRoutes = require("./routes/fondos.routes")
 const adminRoutes = require("./routes/admin.routes")
+const importacionRoutes = require("./routes/importacion.routes")
 
 const app = express()
 
@@ -27,6 +28,9 @@ app.use(
     origin: process.env.FRONTEND_URL,
   }),
 )
+// La importación desde Excel manda hasta 2.000 filas por hoja: su propio límite, antes del
+// general (100 kB)
+app.use("/api/cajas/:cajaId/importar", express.json({ limit: "4mb" }), importacionRoutes)
 app.use(express.json())
 
 // ── Rutas ────────────────────────────────────
@@ -46,7 +50,10 @@ app.use("/api/admin", adminRoutes)
 app.use((err, req, res, next) => {
   if (err?.type === "entity.too.large") {
     const mb = Math.round((err.limit ?? 0) / (1024 * 1024))
-    return res.status(413).json({ error: `La foto pesa más de ${mb} MB. Toma otra o redúcela.` })
+    const error = req.originalUrl.includes("/importar/")
+      ? `El archivo tiene demasiados datos (más de ${mb} MB). Divídelo en partes.`
+      : `La foto pesa más de ${mb} MB. Toma otra o redúcela.`
+    return res.status(413).json({ error })
   }
   if (err?.type === "entity.parse.failed") {
     return res.status(400).json({ error: "El cuerpo de la petición no es válido" })

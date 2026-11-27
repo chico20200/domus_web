@@ -1,9 +1,19 @@
 // src/pages/SociosPage.tsx
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { CalendarClock, Link2, Pencil, Search, UserPlus, Users, UserX } from "lucide-react"
+import {
+  CalendarClock,
+  FileSpreadsheet,
+  Link2,
+  Pencil,
+  Search,
+  UserPlus,
+  Users,
+  UserX,
+} from "lucide-react"
 import { PageShell } from "../components/layout/PageShell"
 import { Button } from "../components/Button"
+import { ImportarExcelModal } from "../components/ImportarExcelModal"
 import { Badge } from "../components/Badge"
 import { DataTable } from "../components/DataTable"
 import { EmptyState } from "../components/EmptyState"
@@ -41,6 +51,7 @@ function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: 
   const cargar = useCallback(async () => (await sociosService.getSocios(cajaId)).socios, [cajaId])
   const { datos, cargando, error, recargar } = useDatos(cargar)
   const [busqueda, setBusqueda] = useState("")
+  const [importando, setImportando] = useState(false)
   // null: cerrado; "nuevo": ficha nueva; un Socio: edición
   const [modal, setModal] = useState<Socio | "nuevo" | null>(null)
   // Solo el coordinador (el mismo permiso que desactivar): corregir la fecha de ingreso
@@ -91,12 +102,21 @@ function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: 
             icon={Search}
           />
         </div>
-        <Button
-          label="Registrar socio"
-          icon={UserPlus}
-          disabled={cargando || !!error}
-          onClick={() => setModal("nuevo")}
-        />
+        <div className="flex flex-wrap gap-3">
+          <Button
+            label="Importar desde Excel"
+            variant="secondary"
+            icon={FileSpreadsheet}
+            disabled={cargando}
+            onClick={() => setImportando(true)}
+          />
+          <Button
+            label="Registrar socio"
+            icon={UserPlus}
+            disabled={cargando || !!error}
+            onClick={() => setModal("nuevo")}
+          />
+        </div>
       </div>
 
       {!cargando && !error && (
@@ -258,6 +278,14 @@ function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: 
                 : `Ficha de ${s.nombre} ${s.apellido} actualizada`,
             )
           }}
+        />
+      )}
+      {importando && (
+        <ImportarExcelModal
+          cajaId={cajaId}
+          modulo="socios"
+          onCerrar={() => setImportando(false)}
+          onImportado={recargar}
         />
       )}
     </PageShell>

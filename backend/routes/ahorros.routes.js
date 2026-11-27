@@ -101,6 +101,7 @@ router.get("/:cuentaId", requierePermiso("caja.ver"), async (req, res) => {
     .from("transacciones")
     .select("*")
     .eq("cuenta_id", cuentaId)
+    .order("fecha", { ascending: false })
     .order("created_at", { ascending: false })
 
   return res.json({ cuenta, transacciones: transacciones ?? [] })

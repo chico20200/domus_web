@@ -101,6 +101,7 @@ function analizarEstadoCredito(credito, pagos) {
         capital: 0,
         interes: 0,
         prepago: false,
+        capitalImportado: 0,
         fechas: [],
         movimientos: [], // ← renombrado: todos los pagos, no solo abonos
       }
@@ -108,6 +109,7 @@ function analizarEstadoCredito(credito, pagos) {
     pagadoPorCuota[n].capital += parseFloat(p.monto_capital ?? 0)
     pagadoPorCuota[n].interes += parseFloat(p.monto_interes ?? 0)
     if (p.es_prepago) pagadoPorCuota[n].prepago = true
+    if (p.es_importado) pagadoPorCuota[n].capitalImportado += parseFloat(p.monto_capital ?? 0)
     pagadoPorCuota[n].fechas.push(p.fecha_pago)
 
     // Guarda TODOS los movimientos de la cuota
@@ -129,12 +131,22 @@ function analizarEstadoCredito(credito, pagos) {
       capital: 0,
       interes: 0,
       prepago: false,
+      capitalImportado: 0,
       fechas: [],
       movimientos: [],
     }
 
     const esPrepago = pagado.prepago
-    const interesEsperado = esPrepago ? 0 : f.interes
+    // Importada desde Excel (T22, "tal como se pagaron"): si los pagos importados cubren
+    // todo su capital, la cuota queda saldada con el interés que se cobró de verdad y lo
+    // que faltó se condona. Lo mismo calcula importar_excel (migración 016) para el saldo.
+    const saldadaAlImportar =
+      !esPrepago && pagado.capitalImportado > 0 && pagado.capitalImportado >= f.capital - 0.001
+    const interesEsperado = esPrepago
+      ? 0
+      : saldadaAlImportar
+        ? Math.min(f.interes, +pagado.interes.toFixed(2))
+        : f.interes
 
     const faltaCapital = +(f.capital - pagado.capital).toFixed(2)
     const faltaInteres = +(interesEsperado - pagado.interes).toFixed(2)
@@ -146,7 +158,7 @@ function analizarEstadoCredito(credito, pagos) {
     return {
       ...f,
       interes: interesEsperado,
-      interes_condonado: esPrepago ? f.interes : 0,
+      interes_condonado: esPrepago ? f.interes : +(f.interes - interesEsperado).toFixed(2),
       cuota: +(f.capital + interesEsperado).toFixed(2),
       capital_pagado: +pagado.capital.toFixed(2),
       interes_pagado: +pagado.interes.toFixed(2),

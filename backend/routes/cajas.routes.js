@@ -238,6 +238,7 @@ router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) =>
         tipo,
         monto,
         descripcion,
+        fecha,
         created_at,
         cuentas_ahorro (
           socios ( nombre, apellido )
@@ -245,6 +246,7 @@ router.get("/:cajaId/resumen", requierePermiso("datos.ver"), async (req, res) =>
       `,
       )
       .eq("caja_id", cajaId)
+      .order("fecha", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(5)
 

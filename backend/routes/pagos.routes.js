@@ -4,11 +4,7 @@ const router = express.Router({ mergeParams: true })
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { fechaLocal } = require("../utils/fechas")
-const {
-  generarTablaAmortizacion,
-  analizarEstadoCredito,
-  planAdelanto,
-} = require("../utils/amortizacion")
+const { analizarEstadoCredito, planAdelanto } = require("../utils/amortizacion")
 const { responderError } = require("../utils/errores")
 const { errorMonto } = require("../utils/validacion")
 const { leerImagen, subirYAdjuntar, enviarEnlace } = require("../utils/comprobantes")
@@ -59,52 +55,22 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
     return res.status(400).json({ error: "Solo se registran pagos de créditos activos" })
   }
 
-  // 2. Genera la tabla teórica
-  const { tabla } = generarTablaAmortizacion(
-    parseFloat(credito.monto_solicitado),
-    parseFloat(credito.tasa_interes),
-    credito.plazo_meses,
-  )
-
-  // 3. Lee TODOS los pagos ya hechos
+  // 2. Lee todos los pagos ya hechos y busca la primera cuota que debe algo, con la misma
+  // regla que el detalle del crédito (adelantos y cuotas importadas incluidas)
   const { data: pagosPrevios } = await req.db
     .from("pagos_credito")
-    .select("numero_cuota, monto_capital, monto_interes")
+    .select("*")
     .eq("credito_id", creditoId)
-
-  // 4. Suma lo pagado por cada cuota
-  const pagadoPorCuota = {}
-  ;(pagosPrevios ?? []).forEach((p) => {
-    const n = p.numero_cuota
-    if (!pagadoPorCuota[n]) pagadoPorCuota[n] = { capital: 0, interes: 0 }
-    pagadoPorCuota[n].capital += parseFloat(p.monto_capital)
-    pagadoPorCuota[n].interes += parseFloat(p.monto_interes)
-  })
-
-  // 5. Encuentra la primera cuota que aún debe capital o interés
-  let numeroCuota = null
-  let faltaCapital = 0
-  let faltaInteres = 0
-
-  for (const fila of tabla) {
-    const pagado = pagadoPorCuota[fila.numero_cuota] ?? { capital: 0, interes: 0 }
-    const pendienteCapital = +(fila.capital - pagado.capital).toFixed(2)
-    const pendienteInteres = +(fila.interes - pagado.interes).toFixed(2)
-
-    // Si esta cuota todavía debe algo, es la que toca pagar
-    if (pendienteCapital > 0.001 || pendienteInteres > 0.001) {
-      numeroCuota = fila.numero_cuota
-      faltaCapital = pendienteCapital > 0 ? pendienteCapital : 0
-      faltaInteres = pendienteInteres > 0 ? pendienteInteres : 0
-      break
-    }
-  }
+  const { cuotaCorriente } = analizarEstadoCredito(credito, pagosPrevios ?? [])
+  const numeroCuota = cuotaCorriente?.numero_cuota ?? null
+  const faltaCapital = cuotaCorriente?.falta_capital ?? 0
+  const faltaInteres = cuotaCorriente?.falta_interes ?? 0
 
   if (!numeroCuota) {
     return res.status(400).json({ error: "Todas las cuotas ya están pagadas" })
   }
 
-  // 6. Determina cuánto se paga según el tipo — solo lo que falta
+  // 3. Determina cuánto se paga según el tipo — solo lo que falta
   let montoCapital = 0
   let montoInteres = 0
 
@@ -130,10 +96,10 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
     return res.status(400).json({ error: "No hay nada pendiente por pagar en esta cuota" })
   }
 
-  // 7. Saldo del crédito tal como se vio al calcular la cuota
+  // 4. Saldo del crédito tal como se vio al calcular la cuota
   const saldoAntes = parseFloat(credito.saldo_pendiente)
 
-  // 8. Registra el pago y el saldo del crédito juntos (registrar_pago_credito, migración
+  // 5. Registra el pago y el saldo del crédito juntos (registrar_pago_credito, migración
   // 004). Si otro pago cambió el saldo desde que se calculó la cuota, la base lo rechaza.
   const { data: registro, error } = await req.db.rpc("registrar_pago_credito", {
     p_caja: cajaId,

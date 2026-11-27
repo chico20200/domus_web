@@ -132,7 +132,7 @@ export function DetalleCuenta({
             {
               clave: "fecha",
               encabezado: "Fecha",
-              celda: (t) => <span className="whitespace-nowrap">{fecha(t.created_at)}</span>,
+              celda: (t) => <span className="whitespace-nowrap">{fecha(t.fecha)}</span>,
             },
             {
               clave: "movimiento",
@@ -171,7 +171,7 @@ export function DetalleCuenta({
                   destino={{ tipo: "movimiento", cajaId, cuentaId: cuenta.id, id: t.id }}
                   tiene={Boolean(t.comprobante)}
                   puedeAdjuntar={operable}
-                  descripcion={`del ${t.tipo === "deposito" ? "depósito" : "retiro"} del ${fecha(t.created_at)}`}
+                  descripcion={`del ${t.tipo === "deposito" ? "depósito" : "retiro"} del ${fecha(t.fecha)}`}
                   onAdjuntado={recargar}
                 />
               ),

@@ -1,9 +1,10 @@
 // src/pages/FondosPage.tsx
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Landmark, Plus } from "lucide-react"
+import { FileSpreadsheet, Landmark, Plus } from "lucide-react"
 import { PageShell } from "../components/layout/PageShell"
 import { Button } from "../components/Button"
+import { ImportarExcelModal } from "../components/ImportarExcelModal"
 import { Badge } from "../components/Badge"
 import { DataTable } from "../components/DataTable"
 import { EmptyState } from "../components/EmptyState"
@@ -40,6 +41,7 @@ function Fondos({ cajaId }: { cajaId: string }) {
   const { datos, cargando, error, recargar } = useDatos(cargar)
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const [nuevo, setNuevo] = useState(false)
+  const [importando, setImportando] = useState(false)
 
   if (seleccionado) {
     return (
@@ -66,12 +68,21 @@ function Fondos({ cajaId }: { cajaId: string }) {
           Dinero de la caja para sus actividades. No se presta: no cuenta en el disponible para
           prestar ni en los intereses de los socios.
         </p>
-        <Button
-          label="Nuevo fondo"
-          icon={Plus}
-          disabled={cargando || !!error}
-          onClick={() => setNuevo(true)}
-        />
+        <div className="flex flex-wrap gap-3">
+          <Button
+            label="Importar desde Excel"
+            variant="secondary"
+            icon={FileSpreadsheet}
+            disabled={cargando}
+            onClick={() => setImportando(true)}
+          />
+          <Button
+            label="Nuevo fondo"
+            icon={Plus}
+            disabled={cargando || !!error}
+            onClick={() => setNuevo(true)}
+          />
+        </div>
       </div>
 
       {!cargando && !error && fondos.length > 0 && (
@@ -145,6 +156,14 @@ function Fondos({ cajaId }: { cajaId: string }) {
             toast("exito", `${fondo.nombre} creado`)
             setSeleccionado(fondo.id)
           }}
+        />
+      )}
+      {importando && (
+        <ImportarExcelModal
+          cajaId={cajaId}
+          modulo="fondos"
+          onCerrar={() => setImportando(false)}
+          onImportado={recargar}
         />
       )}
     </PageShell>

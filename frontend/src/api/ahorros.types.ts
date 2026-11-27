@@ -24,6 +24,8 @@ export interface Transaccion {
   descripcion: string
   /** Ruta de la foto del comprobante (T16), o null si no tiene */
   comprobante?: string | null
+  /** Día del movimiento (migración 015): hoy al registrarlo, o el del Excel al importarlo */
+  fecha: string
   created_at: string
 }
 

@@ -37,7 +37,7 @@ async function agregarMora(db, creditos) {
     const { data, error } = await db
       .from("pagos_credito")
       .select(
-        "credito_id, numero_cuota, monto_pagado, monto_capital, monto_interes, es_prepago, fecha_pago",
+        "credito_id, numero_cuota, monto_pagado, monto_capital, monto_interes, es_prepago, es_importado, fecha_pago",
       )
       .in("credito_id", ids)
     if (error) return { creditos: lista, error }
