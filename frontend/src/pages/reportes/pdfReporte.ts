@@ -20,7 +20,7 @@ export function descargarReporte(dist: DistribucionResponse, estado: EstadoCajaR
   doc.setFontSize(9)
   doc.setTextColor(85)
   doc.text(
-    `${dist.caja.nombre} · Ciclo ${dist.ciclo.numero}: ${dist.ciclo.label} · ${TIPO_REPARTO[dist.tipo].etiqueta}`,
+    `${dist.caja.nombre} · Ciclo ${dist.ciclo.numero}: ${dist.ciclo.label} · ${TIPO_REPARTO[dist.tipo].etiqueta} · ${estado.ciclo.cerrado ? `Cerrado; saldos al ${fecha(estado.corte)}` : `En curso, hasta hoy ${fecha(estado.corte)}`}`,
     14,
     22,
   )

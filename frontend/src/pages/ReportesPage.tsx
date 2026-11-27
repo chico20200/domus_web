@@ -18,6 +18,7 @@ import { SelectField } from "../components/SelectField"
 import { InfoTip } from "../components/InfoTip"
 import { AYUDA } from "../lib/ayuda"
 import { StatCard } from "../components/StatCard"
+import { Badge } from "../components/Badge"
 import { DataTable, type Columna } from "../components/DataTable"
 import { EmptyState } from "../components/EmptyState"
 import { LoadingState } from "../components/LoadingState"
@@ -122,6 +123,8 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
   const { dist, estado } = datos
   // Mientras llega el ciclo recién elegido, se sigue viendo el anterior, atenuado
   const actualizando = cicloPedido !== null && dist.ciclo.numero !== cicloPedido
+  // Un ciclo cerrado se mide a su fin; uno en curso, a hoy (T24)
+  const cerrado = estado.ciclo.cerrado
 
   const columnasMes: Columna<FilaMes>[] = [
     { clave: "mes", encabezado: "Mes", celda: (m) => mesCorto(m.mes), pie: "Total" },
@@ -171,13 +174,23 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
     {
       clave: "socio",
       encabezado: "Socio",
-      celda: (s) => s.nombre,
+      celda: (s) =>
+        s.activo ? (
+          s.nombre
+        ) : (
+          <span className="flex flex-col">
+            <span>{s.nombre}</span>
+            {s.fecha_salida && (
+              <span className="text-xs text-secondary">Salió el {fecha(s.fecha_salida)}</span>
+            )}
+          </span>
+        ),
       fija: true,
       pie: "Total repartido",
     },
     {
       clave: "ahorro",
-      encabezado: "Ahorro final",
+      encabezado: cerrado ? "Ahorro al cierre" : "Ahorro hoy",
       alinear: "derecha",
       celda: (s) => <span className="text-secondary">{moneda(s.saldo_final)}</span>,
     },
@@ -208,8 +221,14 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
             Distribución de intereses
             <InfoTip ayuda={AYUDA.distribucionIntereses} />
           </h2>
-          <p className="text-sm text-secondary">
-            Ciclo {dist.ciclo.numero} · {dist.ciclo.label} · {TIPO_REPARTO[dist.tipo].etiqueta}
+          <p className="flex flex-wrap items-center gap-2 text-sm text-secondary">
+            <span>
+              Ciclo {dist.ciclo.numero} · {dist.ciclo.label} · {TIPO_REPARTO[dist.tipo].etiqueta}
+            </span>
+            <Badge
+              tono={cerrado ? "neutral" : "ok"}
+              label={cerrado ? "Cerrado" : `En curso, hasta hoy ${fecha(estado.corte)}`}
+            />
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -280,7 +299,7 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
           <StatCard
             etiqueta="Total ahorrado"
             valor={moneda(estado.total_ahorros)}
-            detalle="Saldo actual de las cuentas"
+            detalle={cerrado ? `Al cierre, ${fecha(estado.corte)}` : "Saldo de las cuentas hoy"}
             icono={Wallet}
             destacada
           />
@@ -293,13 +312,13 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
           <StatCard
             etiqueta="Por cobrar"
             valor={moneda(estado.por_cobrar)}
-            detalle={`${estado.creditos.activos} ${estado.creditos.activos === 1 ? "crédito en curso" : "créditos en curso"}${estado.creditos.en_mora > 0 ? `, ${estado.creditos.en_mora} en mora` : ""}`}
+            detalle={`${estado.creditos.activos} ${estado.creditos.activos === 1 ? "crédito en curso" : "créditos en curso"}${cerrado ? " al cierre" : ""}${estado.creditos.en_mora > 0 ? `, ${estado.creditos.en_mora} en mora` : ""}`}
             icono={CreditCard}
           />
           <StatCard
             etiqueta="Disponible en caja"
             valor={moneda(estado.en_caja)}
-            detalle="Ahorros más interés histórico, menos lo prestado"
+            detalle={`Ahorros más interés cobrado, menos lo prestado${cerrado ? ", al cierre" : ""}`}
             icono={PieChart}
           />
         </div>

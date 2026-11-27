@@ -4,7 +4,8 @@ const { responderError } = require("../utils/errores")
 const router = express.Router({ mergeParams: true })
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
-const { calcularDistribucionInteres, tipoDeReparto } = require("../utils/reportes")
+const { calcularDistribucionInteres, estuvoEntre, tipoDeReparto } = require("../utils/reportes")
+const { fechaLocal } = require("../utils/fechas")
 const { calcularCiclos } = require("../utils/ciclos")
 const { EN_CURSO, agregarMora } = require("../utils/mora")
 
@@ -48,14 +49,14 @@ async function cicloPedido(req, res, numero) {
 
 /** El reparto de intereses de un ciclo, con su tipo */
 async function distribucionDelCiclo(db, cajaId, ciclo) {
-  // Socios activos
-  const { data: socios, error: errorSocios } = await db
+  // Los socios que estuvieron en el ciclo, aunque hoy estén inactivos (T24)
+  const { data: fichas, error: errorSocios } = await db
     .from("socios")
-    .select("id, nombre, apellido, cedula, fecha_ingreso")
+    .select("id, nombre, apellido, cedula, fecha_ingreso, fecha_salida, activo")
     .eq("caja_id", cajaId)
-    .eq("activo", true)
     .order("apellido")
   if (errorSocios) throw errorSocios
+  const socios = (fichas ?? []).filter((s) => estuvoEntre(s, ciclo.inicio, ciclo.fin))
 
   // Transacciones de ahorro
   const { data: transacciones, error: errorTx } = await db
@@ -83,7 +84,7 @@ async function distribucionDelCiclo(db, cajaId, ciclo) {
 
   return calcularDistribucionInteres({
     meses: ciclo.meses,
-    socios: socios ?? [],
+    socios,
     transacciones: txPlanas,
     pagosInteres: pagosInteres ?? [],
     tipo: await tipoDeReparto(db, cajaId, ciclo.inicio),
@@ -213,85 +214,113 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
 
   if (!cicloSel) return res.status(404).json({ error: "Ciclo no encontrado" })
 
-  // 2. Ahorros — saldo actual de las cuentas (no depende del ciclo)
-  const { data: cuentas } = await req.db
-    .from("cuentas_ahorro")
-    .select("saldo")
-    .eq("caja_id", cajaId)
-    .eq("estado", "activa")
+  // Todo se mide a una fecha de corte (T24): el fin del ciclo si ya cerró, hoy si está
+  // en curso. Así un ciclo anterior muestra sus saldos al cierre, no los de hoy.
+  const hoy = fechaLocal()
+  const corte = cicloSel.cerrado ? cicloSel.fin : hoy
 
-  const totalAhorros = +(cuentas ?? []).reduce((s, c) => s + parseFloat(c.saldo), 0).toFixed(2)
+  try {
+    // 2. Ahorros al corte: suma de los movimientos hasta esa fecha (cuadra con el saldo
+    //    de las cuentas cuando el corte es hoy)
+    const { data: movimientos, error: errorMov } = await req.db
+      .from("transacciones")
+      .select("tipo, monto")
+      .eq("caja_id", cajaId)
+      .lte("fecha", corte)
+    if (errorMov) throw errorMov
+    const totalAhorros = +(movimientos ?? [])
+      .reduce((s, t) => s + (t.tipo === "deposito" ? 1 : -1) * parseFloat(t.monto), 0)
+      .toFixed(2)
 
-  // 3. Créditos — estado actual de la cartera
-  const { data: creditos } = await req.db
-    .from("creditos")
-    .select(
-      "id, estado, monto_solicitado, tasa_interes, plazo_meses, fecha_desembolso, saldo_pendiente, interes_condonado",
-    )
-    .eq("caja_id", cajaId)
+    // 3. Créditos al corte: desembolsados hasta esa fecha, con el saldo del último pago
+    //    hasta el corte (saldo_despues ya descuenta lo condonado), o el total si no
+    //    pagaron nada todavía
+    const { data: creditos, error: errorCred } = await req.db
+      .from("creditos")
+      .select(
+        "id, estado, monto_solicitado, tasa_interes, plazo_meses, fecha_desembolso, monto_total, saldo_pendiente, interes_condonado",
+      )
+      .eq("caja_id", cajaId)
+    if (errorCred) throw errorCred
 
-  // Por cobrar: desembolsados y sin terminar de pagar, al día o atrasados (T13)
-  const activos = (creditos ?? []).filter((c) => EN_CURSO.includes(c.estado))
-  const conMora = await agregarMora(req.db, activos)
-  if (conMora.error) return responderError(res, conMora.error)
-  const porCobrar = +activos.reduce((s, c) => s + parseFloat(c.saldo_pendiente), 0).toFixed(2)
+    const { data: pagos, error: errorPagos } = await req.db
+      .from("pagos_credito")
+      .select("credito_id, fecha_pago, created_at, saldo_despues, monto_interes, monto_capital")
+      .eq("caja_id", cajaId)
+      .lte("fecha_pago", corte)
+      .order("fecha_pago")
+      .order("created_at")
+    if (errorPagos) throw errorPagos
 
-  const condonado = +(creditos ?? [])
-    .reduce((s, c) => s + parseFloat(c.interes_condonado ?? 0), 0)
-    .toFixed(2)
+    const saldoAlCorte = {}
+    ;(pagos ?? []).forEach((p) => {
+      saldoAlCorte[p.credito_id] = parseFloat(p.saldo_despues)
+    })
+    const desembolsados = (creditos ?? [])
+      .filter((c) => c.fecha_desembolso && c.fecha_desembolso <= corte)
+      .map((c) => ({ ...c, saldo: saldoAlCorte[c.id] ?? parseFloat(c.monto_total) }))
+    const enCursoAlCorte = desembolsados.filter((c) => c.saldo > 0)
+    const porCobrar = +enCursoAlCorte.reduce((s, c) => s + c.saldo, 0).toFixed(2)
 
-  // 4. Interés y capital — SOLO DEL CICLO SELECCIONADO
-  const { data: pagosCiclo } = await req.db
-    .from("pagos_credito")
-    .select("monto_interes, monto_capital")
-    .eq("caja_id", cajaId)
-    .gte("fecha_pago", cicloSel.inicio)
-    .lte("fecha_pago", cicloSel.fin)
+    // La mora es de hoy: solo tiene sentido en el ciclo en curso (T13)
+    let enMora = 0
+    if (!cicloSel.cerrado) {
+      const activos = (creditos ?? []).filter((c) => EN_CURSO.includes(c.estado))
+      const conMora = await agregarMora(req.db, activos)
+      if (conMora.error) return responderError(res, conMora.error)
+      enMora = conMora.creditos.filter((c) => c.mora).length
+    }
 
-  const interesRecaudado = +(pagosCiclo ?? [])
-    .reduce((s, p) => s + parseFloat(p.monto_interes ?? 0), 0)
-    .toFixed(2)
-  const capitalRecuperado = +(pagosCiclo ?? [])
-    .reduce((s, p) => s + parseFloat(p.monto_capital ?? 0), 0)
-    .toFixed(2)
+    const condonado = +(creditos ?? [])
+      .reduce((s, c) => s + parseFloat(c.interes_condonado ?? 0), 0)
+      .toFixed(2)
 
-  // 5. Interés histórico total — para contexto
-  const { data: pagosTodos } = await req.db
-    .from("pagos_credito")
-    .select("monto_interes")
-    .eq("caja_id", cajaId)
+    // 4. Interés y capital cobrados dentro del ciclo, hasta el corte
+    const delCiclo = (pagos ?? []).filter((p) => p.fecha_pago >= cicloSel.inicio)
+    const interesRecaudado = +delCiclo
+      .reduce((s, p) => s + parseFloat(p.monto_interes ?? 0), 0)
+      .toFixed(2)
+    const capitalRecuperado = +delCiclo
+      .reduce((s, p) => s + parseFloat(p.monto_capital ?? 0), 0)
+      .toFixed(2)
 
-  const interesHistorico = +(pagosTodos ?? [])
-    .reduce((s, p) => s + parseFloat(p.monto_interes ?? 0), 0)
-    .toFixed(2)
+    // 5. Interés cobrado desde que nació la caja hasta el corte
+    const interesHistorico = +(pagos ?? [])
+      .reduce((s, p) => s + parseFloat(p.monto_interes ?? 0), 0)
+      .toFixed(2)
 
-  // 6. Dinero disponible en caja (para prestar). No incluye los Fondos de caja (T18):
-  // ese dinero es de la organización para sus actividades y no se presta
-  const enCaja = +(totalAhorros + interesHistorico - porCobrar).toFixed(2)
+    // 6. Dinero disponible en caja (para prestar) al corte. No incluye los Fondos de caja
+    //    (T18): ese dinero es de la organización para sus actividades y no se presta
+    const enCaja = +(totalAhorros + interesHistorico - porCobrar).toFixed(2)
 
-  return res.json({
-    ciclo: {
-      numero: cicloSel.numero,
-      label: cicloSel.label,
-      inicio: cicloSel.inicio,
-      fin: cicloSel.fin,
-    },
-    total_ahorros: totalAhorros,
-    interes_recaudado: interesRecaudado, // ← del ciclo
-    capital_recuperado: capitalRecuperado, // ← del ciclo
-    interes_historico: interesHistorico, // ← de toda la vida de la caja
-    por_cobrar: porCobrar,
-    interes_condonado: condonado,
-    en_caja: enCaja,
-    creditos: {
-      total: creditos?.length ?? 0,
-      activos: activos.length,
-      pagados: (creditos ?? []).filter((c) => c.estado === "pagado").length,
-      pendientes: (creditos ?? []).filter((c) => c.estado === "pendiente").length,
-      vencidos: (creditos ?? []).filter((c) => c.estado === "vencido").length,
-      en_mora: conMora.creditos.filter((c) => c.mora).length,
-    },
-  })
+    return res.json({
+      ciclo: {
+        numero: cicloSel.numero,
+        label: cicloSel.label,
+        inicio: cicloSel.inicio,
+        fin: cicloSel.fin,
+        cerrado: cicloSel.cerrado,
+      },
+      corte, // ← fecha a la que se miden los saldos
+      total_ahorros: totalAhorros,
+      interes_recaudado: interesRecaudado, // ← del ciclo
+      capital_recuperado: capitalRecuperado, // ← del ciclo
+      interes_historico: interesHistorico, // ← hasta el corte
+      por_cobrar: porCobrar,
+      interes_condonado: condonado,
+      en_caja: enCaja,
+      creditos: {
+        total: creditos?.length ?? 0,
+        activos: enCursoAlCorte.length,
+        pagados: desembolsados.filter((c) => c.saldo <= 0).length,
+        pendientes: (creditos ?? []).filter((c) => c.estado === "pendiente").length,
+        vencidos: (creditos ?? []).filter((c) => c.estado === "vencido").length,
+        en_mora: enMora,
+      },
+    })
+  } catch (err) {
+    return responderError(res, err)
+  }
 })
 
 module.exports = router

@@ -7,6 +7,17 @@ function finDeMes(mesISO) {
   return `${y}-${String(m).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
+/**
+ * Si un socio estuvo en el periodo [inicio, fin] (T24, migración 018): ingresó hasta el
+ * fin y no había salido antes del inicio. Sirve para el ciclo y para cada mes.
+ */
+function estuvoEntre(socio, inicio, fin) {
+  return (
+    (!socio.fecha_ingreso || socio.fecha_ingreso <= fin) &&
+    (!socio.fecha_salida || socio.fecha_salida >= inicio)
+  )
+}
+
 /** Los dos tipos de reparto (T23). Sin elegir, la diferenciada: la de siempre */
 const TIPOS_REPARTO = ["diferenciada", "equitativa"]
 
@@ -20,8 +31,8 @@ const TIPOS_REPARTO = ["diferenciada", "equitativa"]
  *   4. tasa del mes = interés / capital × 100
  *   5. la parte de cada socio:
  *      - diferenciada: tasa × su saldo / 100 (modelo del Excel de la caja)
- *      - equitativa: el interés en partes iguales entre los socios que ya habían
- *        ingresado al cierre del mes (fecha_ingreso), tengan o no ahorro
+ *      - equitativa: el interés en partes iguales entre los socios que estuvieron en
+ *        el mes (el de su ingreso y el de su salida cuentan enteros), tengan o no ahorro
  *
  * Las partes se acumulan sin redondear y el total de cada socio se redondea hacia abajo
  * al centavo. Lo que sobra (menos de un centavo por socio) es el `sobrante`, que va a
@@ -101,9 +112,7 @@ function calcularDistribucionInteres({
     // 4. Reparto a cada socio, sin redondear (se redondea el total del ciclo)
     const reparto = {}
     const participantes =
-      tipo === "equitativa"
-        ? socios.filter((s) => !s.fecha_ingreso || s.fecha_ingreso <= corte)
-        : []
+      tipo === "equitativa" ? socios.filter((s) => estuvoEntre(s, `${mes}-01`, corte)) : []
     const parte = participantes.length ? interesMes / participantes.length : 0
     socios.forEach((s) => {
       const cuota =
@@ -140,6 +149,9 @@ function calcularDistribucionInteres({
     socio_id: s.id,
     nombre: `${s.nombre} ${s.apellido}`,
     cedula: s.cedula,
+    // Quien ya salió de la caja sigue en los ciclos en que estuvo (T24)
+    activo: s.activo ?? true,
+    fecha_salida: s.fecha_salida ?? null,
     // Saldo final del socio (último mes del periodo)
     saldo_final: filasMes.length ? filasMes[filasMes.length - 1].saldos[s.id] : 0,
     // Interés mes a mes
@@ -196,4 +208,4 @@ function abajoAlCentavo(n) {
   return Math.floor(n * 100 + 1e-6) / 100
 }
 
-module.exports = { calcularDistribucionInteres, tipoDeReparto, TIPOS_REPARTO }
+module.exports = { calcularDistribucionInteres, estuvoEntre, tipoDeReparto, TIPOS_REPARTO }

@@ -18,6 +18,9 @@ export interface InteresSocio {
   nombre: string
   cedula: string
   saldo_final: number
+  /** Quien ya salió sigue en los ciclos en que estuvo (T24) */
+  activo: boolean
+  fecha_salida: string | null
   por_mes: { mes: string; interes: number }[]
   interes_total: number
 }
@@ -53,7 +56,10 @@ export interface EstadoCajaResponse {
     label: string
     inicio: string
     fin: string
+    cerrado: boolean
   }
+  /** Fecha a la que se miden los saldos: el fin del ciclo si cerró, hoy si está en curso */
+  corte: string
   total_ahorros: number
   interes_recaudado: number // del ciclo seleccionado
   capital_recuperado: number // del ciclo seleccionado

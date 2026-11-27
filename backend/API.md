@@ -111,6 +111,17 @@ Cada socio recibe su total del ciclo redondeado hacia abajo al centavo. Los cent
 
 Reglas del sobrante (en la base, `pasar_sobrante_a_fondo`): el ciclo tiene que haber cerrado (`400`); el monto es mayor que 0 y no pasa de un centavo por socio (`400`); una segunda vez en el mismo ciclo, `409`; el depósito lo hace `registrar_movimiento_fondo`, así que un fondo cerrado responde `409`. El movimiento lleva la descripción «Centavos que sobraron del reparto de intereses del ciclo dd/mm/aaaa – dd/mm/aaaa». Prueba: `backend/pruebas/reparto.sql`.
 
+### Reportes por las fechas del ciclo (T24, migración 018)
+
+- **Socios del ciclo:** `distribucion-interes` incluye a los socios que estuvieron en el ciclo: ingresaron hasta su fin y no habían salido antes de su inicio, aunque hoy estén inactivos. Cada socio trae `activo` y `fecha_salida`. En la equitativa recibe los meses en que estuvo; el mes en que entró y el mes en que salió cuentan enteros.
+- **Fecha de salida:** `socios.fecha_salida` la pone la base al desactivar la ficha (hoy) y la quita si vuelve a activarse. Nadie la escribe a mano. Prueba: `backend/pruebas/salida.sql`.
+- **Saldos al corte:** `estado-caja` mide todo a `corte`: el fin del ciclo si ya cerró, hoy si está en curso. Devuelve `corte` y `ciclo.cerrado`. Al corte se calculan:
+  - ahorros = suma de los movimientos hasta esa fecha;
+  - por cobrar = saldo de cada crédito desembolsado hasta el corte, tomado de su último pago hasta esa fecha (`saldo_despues`), o `monto_total` si no había pagado;
+  - interés cobrado hasta el corte;
+  - disponible = ahorros + interés − por cobrar.
+- **Mora:** solo se calcula en el ciclo en curso; en uno cerrado, `creditos.en_mora` es 0.
+
 ### Pago adelantado por monto (T30, migración 013)
 
 `GET …/pagos/proxima-cuota` trae `adelanto`:
