@@ -751,6 +751,24 @@ Las últimas 200 acciones, la más reciente primero: bloqueos y restablecimiento
 
 ---
 
+## Salida de un socio — `/api/cajas/:cajaId/socios/:socioId/salida`
+
+### GET /api/cajas/:cajaId/socios/:socioId/salida
+
+Vista previa de la liquidación de salida (Etapa 7, T3). No cambia nada; el cálculo está en `utils/liquidacion.js`.
+
+- Rol mínimo: `tesorero`
+- 200: `{ socio, cuentas, ahorros, interes, creditos, deuda, solicitudes, neto, puede_salir, impedimentos }`
+  - `cuentas`: `[{ id, numero_cuenta, estado, saldo }]`; `ahorros` es la suma de sus saldos.
+  - `interes`: `{ ciclo: { numero, label, inicio, fin }, tipo, monto }`, lo que le toca del reparto del ciclo actual hasta hoy (el mismo cálculo de Reportes, `utils/repartoCiclo.js`); `null` si la caja no tiene configurado su periodo.
+  - `creditos`: cada crédito en curso con `{ id, numero, capital_pendiente, interes_vencido, cuotas_vencidas, interes_condonado, deuda }`. `deuda` = capital pendiente + interés de las cuotas vencidas; `interes_condonado` es el de las cuotas que aún no vencen, que no se cobra.
+  - `solicitudes`: créditos sin aprobar `[{ id, numero, monto }]`; se anulan al registrar la salida.
+  - `neto` = ahorros + interés − deuda.
+  - `impedimentos`: `[{ codigo, mensaje }]`, con `codigo` `inactivo` (la ficha ya salió) o `deuda` (sus ahorros no cubren la deuda). `puede_salir` es que no haya ninguno.
+- 404: la ficha no existe en la caja.
+
+---
+
 ## Pendientes — `/api/cajas/:cajaId/pendientes`
 
 ### GET /api/cajas/:cajaId/pendientes
