@@ -1,7 +1,9 @@
-import { Sun, Moon, Bell, LogOut } from "lucide-react"
+import { Sun, Moon, LogOut } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useTheme } from "../../context/ThemeContext"
 import { useAuth } from "../../context/AuthContext"
+import { useCaja } from "../../context/CajaContext"
+import { CampanaPendientes } from "./CampanaPendientes"
 import { BotonIcono } from "./BotonIcono"
 import { Avatar } from "../Avatar"
 import { iniciales } from "../../lib/texto"
@@ -14,6 +16,7 @@ interface TopBarProps {
 export function TopBar({ titulo }: TopBarProps) {
   const { isDark, toggleTheme } = useTheme()
   const { user, logout } = useAuth()
+  const { cajaActiva } = useCaja()
   const navigate = useNavigate()
 
   const { perfil, refrescar } = useMiPerfil(user?.id ?? null)
@@ -29,8 +32,8 @@ export function TopBar({ titulo }: TopBarProps) {
           onClick={toggleTheme}
         />
 
-        {/* Sin función todavía: implementarlo o quitarlo es una decisión pendiente (§13.4) */}
-        <BotonIcono icono={Bell} etiqueta="Notificaciones" />
+        {/* Pendientes de la caja activa (T29, §13.4) */}
+        {cajaActiva && <CampanaPendientes cajaId={cajaActiva.id} />}
 
         <button
           type="button"

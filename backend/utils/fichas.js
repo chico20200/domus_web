@@ -1,4 +1,5 @@
 // backend/utils/fichas.js
+const { NIVEL } = require("../middlewares/permisos.middleware")
 
 /**
  * Ficha de socio de quien hace la petición en una caja: la vinculada a su cuenta o, si no
@@ -15,4 +16,13 @@ async function fichaDelUsuario(db, cajaId) {
   return data ?? null
 }
 
-module.exports = { fichaDelUsuario }
+/**
+ * ¿Quien hace la petición puede ver algo de este socio? El tesorero y el coordinador ven
+ * todo; el socio, solo lo de su propia ficha (T27). `titular` es el user_id de la ficha.
+ * El RLS ya esconde lo ajeno; esto deja la regla escrita también en la ruta.
+ */
+function puedeVerDelSocio(req, titular) {
+  return NIVEL[req.rol] >= NIVEL.tesorero || (titular != null && titular === req.user.id)
+}
+
+module.exports = { fichaDelUsuario, puedeVerDelSocio }

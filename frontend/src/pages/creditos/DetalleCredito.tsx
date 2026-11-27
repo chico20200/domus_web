@@ -33,6 +33,8 @@ interface Props {
   nombreCaja: string
   creditoId: string
   puedeOperar: boolean
+  /** Texto del botón de volver; el socio vuelve a "sus créditos" (T27) */
+  textoVolver?: string
   onVolver: () => void
   /** Avisa a la lista que algo cambió (estado o saldo) */
   onCambio: () => void
@@ -43,6 +45,7 @@ export function DetalleCredito({
   nombreCaja,
   creditoId,
   puedeOperar,
+  textoVolver = "Volver a créditos",
   onVolver,
   onCambio,
 }: Props) {
@@ -74,7 +77,7 @@ export function DetalleCredito({
       <Panel>
         <p className="text-sm text-secondary">{error || "No se encontró el crédito."}</p>
         <div className="flex gap-3">
-          <Button label="Volver a créditos" variant="ghost" icon={Undo2} onClick={onVolver} />
+          <Button label={textoVolver} variant="ghost" icon={Undo2} onClick={onVolver} />
         </div>
       </Panel>
     )
@@ -183,7 +186,7 @@ export function DetalleCredito({
   return (
     <>
       <div>
-        <Button label="Volver a créditos" variant="ghost" icon={Undo2} onClick={onVolver} />
+        <Button label={textoVolver} variant="ghost" icon={Undo2} onClick={onVolver} />
       </div>
 
       <Panel
@@ -226,6 +229,32 @@ export function DetalleCredito({
           />
         </div>
       </Panel>
+
+      {/* Solo lectura (el socio, T27): qué le toca pagar y si está atrasado */}
+      {!puedeOperar && c.estado === "pendiente" && (
+        <p className="text-sm text-secondary">
+          Esta solicitud está pendiente de aprobación. Cuando el tesorero la apruebe y desembolse,
+          aquí verás tus cuotas.
+        </p>
+      )}
+      {!puedeOperar && activo && proxima.pendiente && (
+        <Panel titulo="Próxima cuota">
+          <p className="text-sm text-primary">
+            Cuota {proxima.numero_cuota} de {proxima.total_cuotas},{" "}
+            {proxima.vencida ? "venció" : "vence"} el {fecha(proxima.fecha_vencimiento)}. Faltan{" "}
+            <span className="font-medium tabular-nums">{moneda(proxima.falta_total)}</span>.
+          </p>
+          {c.mora && (
+            <p role="status" className="text-sm text-destructivo">
+              {c.mora.cuotas_vencidas === 1
+                ? "Tienes 1 cuota vencida"
+                : `Tienes ${c.mora.cuotas_vencidas} cuotas vencidas`}{" "}
+              desde el {fecha(c.mora.desde)}: {moneda(c.mora.monto_vencido)} por pagar. Acércate al
+              tesorero para ponerte al día.
+            </p>
+          )}
+        </Panel>
+      )}
 
       {activo && puedeOperar && (
         <Panel

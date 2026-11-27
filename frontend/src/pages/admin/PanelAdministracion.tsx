@@ -1,5 +1,14 @@
 import { useCallback, useMemo, useState } from "react"
-import { Building2, Lock, NotebookText, Search, ShieldCheck, Users, UserX } from "lucide-react"
+import {
+  Building2,
+  FileSignature,
+  Lock,
+  NotebookText,
+  Search,
+  ShieldCheck,
+  Users,
+  UserX,
+} from "lucide-react"
 import { Tabs } from "../../components/Tabs"
 import { DataTable, type Columna } from "../../components/DataTable"
 import { StatCard } from "../../components/StatCard"
@@ -356,7 +365,11 @@ function TablaCuentas({
   )
 }
 
-/** Bitácora de bloqueos y restablecimientos de cuentas y cajas (HU-S02), la más reciente primero */
+/**
+ * Bitácora de bloqueos y restablecimientos de cuentas y cajas (HU-S02) y de las
+ * aceptaciones del acuerdo de confidencialidad con su versión (HU021, T28), la más
+ * reciente primero
+ */
 function TablaBitacora({ registros }: { registros: RegistroBitacora[] }) {
   const columnas: Columna<RegistroBitacora>[] = [
     { clave: "fecha", encabezado: "Fecha", celda: (r) => fechaHora(r.fecha) },
@@ -364,7 +377,9 @@ function TablaBitacora({ registros }: { registros: RegistroBitacora[] }) {
       clave: "accion",
       encabezado: "Acción",
       celda: (r) =>
-        r.accion === "bloquear" || r.accion === "bloquear_caja" ? (
+        r.accion === "aceptar_acuerdo" ? (
+          <Badge label="Acuerdo aceptado" tono="neutral" />
+        ) : r.accion === "bloquear" || r.accion === "bloquear_caja" ? (
           <Badge label="Bloqueo" tono="destructivo" />
         ) : (
           <Badge label="Restablecimiento" tono="ok" />
@@ -374,7 +389,13 @@ function TablaBitacora({ registros }: { registros: RegistroBitacora[] }) {
       clave: "sobre",
       encabezado: "Sobre",
       celda: (r) =>
-        r.caja_nombre ? (
+        r.accion === "aceptar_acuerdo" ? (
+          <span className="inline-flex items-center gap-2">
+            <FileSignature size={16} className="text-muted" aria-hidden="true" />
+            Acuerdo de confidencialidad
+            {r.version ? `, versión del ${fecha(r.version)}` : ""}
+          </span>
+        ) : r.caja_nombre ? (
           <span className="inline-flex items-center gap-2">
             <Building2 size={16} className="text-muted" aria-label="Caja" />
             {r.caja_nombre}
@@ -391,7 +412,7 @@ function TablaBitacora({ registros }: { registros: RegistroBitacora[] }) {
       encabezado: "Motivo",
       celda: (r) => (
         <span className="block max-w-80 whitespace-normal text-secondary">
-          {conPunto(r.motivo)}
+          {r.motivo ? conPunto(r.motivo) : <span className="text-muted">—</span>}
         </span>
       ),
     },
@@ -403,7 +424,7 @@ function TablaBitacora({ registros }: { registros: RegistroBitacora[] }) {
   ]
   return (
     <DataTable<RegistroBitacora>
-      descripcion="Bloqueos y restablecimientos de cuentas y cajas, con su motivo y quién los hizo"
+      descripcion="Bloqueos y restablecimientos de cuentas y cajas, con su motivo y quién los hizo, y aceptaciones del acuerdo de confidencialidad"
       filas={registros}
       claveFila={(r) => r.id}
       columnas={columnas}
@@ -411,7 +432,7 @@ function TablaBitacora({ registros }: { registros: RegistroBitacora[] }) {
         <EmptyState
           icono={NotebookText}
           titulo="Aún no hay acciones registradas"
-          descripcion="Cada bloqueo y cada restablecimiento quedan aquí con su motivo."
+          descripcion="Cada bloqueo y cada restablecimiento quedan aquí con su motivo, y cada aceptación del acuerdo con su versión."
         />
       }
     />

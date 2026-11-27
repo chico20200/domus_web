@@ -79,8 +79,8 @@ export const AYUDA: Record<ConceptoAyuda, TextoAyuda> = {
   },
   distribucionIntereses: {
     titulo: "Distribución de intereses",
-    que: "Es el reparto entre los socios de los intereses que la caja cobró por sus créditos. Se puede repartir en partes iguales o en proporción a cuánto ahorró cada uno y durante cuánto tiempo.",
-    pasa: "DOMUS calcula el reparto proporcional: cada mes toma el interés cobrado, lo divide para el ahorro total de la caja y a cada socio le corresponde esa tasa sobre su saldo de ese mes.",
+    que: "Es el reparto entre los socios de los intereses que la caja cobró por sus créditos. El coordinador elige en Configuración cómo se reparte cada ciclo: distribución equitativa o diferenciada.",
+    pasa: "Equitativa: el interés de cada mes se divide en partes iguales entre los socios activos de ese mes. Diferenciada: cada mes el interés se divide para el ahorro total de la caja, y a cada socio le corresponde esa tasa sobre su saldo. En los dos, cada socio recibe su parte redondeada hacia abajo al centavo; los centavos que sobran se pasan a Fondos de caja cuando el ciclo cierra.",
     necesitas:
       "El periodo de la caja configurado, y depósitos y pagos de interés registrados en el ciclo.",
   },
@@ -93,7 +93,7 @@ export const AYUDA: Record<ConceptoAyuda, TextoAyuda> = {
   },
   rolMembresia: {
     titulo: "Rol y membresía",
-    que: "Ser miembro de una caja es tener acceso a ella. El rol dice qué puedes hacer ahí: socio consulta sus ahorros, tesorero registra la operación y coordinador además configura la caja.",
+    que: "Ser miembro de una caja es tener acceso a ella. El rol dice qué puedes hacer ahí: socio consulta sus ahorros, créditos y solicitudes sin modificarlos, tesorero registra la operación y coordinador además configura la caja.",
     pasa: "El rol es de cada caja: la misma cuenta puede ser coordinador en una caja y socio en otra. Lo asigna el coordinador con el código de invitación y puede cambiarlo después.",
     necesitas: "Un código de invitación, o crear la caja, que te deja como coordinador.",
   },

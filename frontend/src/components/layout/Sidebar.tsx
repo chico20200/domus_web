@@ -43,7 +43,7 @@ export function Sidebar({ abierto, onToggle }: SidebarProps) {
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", visible: esTesorero },
     { to: "/socios", icon: Users, label: "Socios", visible: esTesorero },
     { to: "/ahorros", icon: PiggyBank, label: "Ahorros", visible: true },
-    { to: "/creditos", icon: CreditCard, label: "Créditos", visible: esTesorero },
+    { to: "/creditos", icon: CreditCard, label: "Créditos", visible: true },
     { to: "/pagos", icon: Receipt, label: "Pagos", visible: esTesorero },
     { to: "/fondos", icon: Landmark, label: "Fondos", visible: esTesorero },
     { to: "/reportes", icon: PieChart, label: "Reportes", visible: esTesorero },

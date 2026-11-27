@@ -59,6 +59,18 @@ function aFecha(valor: FechaEntrada): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
+const fmtMonedaExacta = new Intl.NumberFormat(LOCALE, {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 4,
+})
+
+/** Monto con cuatro decimales, para mostrar una suma antes de redondear al centavo */
+export function monedaExacta(valor: number): string {
+  return fmtMonedaExacta.format(valor)
+}
+
 /** 1234.5 → "$1.234,50" */
 export function moneda(valor: number | null | undefined): string {
   if (valor == null || !Number.isFinite(valor)) return VACIO

@@ -42,6 +42,11 @@ import type { PagoCredito } from "./pagos.types"
 export interface GetCreditosResponse {
   creditos: Credito[]
 }
+/** "Mis créditos" del socio (T27): sin ficha vinculada no hay créditos que mostrar */
+export interface GetMisCreditosResponse {
+  vinculado: boolean
+  creditos: Credito[]
+}
 export interface GetCreditoResponse {
   credito: Credito
   pagos: PagoCredito[]

@@ -21,10 +21,12 @@ import { coincideCredito, estadoCredito, nombreSocio, numeroCredito } from "../l
 import { normalizar } from "../lib/texto"
 import { DetalleCredito } from "./creditos/DetalleCredito"
 import { NuevaSolicitudModal } from "./creditos/NuevaSolicitudModal"
+import { MisCreditos } from "./creditos/MisCreditos"
 
 /**
  * Créditos de la caja: lista, nueva solicitud y detalle de cada crédito.
  * El detalle reemplaza a la lista en la misma página; "Volver" regresa a ella.
+ * El socio ve solo los suyos, en solo lectura (T27).
  */
 export default function CreditosPage() {
   const navigate = useNavigate()
@@ -35,6 +37,9 @@ export default function CreditosPage() {
   }, [cajaActiva, navigate])
 
   if (!cajaActiva) return null
+  if (!tieneRol(cajaActiva.rol, "tesorero")) {
+    return <MisCreditos cajaId={cajaActiva.id} nombreCaja={cajaActiva.nombre} />
+  }
   return (
     <Creditos
       cajaId={cajaActiva.id}

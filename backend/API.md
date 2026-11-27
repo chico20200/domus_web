@@ -48,7 +48,7 @@ Las escrituras que tocan dos tablas son funciones de Postgres, todo o nada:
 | `POST /creditos/:id/pagos/prepago`               | `registrar_pago_adelantado` (varios pagos juntos)   |
 | `POST /api/cajas`                                | `crear_caja` (límite de 3 cajas creadas por cuenta) |
 | `POST /api/cajas/unirse`                         | `unirse_con_codigo`                                 |
-| `GET /cuentas/mias`                              | `vincular_mi_ficha`                                 |
+| `GET /cuentas/mias`, `GET /creditos/mios`        | `vincular_mi_ficha`                                 |
 | `GET /miembros` (correos)                        | `correos_miembros`                                  |
 | `GET /api/cajas/mis-cajas` (cupo)                | `cajas_creadas`                                     |
 | `POST …/comprobante` (foto de un registro)        | `adjuntar_comprobante`                              |
@@ -95,6 +95,33 @@ Dinero de la organización para sus actividades, aparte del que se presta. Cada 
 | `POST /api/cajas/:cajaId/fondos/:fondoId/deposito`, `/retiro` | `movimientos.registrar` | `{ monto, descripcion }` → `201 { movimiento, saldo_anterior, saldo_posterior }`                |
 
 Reglas (en la base): nombre de 3 a 60 caracteres, único en la caja sin importar mayúsculas (`409`); descripción del fondo de hasta 200; monto mayor que 0 con hasta dos decimales; descripción del movimiento obligatoria, de 3 a 200 caracteres; un retiro no supera el saldo (`400`); un fondo cerrado no recibe movimientos (`409`). Nadie escribe un saldo ni un movimiento a mano, y los movimientos no se editan ni se borran. Prueba: `backend/pruebas/fondos.sql`.
+
+### Reparto de intereses por ciclo (T23, migración 017)
+
+El coordinador elige cómo se reparte el interés del ciclo actual: **diferenciada** (según el saldo de cada socio, mes a mes; la de siempre) o **equitativa** (el interés de cada mes en partes iguales entre los socios activos que ya habían ingresado ese mes). El tipo de un ciclo es el de la fila más reciente de `repartos_ciclo` con inicio igual o anterior al suyo; sin filas, diferenciada. Cambiarlo no toca los ciclos anteriores.
+
+Cada socio recibe su total del ciclo redondeado hacia abajo al centavo. Los centavos que sobran se pasan a un fondo una sola vez por ciclo, cuando ya cerró.
+
+| Ruta                                                     | Permiso            | Cuerpo y respuesta                                                                                                                         |
+| -------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/cajas/:cajaId/reparto`                         | `caja.ver`         | `{ configurado, tipo, ciclo: { numero, label, inicio, fin } \| null }`, el tipo del ciclo actual                                           |
+| `PUT /api/cajas/:cajaId/reparto`                         | `caja.configurar`  | `{ tipo: 'equitativa' \| 'diferenciada' }` → `{ message, tipo }`. Caja bloqueada: `409`                                                     |
+| `GET /api/cajas/:cajaId/reportes/distribucion-interes?ciclo=` | `reportes.generar` | Agrega `tipo`; cada mes, `participantes` y `parte` (equitativa, si no `null`); `validacion.sobrante` (centavos que sobran) y `validacion.diferencia` (interés que nadie pudo recibir: meses sin socios o sin ahorro; `cuadra` es `diferencia = 0`); `sobrante_registrado: { monto, fondo, fecha } \| null` |
+| `POST /api/cajas/:cajaId/reportes/sobrante`              | `fondos.gestionar` | `{ ciclo, fondo_id }` → `201 { message, sobrante: { monto, fecha } }`. El monto lo calcula el backend con el mismo reparto                   |
+
+Reglas del sobrante (en la base, `pasar_sobrante_a_fondo`): el ciclo tiene que haber cerrado (`400`); el monto es mayor que 0 y no pasa de un centavo por socio (`400`); una segunda vez en el mismo ciclo, `409`; el depósito lo hace `registrar_movimiento_fondo`, así que un fondo cerrado responde `409`. El movimiento lleva la descripción «Centavos que sobraron del reparto de intereses del ciclo dd/mm/aaaa – dd/mm/aaaa». Prueba: `backend/pruebas/reparto.sql`.
+
+### Reportes por las fechas del ciclo (T24, migración 018)
+
+- **Socios del ciclo:** `distribucion-interes` incluye a los socios que estuvieron en el ciclo: ingresaron hasta su fin y no habían salido antes de su inicio, aunque hoy estén inactivos. Cada socio trae `activo` y `fecha_salida`. En la equitativa recibe los meses en que estuvo; el mes en que entró y el mes en que salió cuentan enteros.
+- **Fecha de salida:** `socios.fecha_salida` la pone la base al desactivar la ficha (hoy) y la quita si vuelve a activarse. Nadie la escribe a mano. Prueba: `backend/pruebas/salida.sql`.
+- **Saldos al corte:** `estado-caja` mide todo a `corte`: el fin del ciclo si ya cerró, hoy si está en curso. Devuelve `corte` y `ciclo.cerrado`. Al corte se calculan:
+  - ahorros = suma de los movimientos hasta esa fecha;
+  - por cobrar = saldo de cada crédito desembolsado hasta el corte, tomado de su último pago hasta esa fecha (`saldo_despues`), o `monto_total` si no había pagado;
+  - interés cobrado hasta el corte;
+  - disponible = ahorros + interés − por cobrar.
+- **Mora:** solo se calcula en el ciclo en curso; en uno cerrado, `creditos.en_mora` es 0.
+- **Lo que faltó por cobrar (T25):** `estado-caja` devuelve `falta_por_cobrar: { total, interes, cuotas, creditos }`. Es lo que no se había pagado al corte de las cuotas que vencieron dentro del ciclo; en uno en curso, solo las que vencieron antes de hoy. Usa el mismo análisis de cuotas que la mora, con los pagos hasta el corte.
 
 ### Pago adelantado por monto (T30, migración 013)
 
@@ -492,13 +519,22 @@ Lista los créditos de la caja con datos del socio.
 - `estado` es el de la base: `pendiente`, `activo`, `pagado` o `vencido`. La mora no es un estado: un crédito `activo` puede estar en mora.
 - `numero`: 1, 2, 3… dentro de la caja, en el orden de solicitud (migración `007`). Lo asigna la base al registrar la solicitud; lo que se envíe se ignora y después no se cambia. La tabla de amortización (`GET /creditos/:id/amortizacion`) también lo devuelve en `credito.numero`.
 
+### GET /api/cajas/:cajaId/creditos/mios
+
+Los créditos y solicitudes del usuario en esta caja ("Mis créditos", T27). La ficha se busca como en `GET /cuentas/mias`.
+
+- Rol mínimo: `socio`
+- 200: `{ vinculado: true, creditos }` (con `mora` como en el listado, sin datos del socio) o `{ vinculado: false, creditos: [] }`
+
 ### GET /api/cajas/:cajaId/creditos/:creditoId
 
 Detalle de un crédito y sus pagos asociados.
 
-- Rol mínimo: `tesorero` (permiso `datos.ver`: el socio no ve los datos de los demás)
+- Rol mínimo: `socio`, solo para sus propios créditos (uno ajeno responde 404, igual que uno que no existe); `tesorero` y `coordinador`, cualquiera (T27). El RLS ya esconde lo ajeno; la ruta lo comprueba también
 - 200: `{ credito, pagos }`; `credito.mora` como en el listado
 - 404: `{ error: 'Crédito no encontrado' }`
+
+`GET /creditos/:creditoId/amortizacion` y `GET /creditos/:creditoId/pagos/proxima-cuota` siguen la misma regla: el socio, solo en sus propios créditos. Registrar pagos, solicitar y aprobar sigue siendo del tesorero.
 
 ### GET /api/cajas/:cajaId/creditos/socio/:socioId
 
@@ -705,9 +741,23 @@ Quita el bloqueo y lo anota en la bitácora. Si la bitácora falla, el bloqueo v
 
 ### GET /api/admin/bitacora
 
-Las últimas 200 acciones, la más reciente primero.
+Las últimas 200 acciones, la más reciente primero: bloqueos y restablecimientos, y aceptaciones del acuerdo de confidencialidad (HU021, T28).
 
-- 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, caja_id, caja_nombre, motivo, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer` (sobre una cuenta: `cuenta_correo`) o `bloquear_caja` o `restablecer_caja` (sobre una caja: `caja_nombre`, el nombre al momento de la acción).
+- 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, caja_id, caja_nombre, motivo, version, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer` (sobre una cuenta: `cuenta_correo`) o `bloquear_caja` o `restablecer_caja` (sobre una caja: `caja_nombre`, el nombre al momento de la acción), o `aceptar_acuerdo` (`version` aceptada, `motivo` null, `admin_correo` es quien aceptó).
+- Las aceptaciones se leen de `aceptaciones_confidencialidad` al consultar, no se copian a `bitacora_administracion`: salen también las de antes de T28.
+
+---
+
+## Pendientes — `/api/cajas/:cajaId/pendientes`
+
+### GET /api/cajas/:cajaId/pendientes
+
+Lo que muestra la campana de la barra superior (T29). Se calcula al leer, con el token de la persona; no se guarda ni se marca como leído.
+
+- Rol mínimo: `socio`
+- 200: `{ solicitudes, mora, ciclo_por_cerrar, nuevos_miembros, mis_cuotas }`
+  - Solo `tesorero` y `coordinador` (para el socio, `null`): `solicitudes` (créditos `pendiente`), `mora` (`{ creditos, cuotas, monto }` de los créditos en mora, o `null`), `ciclo_por_cerrar` (`{ numero, label, fin, dias }` si el ciclo actual cierra en 30 días o menos, o `null`) y `nuevos_miembros` (`{ total, sin_ficha, dias: 14 }`: miembros activos que entraron en los últimos 14 días y cuántos no tienen ficha vinculada, o `null`).
+  - Para todos: `mis_cuotas`, la próxima cuota de cada crédito en curso de la ficha de quien consulta (`{ credito_id, numero, numero_cuota, fecha_vencimiento, falta_total, dias, vencidas, monto_vencido }`), la que vence antes primero. Sin ficha, `[]`.
 
 ---
 
@@ -723,5 +773,6 @@ Las últimas 200 acciones, la más reciente primero.
 /api/cajas/:cajaId/creditos    → creditos.routes.js
 /api/cajas/:cajaId/pagos       → pagos.routes.js
 /api/cajas/:cajaId/importar    → importacion.routes.js (con su propio límite de 4 MB)
+/api/cajas/:cajaId/reportes    → reportes.routes.js
 /api/admin                     → admin.routes.js
 ```

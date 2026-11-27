@@ -16,4 +16,12 @@ export const reportesService = {
       : `/cajas/${cajaId}/reportes/estado-caja`
     return apiClient.get<EstadoCajaResponse>(url)
   },
+
+  /** Pasa a un fondo los centavos que sobraron del reparto de un ciclo cerrado */
+  pasarSobrante(cajaId: string, ciclo: number, fondoId: string) {
+    return apiClient.post<{ message: string; sobrante: { monto: number; fecha: string } }>(
+      `/cajas/${cajaId}/reportes/sobrante`,
+      { ciclo, fondo_id: fondoId },
+    )
+  },
 }

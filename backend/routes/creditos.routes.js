@@ -8,6 +8,7 @@ const { fechaLocal, leerFecha } = require("../utils/fechas")
 const { errorMonto, errorEntero } = require("../utils/validacion")
 const { generarTablaAmortizacion, analizarEstadoCredito } = require("../utils/amortizacion")
 const { agregarMora, calcularMora } = require("../utils/mora")
+const { fichaDelUsuario, puedeVerDelSocio } = require("../utils/fichas")
 
 router.use(verifyToken)
 
@@ -34,20 +35,62 @@ router.get("/", requierePermiso("datos.ver"), async (req, res) => {
 })
 
 // ─────────────────────────────────────────────
-// GET /api/cajas/:cajaId/creditos/:creditoId
-// Detalle de un crédito y sus pagos
+// GET /api/cajas/:cajaId/creditos/mios
+// Los créditos y solicitudes del usuario en esta caja ("Mis créditos" del socio, T27).
+// La ficha se resuelve como en /cuentas/mias. Va antes de /:creditoId.
 // ─────────────────────────────────────────────
-router.get("/:creditoId", requierePermiso("datos.ver"), async (req, res) => {
-  const { cajaId, creditoId } = req.params
+router.get("/mios", requierePermiso("caja.ver"), async (req, res) => {
+  const { cajaId } = req.params
 
+  let ficha
+  try {
+    ficha = await fichaDelUsuario(req.db, cajaId)
+  } catch (err) {
+    return responderError(res, err)
+  }
+  if (!ficha) return res.json({ vinculado: false, creditos: [] })
+
+  const { data, error } = await req.db
+    .from("creditos")
+    .select("*")
+    .eq("caja_id", cajaId)
+    .eq("socio_id", ficha.id)
+    .order("created_at", { ascending: false })
+
+  if (error) return responderError(res, error)
+
+  const conMora = await agregarMora(req.db, data)
+  if (conMora.error) return responderError(res, conMora.error)
+
+  return res.json({ vinculado: true, creditos: conMora.creditos })
+})
+
+/**
+ * Un crédito de la caja con su socio. El tesorero lee cualquiera; el socio, solo los
+ * suyos: uno ajeno se responde igual que uno que no existe. Quita el user_id del socio.
+ */
+async function leerCreditoVisible(req) {
+  const { cajaId, creditoId } = req.params
   const { data: credito, error } = await req.db
     .from("creditos")
-    .select(`*, socios ( nombre, apellido, cedula )`)
+    .select(`*, socios ( nombre, apellido, cedula, user_id )`)
     .eq("id", creditoId)
     .eq("caja_id", cajaId)
-    .single()
+    .maybeSingle()
+  if (error || !credito || !puedeVerDelSocio(req, credito.socios?.user_id)) return null
+  delete credito.socios.user_id
+  return credito
+}
 
-  if (error || !credito) return res.status(404).json({ error: "Crédito no encontrado" })
+// ─────────────────────────────────────────────
+// GET /api/cajas/:cajaId/creditos/:creditoId
+// Detalle de un crédito y sus pagos. El socio, solo de los suyos (T27)
+// ─────────────────────────────────────────────
+router.get("/:creditoId", requierePermiso("caja.ver"), async (req, res) => {
+  const { creditoId } = req.params
+
+  const credito = await leerCreditoVisible(req)
+  if (!credito) return res.status(404).json({ error: "Crédito no encontrado" })
 
   const { data: pagos } = await req.db
     .from("pagos_credito")
@@ -202,19 +245,13 @@ router.put("/:creditoId/estado", requierePermiso("creditos.cambiar_estado"), asy
 
 // ─────────────────────────────────────────────
 // GET /api/cajas/:cajaId/creditos/:creditoId/amortizacion
-// Tabla de amortización con estado de cada cuota
+// Tabla de amortización con estado de cada cuota. El socio, solo de los suyos (T27)
 // ─────────────────────────────────────────────
-router.get("/:creditoId/amortizacion", requierePermiso("datos.ver"), async (req, res) => {
-  const { cajaId, creditoId } = req.params
+router.get("/:creditoId/amortizacion", requierePermiso("caja.ver"), async (req, res) => {
+  const { creditoId } = req.params
 
-  const { data: credito, error } = await req.db
-    .from("creditos")
-    .select("*, socios ( nombre, apellido, cedula )")
-    .eq("id", creditoId)
-    .eq("caja_id", cajaId)
-    .single()
-
-  if (error || !credito) return res.status(404).json({ error: "Crédito no encontrado" })
+  const credito = await leerCreditoVisible(req)
+  if (!credito) return res.status(404).json({ error: "Crédito no encontrado" })
 
   const { data: pagos } = await req.db.from("pagos_credito").select("*").eq("credito_id", creditoId)
 
