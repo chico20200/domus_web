@@ -619,6 +619,34 @@ Devuelven un enlace firmado para ver la foto.
 
 ---
 
+## 8.2 Importación desde Excel — `/api/cajas/:cajaId/importar`
+
+El frontend lee la plantilla y revisa el archivo (T21); aquí llegan las filas ya convertidas. La base (`importar_excel`, migración 016) vuelve a revisar todo y guarda todo o nada. Las reglas están en el encabezado de la migración.
+
+### POST /api/cajas/:cajaId/importar/:modulo
+
+`:modulo` es `socios`, `ahorros`, `creditos` o `fondos`.
+
+- Permiso: el mismo que registrar a mano (`socios.gestionar`, `movimientos.registrar` o `fondos.gestionar`). La caja tiene que estar activa y tener fecha de fundación.
+- Body (hasta 4 MB, más que el límite general): `{ filas: [...], simular?: boolean }`. Con `simular: true` la base hace la importación entera y la deshace: es la vista previa, con los saldos y números que quedarían de verdad.
+- Filas, todas con `fila` (la de Excel, para los mensajes) y fechas `aaaa-mm-dd`:
+  - socios: `{ cedula, nombre, apellido, fecha_ingreso, telefono, email, direccion }`
+  - ahorros: `{ cedula, fecha, tipo: 'deposito' | 'retiro', monto, descripcion }`
+  - fondos: `{ fondo, fecha, tipo, monto, descripcion }` (el nombre del fondo; si no existe, se crea)
+  - creditos: `{ referencia, cedula, monto, tasa_interes, plazo_meses, fecha_desembolso, pagos: [{ fila, fecha, capital, interes }] }`
+- 200 (simulacro) o 201: `{ simulado, ... }` con, según el módulo:
+  - `socios: n`
+  - `cuentas: [{ socio, numero_cuenta, nueva, movimientos, saldo_antes, saldo_despues }]`
+  - `fondos: [{ fondo, nuevo, movimientos, saldo_antes, saldo_despues }]`
+  - `creditos: [{ referencia, numero, socio, monto, estado, pagos, capital_pagado, interes_pagado, interes_condonado, saldo_pendiente }]`
+- 400: `{ error }` con la hoja, la fila y la columna del primer problema, por ejemplo `Movimientos, fila 3 (Monto): El 01/06/2024 la cuenta de Ana Pérez tiene $100,50: no alcanza para retirar $200,00`. No se guarda nada.
+- 404: módulo desconocido, o la caja no es de la persona. 409: `La caja no admite registros nuevos`.
+- 413: `{ error: 'El archivo tiene demasiados datos (más de 4 MB). Divídelo en partes.' }`
+
+Los pagos importados quedan con `es_importado = true` en `pagos_credito`.
+
+---
+
 ## 9. Administración del sistema — `/api/admin`
 
 Solo para las cuentas de la tabla `administradores_sistema` (`verifyToken` + `requiereAdminSistema`). No depende de ninguna caja.
@@ -694,5 +722,6 @@ Las últimas 200 acciones, la más reciente primero.
 /api/cajas/:cajaId/miembros    → miembros.routes.js
 /api/cajas/:cajaId/creditos    → creditos.routes.js
 /api/cajas/:cajaId/pagos       → pagos.routes.js
+/api/cajas/:cajaId/importar    → importacion.routes.js (con su propio límite de 4 MB)
 /api/admin                     → admin.routes.js
 ```

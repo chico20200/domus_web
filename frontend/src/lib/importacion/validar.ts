@@ -66,6 +66,7 @@ export interface SocioImportado extends Base {
 export interface MovimientoAhorroImportado extends Base {
   socio_id: string
   socio: string
+  cedula: string
   /** null: el socio no tiene cuenta activa y se le abre una */
   cuenta_id: string | null
   fecha: string
@@ -85,6 +86,7 @@ export interface CreditoImportado extends Base {
   referencia: number
   socio_id: string
   socio: string
+  cedula: string
   monto: number
   tasa_interes: number
   plazo_meses: number
@@ -324,8 +326,8 @@ function revisar(modulo: ModuloImportacion, archivo: ArchivoCrudo, ctx: Contexto
               ? { error: "Escribe un número, sin el signo %" }
               : n < 0.01 || n > 100
                 ? { error: "La tasa va de 0,01 a 100" }
-                : Math.abs(n * 10000 - Math.round(n * 10000)) > 1e-6
-                  ? { error: "Usa como máximo cuatro decimales" }
+                : Math.abs(n * 100 - Math.round(n * 100)) > 1e-6
+                  ? { error: "Usa como máximo dos decimales" }
                   : { valor: n }
           break
         }
@@ -449,6 +451,7 @@ function revisar(modulo: ModuloImportacion, archivo: ArchivoCrudo, ctx: Contexto
         ciclo: cicloDe(v.fecha as string),
         socio_id: s.id,
         socio: nombre(s),
+        cedula: s.cedula,
         cuenta_id: activas[0]?.id ?? null,
         fecha: v.fecha as string,
         tipo: v.tipo === "Depósito" ? "deposito" : "retiro",
@@ -592,6 +595,7 @@ function revisar(modulo: ModuloImportacion, archivo: ArchivoCrudo, ctx: Contexto
       referencia,
       socio_id: s.id,
       socio: nombre(s),
+      cedula: s.cedula,
       monto: v.monto as number,
       tasa_interes: v.tasa_interes as number,
       plazo_meses: v.plazo_meses as number,

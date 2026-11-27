@@ -245,7 +245,8 @@ export const MODULOS: Record<ModuloImportacion, DefinicionModulo> = {
             encabezado: "Tasa anual (%)",
             tipo: "porcentaje",
             obligatoria: true,
-            ayuda: "Interés anual en porcentaje, de 0,01 a 100. Por ejemplo, 12 es el 12 % al año.",
+            ayuda:
+              "Interés anual en porcentaje, de 0,01 a 100, con hasta dos decimales. Por ejemplo, 12 es el 12 % al año.",
             ejemplo: "12",
             ancho: 15,
           },

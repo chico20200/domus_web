@@ -171,6 +171,7 @@ function AhorrosCaja({ cajaId }: { cajaId: string }) {
           cajaId={cajaId}
           modulo="ahorros"
           onCerrar={() => setImportando(false)}
+          onImportado={recargar}
         />
       )}
     </PageShell>

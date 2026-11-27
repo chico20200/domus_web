@@ -232,6 +232,7 @@ function Creditos({
           cajaId={cajaId}
           modulo="creditos"
           onCerrar={() => setImportando(false)}
+          onImportado={recargar}
         />
       )}
     </PageShell>

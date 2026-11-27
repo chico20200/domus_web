@@ -159,7 +159,12 @@ function Fondos({ cajaId }: { cajaId: string }) {
         />
       )}
       {importando && (
-        <ImportarExcelModal cajaId={cajaId} modulo="fondos" onCerrar={() => setImportando(false)} />
+        <ImportarExcelModal
+          cajaId={cajaId}
+          modulo="fondos"
+          onCerrar={() => setImportando(false)}
+          onImportado={recargar}
+        />
       )}
     </PageShell>
   )
