@@ -27,10 +27,14 @@ export function descargarReporte(dist: DistribucionResponse, estado: EstadoCajaR
 
   doc.setTextColor(0)
   const y = 32
-  doc.text(`Total ahorrado: ${moneda(estado.total_ahorros)}`, 14, y)
-  doc.text(`Interés del ciclo: ${moneda(estado.interes_recaudado)}`, 90, y)
-  doc.text(`Por cobrar: ${moneda(estado.por_cobrar)}`, 170, y)
-  doc.text(`Disponible en caja: ${moneda(estado.en_caja)}`, 230, y)
+  const falta = estado.falta_por_cobrar
+  doc.text(`Interés generado: ${moneda(dist.interes_total)}`, 14, y)
+  doc.text(
+    `Faltó por cobrar: ${moneda(falta.total)} (${falta.cuotas} ${falta.cuotas === 1 ? "cuota" : "cuotas"}; ${moneda(falta.interes)} de interés)`,
+    90,
+    y,
+  )
+  doc.text(`Rendimiento del ciclo: ${porcentaje(dist.tasa_acumulada)}`, 210, y)
 
   autoTable(doc, {
     startY: y + 8,

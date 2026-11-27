@@ -4,7 +4,12 @@ const { responderError } = require("../utils/errores")
 const router = express.Router({ mergeParams: true })
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
-const { calcularDistribucionInteres, estuvoEntre, tipoDeReparto } = require("../utils/reportes")
+const {
+  calcularDistribucionInteres,
+  estuvoEntre,
+  faltaPorCobrar,
+  tipoDeReparto,
+} = require("../utils/reportes")
 const { fechaLocal } = require("../utils/fechas")
 const { calcularCiclos } = require("../utils/ciclos")
 const { EN_CURSO, agregarMora } = require("../utils/mora")
@@ -245,7 +250,9 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
 
     const { data: pagos, error: errorPagos } = await req.db
       .from("pagos_credito")
-      .select("credito_id, fecha_pago, created_at, saldo_despues, monto_interes, monto_capital")
+      .select(
+        "credito_id, numero_cuota, fecha_pago, created_at, saldo_despues, monto_pagado, monto_interes, monto_capital, es_prepago, es_importado",
+      )
       .eq("caja_id", cajaId)
       .lte("fecha_pago", corte)
       .order("fecha_pago")
@@ -261,6 +268,17 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
       .map((c) => ({ ...c, saldo: saldoAlCorte[c.id] ?? parseFloat(c.monto_total) }))
     const enCursoAlCorte = desembolsados.filter((c) => c.saldo > 0)
     const porCobrar = +enCursoAlCorte.reduce((s, c) => s + c.saldo, 0).toFixed(2)
+
+    // Lo que faltó por cobrar en el ciclo (T25): lo que no se había pagado al corte de las
+    // cuotas que vencieron dentro del ciclo. En uno en curso, solo las que ya vencieron
+    // antes de hoy. Mismo análisis de cuotas que la mora, con los pagos hasta el corte.
+    const pagosPorCredito = {}
+    for (const p of pagos ?? []) (pagosPorCredito[p.credito_id] ??= []).push(p)
+    const faltante = faltaPorCobrar(desembolsados, pagosPorCredito, {
+      desde: cicloSel.inicio,
+      hasta: cicloSel.fin,
+      antesDe: cicloSel.cerrado ? null : hoy,
+    })
 
     // La mora es de hoy: solo tiene sentido en el ciclo en curso (T13)
     let enMora = 0
@@ -309,6 +327,7 @@ router.get("/estado-caja", requierePermiso("reportes.generar"), async (req, res)
       por_cobrar: porCobrar,
       interes_condonado: condonado,
       en_caja: enCaja,
+      falta_por_cobrar: faltante,
       creditos: {
         total: creditos?.length ?? 0,
         activos: enCursoAlCorte.length,

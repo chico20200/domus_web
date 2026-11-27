@@ -121,6 +121,7 @@ Reglas del sobrante (en la base, `pasar_sobrante_a_fondo`): el ciclo tiene que h
   - interés cobrado hasta el corte;
   - disponible = ahorros + interés − por cobrar.
 - **Mora:** solo se calcula en el ciclo en curso; en uno cerrado, `creditos.en_mora` es 0.
+- **Lo que faltó por cobrar (T25):** `estado-caja` devuelve `falta_por_cobrar: { total, interes, cuotas, creditos }`. Es lo que no se había pagado al corte de las cuotas que vencieron dentro del ciclo; en uno en curso, solo las que vencieron antes de hoy. Usa el mismo análisis de cuotas que la mora, con los pagos hasta el corte.
 
 ### Pago adelantado por monto (T30, migración 013)
 

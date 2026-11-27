@@ -67,6 +67,8 @@ export interface EstadoCajaResponse {
   por_cobrar: number
   interes_condonado: number
   en_caja: number
+  /** Lo que no se pagó de las cuotas que vencieron en el ciclo, al corte (T25) */
+  falta_por_cobrar: { total: number; interes: number; cuotas: number; creditos: number }
   creditos: {
     total: number
     activos: number

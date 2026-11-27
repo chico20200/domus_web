@@ -1,4 +1,5 @@
 // backend/utils/reportes.js
+const { analizarEstadoCredito } = require("./amortizacion")
 
 /** Último día del mes en formato ISO */
 function finDeMes(mesISO) {
@@ -208,4 +209,40 @@ function abajoAlCentavo(n) {
   return Math.floor(n * 100 + 1e-6) / 100
 }
 
-module.exports = { calcularDistribucionInteres, estuvoEntre, tipoDeReparto, TIPOS_REPARTO }
+/**
+ * Lo que faltó por cobrar en un ciclo (T25): de las cuotas que vencieron entre `desde` y
+ * `hasta` (y antes de `antesDe`, si se da: el ciclo en curso), lo que no se había pagado
+ * con los pagos recibidos (solo los del corte). Devuelve el total, la parte de interés,
+ * cuántas cuotas y de cuántos créditos.
+ */
+function faltaPorCobrar(creditos, pagosPorCredito, { desde, hasta, antesDe = null }) {
+  let total = 0
+  let interes = 0
+  let cuotas = 0
+  let conFalta = 0
+  for (const c of creditos) {
+    const { filas } = analizarEstadoCredito(c, pagosPorCredito[c.id] ?? [])
+    const debidas = filas.filter(
+      (f) =>
+        f.fecha_vencimiento >= desde &&
+        f.fecha_vencimiento <= hasta &&
+        (!antesDe || f.fecha_vencimiento < antesDe) &&
+        f.falta_capital + f.falta_interes > 0.001,
+    )
+    if (debidas.length) conFalta++
+    for (const f of debidas) {
+      total += f.falta_capital + f.falta_interes
+      interes += f.falta_interes
+      cuotas++
+    }
+  }
+  return { total: +total.toFixed(2), interes: +interes.toFixed(2), cuotas, creditos: conFalta }
+}
+
+module.exports = {
+  calcularDistribucionInteres,
+  estuvoEntre,
+  faltaPorCobrar,
+  tipoDeReparto,
+  TIPOS_REPARTO,
+}

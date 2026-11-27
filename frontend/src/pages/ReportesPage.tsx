@@ -3,14 +3,12 @@ import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   CalendarClock,
-  CircleCheck,
-  CreditCard,
+  CircleDollarSign,
   Download,
-  PieChart,
+  Percent,
   TrendingUp,
   TriangleAlert,
   Users,
-  Wallet,
 } from "lucide-react"
 import { PageShell } from "../components/layout/PageShell"
 import { Button } from "../components/Button"
@@ -34,11 +32,14 @@ import { tieneRol } from "../lib/roles"
 import { mesCorto } from "./reportes/meses"
 import { descargarReporte } from "./reportes/pdfReporte"
 import { PasarSobranteModal } from "./reportes/PasarSobranteModal"
+import { DetalleSocioModal } from "./reportes/DetalleSocioModal"
 
 /**
- * Reportes del ciclo: si el reparto de intereses cuadra, el estado de la caja, el interés
- * por mes y el interés que le toca a cada socio. Sin periodo configurado no hay ciclos, y
- * la página lo explica en vez de mostrar un error.
+ * Reportes del ciclo (rehecho en T25): primero la respuesta, con tres cifras (interés
+ * generado, lo que faltó por cobrar y el rendimiento) y lo que recibe cada socio; al
+ * pulsar un socio, de dónde sale su interés. El aviso de que el reparto no cuadra sale
+ * solo cuando no cuadra. Sin periodo configurado no hay ciclos, y la página lo explica
+ * en vez de mostrar un error.
  */
 export default function ReportesPage() {
   const navigate = useNavigate()
@@ -52,13 +53,14 @@ export default function ReportesPage() {
   return <Reportes cajaId={cajaActiva.id} esCoordinador={tieneRol(cajaActiva.rol, "coordinador")} />
 }
 
-type Vista = "mensual" | "socios"
+type Vista = "socios" | "mensual"
 
 function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: boolean }) {
   const navigate = useNavigate()
   // null: el ciclo actual (el backend lo elige)
   const [cicloPedido, setCicloPedido] = useState<number | null>(null)
-  const [vista, setVista] = useState<Vista>("mensual")
+  const [vista, setVista] = useState<Vista>("socios")
+  const [detalle, setDetalle] = useState<InteresSocio | null>(null)
   const [pasandoSobrante, setPasandoSobrante] = useState(false)
 
   const cargar = useCallback(async () => {
@@ -125,6 +127,9 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
   const actualizando = cicloPedido !== null && dist.ciclo.numero !== cicloPedido
   // Un ciclo cerrado se mide a su fin; uno en curso, a hoy (T24)
   const cerrado = estado.ciclo.cerrado
+  const equitativa = dist.tipo === "equitativa"
+  const falta = estado.falta_por_cobrar
+  const mesesConInteres = dist.meses.filter((m) => m.interes_mes > 0)
 
   const columnasMes: Columna<FilaMes>[] = [
     { clave: "mes", encabezado: "Mes", celda: (m) => mesCorto(m.mes), pie: "Total" },
@@ -174,17 +179,21 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
     {
       clave: "socio",
       encabezado: "Socio",
-      celda: (s) =>
-        s.activo ? (
-          s.nombre
-        ) : (
-          <span className="flex flex-col">
-            <span>{s.nombre}</span>
-            {s.fecha_salida && (
-              <span className="text-xs text-secondary">Salió el {fecha(s.fecha_salida)}</span>
-            )}
-          </span>
-        ),
+      celda: (s) => (
+        <span className="flex flex-col">
+          <button
+            type="button"
+            onClick={() => setDetalle(s)}
+            aria-label={`De dónde sale el interés de ${s.nombre}`}
+            className="w-fit text-left font-medium text-accion-texto hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+          >
+            {s.nombre}
+          </button>
+          {!s.activo && s.fecha_salida && (
+            <span className="text-xs text-secondary">Salió el {fecha(s.fecha_salida)}</span>
+          )}
+        </span>
+      ),
       fija: true,
       pie: "Total repartido",
     },
@@ -194,19 +203,31 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
       alinear: "derecha",
       celda: (s) => <span className="text-secondary">{moneda(s.saldo_final)}</span>,
     },
-    ...dist.meses.map((m, i): Columna<InteresSocio> => ({
-      clave: m.mes,
-      encabezado: mesCorto(m.mes),
-      alinear: "derecha",
-      celda: (s) => {
-        const interes = s.por_mes[i]?.interes ?? 0
-        return interes > 0 ? moneda(interes) : <span className="text-muted">—</span>
-      },
-      pie: moneda(m.interes_mes),
-    })),
+    // Diferenciada: lo que generó cada socio cada mes. Equitativa: sin ese dato (se
+    // reparte en partes iguales), solo en cuántos de los meses con interés recibió
+    ...(equitativa
+      ? [
+          {
+            clave: "meses",
+            encabezado: "Meses con parte",
+            alinear: "derecha",
+            celda: (s) =>
+              `${s.por_mes.filter((p, i) => p.interes > 0 && dist.meses[i].interes_mes > 0).length} de ${mesesConInteres.length}`,
+          } satisfies Columna<InteresSocio>,
+        ]
+      : dist.meses.map((m, i): Columna<InteresSocio> => ({
+          clave: m.mes,
+          encabezado: mesCorto(m.mes),
+          alinear: "derecha",
+          celda: (s) => {
+            const interes = s.por_mes[i]?.interes ?? 0
+            return interes > 0 ? moneda(interes) : <span className="text-muted">—</span>
+          },
+          pie: moneda(m.interes_mes),
+        }))),
     {
       clave: "total",
-      encabezado: "Total",
+      encabezado: "Recibe",
       alinear: "derecha",
       celda: (s) => <span className="font-medium">{moneda(s.interes_total)}</span>,
       pie: moneda(dist.validacion.interes_repartido),
@@ -258,81 +279,95 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
         aria-busy={actualizando}
         className={`flex flex-col gap-8 transition-opacity ${actualizando ? "opacity-50" : ""}`}
       >
-        <div
-          className={[
-            "flex items-start gap-3 rounded-lg border-l-[3px] bg-surface-2 p-4",
-            dist.validacion.cuadra ? "border-estado-ok" : "border-destructivo",
-          ].join(" ")}
+        <section
+          aria-label="La respuesta del ciclo"
+          className="grid grid-cols-1 gap-4 md:grid-cols-3"
         >
-          {dist.validacion.cuadra ? (
-            <span className="flex h-5 shrink-0 items-center">
-              <CircleCheck size={18} className="text-estado-ok" aria-hidden="true" />
-            </span>
-          ) : (
-            <span className="flex h-5 shrink-0 items-center">
-              <TriangleAlert size={18} className="text-destructivo" aria-hidden="true" />
-            </span>
-          )}
-          <div className="flex flex-col gap-1 text-sm">
-            <p className="font-medium text-primary">
-              {dist.validacion.cuadra
-                ? "El reparto cuadra"
-                : "El reparto no cuadra con el interés generado"}
-            </p>
-            <p className="text-secondary">
-              Interés generado {moneda(dist.validacion.interes_generado)} · repartido{" "}
-              {moneda(dist.validacion.interes_repartido)}
-              {dist.validacion.sobrante > 0 &&
-                ` · sobran ${moneda(dist.validacion.sobrante)} al redondear`}
-              {!dist.validacion.cuadra &&
-                ` · sin repartir ${moneda(dist.validacion.diferencia)}: hubo meses con interés y sin ${dist.tipo === "equitativa" ? "socios" : "ahorro"}`}
-            </p>
-            <Sobrante
-              dist={dist}
-              onPasar={() => setPasandoSobrante(true)}
-              deshabilitado={actualizando}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            etiqueta="Total ahorrado"
-            valor={moneda(estado.total_ahorros)}
-            detalle={cerrado ? `Al cierre, ${fecha(estado.corte)}` : "Saldo de las cuentas hoy"}
-            icono={Wallet}
+            etiqueta="Interés generado"
+            valor={moneda(dist.interes_total)}
+            detalle={`Cobrado en el ciclo${cerrado ? "" : " hasta hoy"}; se reparte entre ${dist.por_socio.length} ${dist.por_socio.length === 1 ? "socio" : "socios"}`}
+            icono={TrendingUp}
             destacada
           />
           <StatCard
-            etiqueta="Interés del ciclo"
-            valor={moneda(estado.interes_recaudado)}
-            detalle={`Rendimiento ${porcentaje(dist.tasa_acumulada)}`}
-            icono={TrendingUp}
+            etiqueta="Faltó por cobrar"
+            valor={moneda(falta.total)}
+            detalle={
+              falta.cuotas === 0
+                ? `Se pagaron todas las cuotas que vencieron en el ciclo${cerrado ? "" : " hasta hoy"}`
+                : `${falta.cuotas} ${falta.cuotas === 1 ? "cuota vencida" : "cuotas vencidas"} de ${falta.creditos} ${falta.creditos === 1 ? "crédito" : "créditos"}; ${moneda(falta.interes)} de interés`
+            }
+            icono={CircleDollarSign}
           />
           <StatCard
-            etiqueta="Por cobrar"
-            valor={moneda(estado.por_cobrar)}
-            detalle={`${estado.creditos.activos} ${estado.creditos.activos === 1 ? "crédito en curso" : "créditos en curso"}${cerrado ? " al cierre" : ""}${estado.creditos.en_mora > 0 ? `, ${estado.creditos.en_mora} en mora` : ""}`}
-            icono={CreditCard}
+            etiqueta="Rendimiento del ciclo"
+            valor={porcentaje(dist.tasa_acumulada)}
+            detalle="Suma del rendimiento de cada mes: interés sobre el ahorro de la caja"
+            icono={Percent}
           />
-          <StatCard
-            etiqueta="Disponible en caja"
-            valor={moneda(estado.en_caja)}
-            detalle={`Ahorros más interés cobrado, menos lo prestado${cerrado ? ", al cierre" : ""}`}
-            icono={PieChart}
-          />
-        </div>
+        </section>
+
+        {!dist.validacion.cuadra && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-lg border-l-[3px] border-destructivo bg-surface-2 p-4"
+          >
+            <span className="flex h-5 shrink-0 items-center">
+              <TriangleAlert size={18} className="text-destructivo" aria-hidden="true" />
+            </span>
+            <div className="flex flex-col gap-1 text-sm">
+              <p className="font-medium text-primary">
+                El reparto no cuadra con el interés generado
+              </p>
+              <p className="text-secondary">
+                Quedaron {moneda(dist.validacion.diferencia)} sin repartir: hubo meses con interés y
+                sin {equitativa ? "socios en la caja" : "ahorro en la caja"}. Se repartieron{" "}
+                {moneda(dist.validacion.interes_repartido)} de{" "}
+                {moneda(dist.validacion.interes_generado)}.
+              </p>
+            </div>
+          </div>
+        )}
 
         <Tabs<Vista>
           etiqueta="Vista del reporte"
           valor={vista}
           onCambio={setVista}
           pestanas={[
-            { id: "mensual", titulo: "Resumen mensual" },
-            { id: "socios", titulo: "Interés por socio" },
+            { id: "socios", titulo: "Lo que recibe cada socio" },
+            { id: "mensual", titulo: "Mes a mes" },
           ]}
         >
-          {vista === "mensual" ? (
+          {vista === "socios" ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-secondary">
+                Pulsa un socio para ver de dónde sale su interés.
+              </p>
+              <DataTable<InteresSocio>
+                descripcion={
+                  equitativa
+                    ? "Lo que recibe cada socio en el ciclo"
+                    : "Interés que generó cada socio, por mes, y lo que recibe en el ciclo"
+                }
+                filas={dist.por_socio}
+                claveFila={(s) => s.socio_id}
+                columnas={columnasSocio}
+                vacio={
+                  <EmptyState
+                    icono={Users}
+                    titulo="No hubo socios en este ciclo"
+                    descripcion="El interés se reparte entre los socios con ahorros."
+                  />
+                }
+              />
+              <Sobrante
+                dist={dist}
+                onPasar={() => setPasandoSobrante(true)}
+                deshabilitado={actualizando}
+              />
+            </div>
+          ) : (
             <DataTable<FilaMes>
               descripcion={
                 dist.tipo === "equitativa"
@@ -343,23 +378,12 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
               claveFila={(m) => m.mes}
               columnas={columnasMes}
             />
-          ) : (
-            <DataTable<InteresSocio>
-              descripcion="Interés que le corresponde a cada socio, por mes y en total"
-              filas={dist.por_socio}
-              claveFila={(s) => s.socio_id}
-              columnas={columnasSocio}
-              vacio={
-                <EmptyState
-                  icono={Users}
-                  titulo="No hay socios activos en este ciclo"
-                  descripcion="El interés se reparte entre los socios con ahorros."
-                />
-              }
-            />
           )}
         </Tabs>
       </div>
+      {detalle && (
+        <DetalleSocioModal dist={dist} socio={detalle} onCerrar={() => setDetalle(null)} />
+      )}
       {pasandoSobrante && (
         <PasarSobranteModal
           cajaId={cajaId}
@@ -389,7 +413,7 @@ function Sobrante({
   const registrado = dist.sobrante_registrado
   if (registrado) {
     return (
-      <p className="text-secondary">
+      <p className="text-sm text-secondary">
         Los {moneda(registrado.monto)} que sobraron se pasaron a {registrado.fondo} el{" "}
         {fecha(registrado.fecha)}.
       </p>
@@ -398,14 +422,17 @@ function Sobrante({
   if (!(dist.validacion.sobrante > 0)) return null
   if (!dist.ciclo.cerrado) {
     return (
-      <p className="text-secondary">
-        Los centavos que sobran van a Fondos de caja cuando el ciclo cierre.
+      <p className="text-sm text-secondary">
+        Al redondear cada parte sobran {moneda(dist.validacion.sobrante)} hasta hoy; van a Fondos de
+        caja cuando el ciclo cierre.
       </p>
     )
   }
   return (
     <div className="flex flex-wrap items-center gap-3 pt-1">
-      <p className="text-secondary">Los centavos que sobran van a Fondos de caja.</p>
+      <p className="text-sm text-secondary">
+        Al redondear cada parte sobraron {moneda(dist.validacion.sobrante)}; van a Fondos de caja.
+      </p>
       <Button
         label={`Pasar ${moneda(dist.validacion.sobrante)} a Fondos`}
         variant="secondary"
