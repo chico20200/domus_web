@@ -67,6 +67,7 @@ export interface LiquidacionGuardada {
   tipo_reparto: string | null
   /** Lo que se vio al registrarla: cuentas, créditos, solicitudes e interés */
   detalle: {
+    socio?: { id: string; nombre: string; apellido: string; cedula: string }
     cuentas?: Liquidacion["cuentas"]
     creditos?: CreditoLiquidacion[]
     solicitudes?: Liquidacion["solicitudes"]

@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from "react"
-import { AlertTriangle, Info } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Download, Info } from "lucide-react"
 import { Modal } from "../../components/Modal"
 import { Button } from "../../components/Button"
 import { CheckboxField } from "../../components/CheckboxField"
@@ -10,6 +10,7 @@ import type { Liquidacion, LiquidacionGuardada } from "../../api/salida.types"
 import type { Socio } from "../../api/socios.types"
 import { fecha, moneda } from "../../lib/format"
 import { useDatos } from "../../lib/useDatos"
+import { descargarLiquidacion } from "./pdfLiquidacion"
 
 /**
  * Salida de un socio con liquidación (Etapa 7, T6; especificaciones §12). Reemplaza a
@@ -22,10 +23,15 @@ import { useDatos } from "../../lib/useDatos"
  * responde con la liquidación nueva y aquí se muestra para revisarla otra vez.
  *
  * Con la ficha ya inactiva (o sin permiso para registrar) solo muestra el historial.
+ *
+ * Al registrarla, el modal queda abierto para descargar el PDF que firma el socio (T7); el
+ * mismo PDF se vuelve a descargar desde el historial.
  */
 
 interface Props {
   cajaId: string
+  /** Va en el PDF */
+  nombreCaja: string
   socio: Socio
   /** Solo el coordinador registra la salida */
   puedeRegistrar: boolean
@@ -33,7 +39,14 @@ interface Props {
   onRegistrada: (liquidacion: LiquidacionGuardada) => void | Promise<void>
 }
 
-export function SalidaModal({ cajaId, socio, puedeRegistrar, onCerrar, onRegistrada }: Props) {
+export function SalidaModal({
+  cajaId,
+  nombreCaja,
+  socio,
+  puedeRegistrar,
+  onCerrar,
+  onRegistrada,
+}: Props) {
   const registrar = puedeRegistrar && socio.activo
   const cargar = useCallback(async () => {
     const [vista, historial] = await Promise.all([
@@ -50,6 +63,7 @@ export function SalidaModal({ cajaId, socio, puedeRegistrar, onCerrar, onRegistr
   const [interesEntregado, setInteresEntregado] = useState(false)
   const [error, setError] = useState("")
   const [enviando, setEnviando] = useState(false)
+  const [registrada, setRegistrada] = useState<LiquidacionGuardada | null>(null)
 
   const liq = nueva ?? datos?.vista ?? null
   const nombre = `${socio.nombre} ${socio.apellido}`
@@ -65,6 +79,8 @@ export function SalidaModal({ cajaId, socio, puedeRegistrar, onCerrar, onRegistr
         ahorros_entregados: true,
         interes_entregado: true,
       })
+      setRegistrada(r.liquidacion)
+      setEnviando(false)
       await onRegistrada(r.liquidacion)
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && err.datos.liquidacion) {
@@ -78,7 +94,16 @@ export function SalidaModal({ cajaId, socio, puedeRegistrar, onCerrar, onRegistr
     }
   }
 
-  const acciones = registrar ? (
+  const acciones = registrada ? (
+    <>
+      <Button label="Cerrar" variant="ghost" onClick={onCerrar} />
+      <Button
+        label="Descargar PDF para firmar"
+        icon={Download}
+        onClick={() => descargarLiquidacion(registrada, nombreCaja)}
+      />
+    </>
+  ) : registrar ? (
     <>
       <Button label="Cancelar" variant="ghost" onClick={onCerrar} disabled={enviando} />
       <Button
@@ -99,9 +124,11 @@ export function SalidaModal({ cajaId, socio, puedeRegistrar, onCerrar, onRegistr
       onCerrar={onCerrar}
       titulo={registrar ? `Salida de ${nombre}` : `Liquidaciones de ${nombre}`}
       descripcion={
-        registrar
-          ? "Lo que recibe al salir de la caja. Revisa las cifras antes de entregarle el dinero."
-          : "Lo que recibió cada vez que salió de la caja."
+        registrada
+          ? "Su ficha quedó inactiva y sus cuentas, cerradas."
+          : registrar
+            ? "Lo que recibe al salir de la caja. Revisa las cifras antes de entregarle el dinero."
+            : "Lo que recibió cada vez que salió de la caja."
       }
       ancho="amplio"
       cerrarAlClicFuera={false}
@@ -116,7 +143,24 @@ export function SalidaModal({ cajaId, socio, puedeRegistrar, onCerrar, onRegistr
         </div>
       )}
 
-      {!cargando && datos && (
+      {registrada && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-estado-ok" />
+            <div className="flex flex-col gap-1">
+              <p className="font-medium text-primary">
+                Salida registrada: {socio.nombre} recibió {moneda(Number(registrada.neto))}
+              </p>
+              <p className="text-sm text-secondary">
+                Descarga la liquidación, imprímela y que la firmen {socio.nombre} y quien le entregó
+                el dinero. Puedes volver a descargarla desde sus liquidaciones.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!registrada && !cargando && datos && (
         <div className="flex flex-col gap-6">
           {liq && <VistaPrevia liq={liq} />}
 
@@ -165,7 +209,11 @@ export function SalidaModal({ cajaId, socio, puedeRegistrar, onCerrar, onRegistr
             </p>
           )}
 
-          <Historial liquidaciones={datos.liquidaciones} sinVista={!liq} />
+          <Historial
+            liquidaciones={datos.liquidaciones}
+            sinVista={!liq}
+            onDescargar={(l) => descargarLiquidacion(l, nombreCaja)}
+          />
         </div>
       )}
     </Modal>
@@ -301,9 +349,11 @@ function Aviso({
 function Historial({
   liquidaciones,
   sinVista,
+  onDescargar,
 }: {
   liquidaciones: LiquidacionGuardada[]
   sinVista: boolean
+  onDescargar: (l: LiquidacionGuardada) => void
 }) {
   if (liquidaciones.length === 0) {
     return sinVista ? (
@@ -333,6 +383,16 @@ function Historial({
                 ? ` · no se le cobraron ${moneda(l.interes_condonado)} de interés futuro`
                 : ""}
             </span>
+            <div>
+              <Button
+                label="Descargar PDF"
+                variant="ghost"
+                compacto
+                icon={Download}
+                ariaLabel={`Descargar el PDF de la liquidación del ${fecha(l.fecha)}`}
+                onClick={() => onDescargar(l)}
+              />
+            </div>
           </li>
         ))}
       </ul>

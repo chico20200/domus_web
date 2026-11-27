@@ -45,11 +45,25 @@ export default function SociosPage() {
   }, [cajaActiva, navigate])
 
   if (!cajaActiva) return null
-  return <Socios cajaId={cajaActiva.id} puedeDesactivar={tieneRol(cajaActiva.rol, "coordinador")} />
+  return (
+    <Socios
+      cajaId={cajaActiva.id}
+      nombreCaja={cajaActiva.nombre}
+      puedeDesactivar={tieneRol(cajaActiva.rol, "coordinador")}
+    />
+  )
 }
 
 // La búsqueda ignora tildes y mayúsculas: "perez" encuentra a "Pérez" (normalizar)
-function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: boolean }) {
+function Socios({
+  cajaId,
+  nombreCaja,
+  puedeDesactivar,
+}: {
+  cajaId: string
+  nombreCaja: string
+  puedeDesactivar: boolean
+}) {
   const { toast } = useNotif()
   const cargar = useCallback(async () => (await sociosService.getSocios(cajaId)).socios, [cajaId])
   const { datos, cargando, error, recargar } = useDatos(cargar)
@@ -257,12 +271,13 @@ function Socios({ cajaId, puedeDesactivar }: { cajaId: string; puedeDesactivar: 
       {saliendo && (
         <SalidaModal
           cajaId={cajaId}
+          nombreCaja={nombreCaja}
           socio={saliendo}
           puedeRegistrar={puedeDesactivar}
           onCerrar={() => setSaliendo(null)}
+          // El modal sigue abierto para descargar el PDF; la lista se actualiza detrás
           onRegistrada={async (l) => {
             const s = saliendo
-            setSaliendo(null)
             await recargar()
             toast(
               "exito",
