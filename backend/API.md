@@ -113,7 +113,7 @@ Reglas del sobrante (en la base, `pasar_sobrante_a_fondo`): el ciclo tiene que h
 
 ### Reportes por las fechas del ciclo (T24, migración 018)
 
-- **Socios del ciclo:** `distribucion-interes` incluye a los socios que estuvieron en el ciclo: ingresaron hasta su fin y no habían salido antes de su inicio, aunque hoy estén inactivos. Cada socio trae `activo` y `fecha_salida`. En la equitativa recibe los meses en que estuvo; el mes en que entró y el mes en que salió cuentan enteros.
+- **Socios del ciclo:** `distribucion-interes` incluye a los socios que estuvieron en el ciclo: ingresaron hasta su fin y no habían salido antes de su inicio, aunque hoy estén inactivos. Cada socio trae `activo` y `fecha_salida`. En la equitativa recibe los meses en que estuvo; el mes en que entró y el mes en que salió cuentan enteros. Desde la migración `020` se usan sus **periodos de membresía** (`periodos_socio`): quien salió y volvió cuenta en los meses de cada periodo y no en los que estuvo fuera.
 - **Fecha de salida:** `socios.fecha_salida` la pone la base al desactivar la ficha (hoy) y la quita si vuelve a activarse. Nadie la escribe a mano. Prueba: `backend/pruebas/salida.sql`.
 - **Saldos al corte:** `estado-caja` mide todo a `corte`: el fin del ciclo si ya cerró, hoy si está en curso. Devuelve `corte` y `ciclo.cerrado`. Al corte se calculan:
   - ahorros = suma de los movimientos hasta esa fecha;

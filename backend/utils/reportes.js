@@ -8,15 +8,21 @@ function finDeMes(mesISO) {
   return `${y}-${String(m).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
+/** Si [ingreso, salida] toca [inicio, fin]: entró hasta el fin y no salió antes del inicio */
+const toca = (ingreso, salida, inicio, fin) =>
+  (!ingreso || ingreso <= fin) && (!salida || salida >= inicio)
+
 /**
- * Si un socio estuvo en el periodo [inicio, fin] (T24, migración 018): ingresó hasta el
- * fin y no había salido antes del inicio. Sirve para el ciclo y para cada mes.
+ * Si un socio estuvo en el periodo [inicio, fin]. Sirve para el ciclo y para cada mes.
+ * Con sus periodos de membresía (migración 020), basta que uno toque el rango: quien salió
+ * y volvió no cuenta en los meses en que estuvo fuera. Sin ellos, sus fechas de ingreso y
+ * de salida de la ficha (T24, migración 018).
  */
 function estuvoEntre(socio, inicio, fin) {
-  return (
-    (!socio.fecha_ingreso || socio.fecha_ingreso <= fin) &&
-    (!socio.fecha_salida || socio.fecha_salida >= inicio)
-  )
+  if (socio.periodos?.length) {
+    return socio.periodos.some((p) => toca(p.ingreso, p.salida, inicio, fin))
+  }
+  return toca(socio.fecha_ingreso, socio.fecha_salida, inicio, fin)
 }
 
 /** Los dos tipos de reparto (T23). Sin elegir, la diferenciada: la de siempre */

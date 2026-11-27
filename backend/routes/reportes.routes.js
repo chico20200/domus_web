@@ -61,7 +61,21 @@ async function distribucionDelCiclo(db, cajaId, ciclo) {
     .eq("caja_id", cajaId)
     .order("apellido")
   if (errorSocios) throw errorSocios
-  const socios = (fichas ?? []).filter((s) => estuvoEntre(s, ciclo.inicio, ciclo.fin))
+
+  // Sus periodos de membresía (migración 020): quien salió y volvió solo cuenta en los
+  // meses en que estuvo
+  const { data: periodos, error: errorPeriodos } = await db
+    .from("periodos_socio")
+    .select("socio_id, ingreso, salida")
+    .eq("caja_id", cajaId)
+    .order("ingreso")
+  if (errorPeriodos) throw errorPeriodos
+  const periodosDe = {}
+  for (const p of periodos ?? []) (periodosDe[p.socio_id] ??= []).push(p)
+
+  const socios = (fichas ?? [])
+    .map((s) => ({ ...s, periodos: periodosDe[s.id] ?? [] }))
+    .filter((s) => estuvoEntre(s, ciclo.inicio, ciclo.fin))
 
   // Transacciones de ahorro
   const { data: transacciones, error: errorTx } = await db
