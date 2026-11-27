@@ -63,3 +63,15 @@ export interface UnirseResponse {
     rol: RolCaja
   }
 }
+
+/** Lo que falta para eliminar la caja (Etapa 7, T9) */
+export interface RequisitosEliminarCaja {
+  socios_activos: number
+  /** Pendientes, activos y vencidos */
+  creditos: number
+  cuentas_con_saldo: number
+  ahorros: number
+  fondos_con_saldo: number
+  saldo_fondos: number
+  puede_eliminar: boolean
+}
