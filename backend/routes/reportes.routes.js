@@ -4,95 +4,119 @@ const { responderError } = require("../utils/errores")
 const router = express.Router({ mergeParams: true })
 const verifyToken = require("../middlewares/auth.middleware")
 const { requierePermiso } = require("../middlewares/permisos.middleware")
-const { calcularDistribucionInteres } = require("../utils/reportes")
+const { calcularDistribucionInteres, tipoDeReparto } = require("../utils/reportes")
 const { calcularCiclos } = require("../utils/ciclos")
 const { EN_CURSO, agregarMora } = require("../utils/mora")
 
 router.use(verifyToken)
 
+/**
+ * La caja, sus ciclos y el ciclo pedido (o el actual). Responde el error y devuelve null
+ * si no se puede seguir.
+ */
+async function cicloPedido(req, res, numero) {
+  const { data: caja } = await req.db
+    .from("cajas")
+    .select("id, nombre, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo")
+    .eq("id", req.params.cajaId)
+    .single()
+  if (!caja) {
+    res.status(404).json({ error: "Caja no encontrada" })
+    return null
+  }
+  // Si no está configurado el ciclo, no se puede calcular
+  if (!caja.fecha_fundacion) {
+    res.status(400).json({
+      error: "Configura el periodo de la caja antes de generar reportes",
+      requiere_configuracion: true,
+    })
+    return null
+  }
+  const { ciclos, cicloActual } = calcularCiclos(
+    caja.fecha_fundacion,
+    caja.mes_inicio_ciclo,
+    caja.duracion_ciclo,
+  )
+  // Si pidió un ciclo específico, úsalo; si no, el actual
+  const ciclo = numero ? ciclos.find((c) => c.numero === parseInt(numero)) : cicloActual
+  if (!ciclo) {
+    res.status(404).json({ error: "Ciclo no encontrado" })
+    return null
+  }
+  return { caja, ciclos, ciclo }
+}
+
+/** El reparto de intereses de un ciclo, con su tipo */
+async function distribucionDelCiclo(db, cajaId, ciclo) {
+  // Socios activos
+  const { data: socios, error: errorSocios } = await db
+    .from("socios")
+    .select("id, nombre, apellido, cedula, fecha_ingreso")
+    .eq("caja_id", cajaId)
+    .eq("activo", true)
+    .order("apellido")
+  if (errorSocios) throw errorSocios
+
+  // Transacciones de ahorro
+  const { data: transacciones, error: errorTx } = await db
+    .from("transacciones")
+    .select("tipo, monto, fecha, cuentas_ahorro!inner ( socio_id )")
+    .eq("caja_id", cajaId)
+    .order("fecha")
+  if (errorTx) throw errorTx
+
+  const txPlanas = (transacciones ?? []).map((t) => ({
+    socio_id: t.cuentas_ahorro.socio_id,
+    tipo: t.tipo,
+    monto: t.monto,
+    fecha: t.fecha,
+  }))
+
+  // Pagos de interés dentro del ciclo — con la fecha fin correcta
+  const { data: pagosInteres, error: errorPagos } = await db
+    .from("pagos_credito")
+    .select("monto_interes, fecha_pago")
+    .eq("caja_id", cajaId)
+    .gte("fecha_pago", ciclo.inicio)
+    .lte("fecha_pago", ciclo.fin)
+  if (errorPagos) throw errorPagos
+
+  return calcularDistribucionInteres({
+    meses: ciclo.meses,
+    socios: socios ?? [],
+    transacciones: txPlanas,
+    pagosInteres: pagosInteres ?? [],
+    tipo: await tipoDeReparto(db, cajaId, ciclo.inicio),
+  })
+}
+
 // ─────────────────────────────────────────────
-// GET /api/cajas/:cajaId/reportes/distribucion-interes
-// El reporte completo del periodo
+// GET /api/cajas/:cajaId/reportes/distribucion-interes?ciclo=2
+// El reporte completo del ciclo (el actual si no se pide otro)
 // ─────────────────────────────────────────────
 router.get("/distribucion-interes", requierePermiso("reportes.generar"), async (req, res) => {
-  const { cajaId } = req.params
-  const { ciclo } = req.query // ?ciclo=2 → ver un ciclo pasado
-
   try {
-    const { data: caja } = await req.db
-      .from("cajas")
-      .select("id, nombre, fecha_fundacion, mes_inicio_ciclo, duracion_ciclo")
-      .eq("id", cajaId)
-      .single()
+    const pedido = await cicloPedido(req, res, req.query.ciclo)
+    if (!pedido) return
+    const { caja, ciclos, ciclo } = pedido
 
-    if (!caja) return res.status(404).json({ error: "Caja no encontrada" })
+    const resultado = await distribucionDelCiclo(req.db, caja.id, ciclo)
 
-    // Si no está configurado el ciclo, no se puede calcular
-    if (!caja.fecha_fundacion) {
-      return res.status(400).json({
-        error: "Configura el periodo de la caja antes de generar reportes",
-        requiere_configuracion: true,
-      })
-    }
-
-    const { ciclos, cicloActual } = calcularCiclos(
-      caja.fecha_fundacion,
-      caja.mes_inicio_ciclo,
-      caja.duracion_ciclo,
-    )
-
-    // Si pidió un ciclo específico, úsalo; si no, el actual
-    const cicloSel = ciclo ? ciclos.find((c) => c.numero === parseInt(ciclo)) : cicloActual
-
-    if (!cicloSel) {
-      return res.status(404).json({ error: "Ciclo no encontrado" })
-    }
-
-    const meses = cicloSel.meses
-
-    // Socios activos
-    const { data: socios } = await req.db
-      .from("socios")
-      .select("id, nombre, apellido, cedula")
-      .eq("caja_id", cajaId)
-      .eq("activo", true)
-      .order("apellido")
-
-    // Transacciones de ahorro
-    const { data: transacciones } = await req.db
-      .from("transacciones")
-      .select("tipo, monto, fecha, cuentas_ahorro!inner ( socio_id )")
-      .eq("caja_id", cajaId)
-      .order("fecha")
-
-    const txPlanas = (transacciones ?? []).map((t) => ({
-      socio_id: t.cuentas_ahorro.socio_id,
-      tipo: t.tipo,
-      monto: t.monto,
-      fecha: t.fecha,
-    }))
-
-    // Pagos de interés dentro del ciclo — con la fecha fin correcta
-    const { data: pagosInteres } = await req.db
-      .from("pagos_credito")
-      .select("monto_interes, fecha_pago")
-      .eq("caja_id", cajaId)
-      .gte("fecha_pago", cicloSel.inicio)
-      .lte("fecha_pago", cicloSel.fin)
-
-    const resultado = calcularDistribucionInteres({
-      meses,
-      socios: socios ?? [],
-      transacciones: txPlanas,
-      pagosInteres: pagosInteres ?? [],
-    })
+    // Si el sobrante de este ciclo ya se pasó a un fondo
+    const { data: sobrante, error } = await req.db
+      .from("sobrantes_ciclo")
+      .select("monto, created_at, fondos_caja ( nombre )")
+      .eq("caja_id", caja.id)
+      .eq("inicio", ciclo.inicio)
+      .maybeSingle()
+    if (error) throw error
 
     return res.json({
       caja: {
         id: caja.id,
         nombre: caja.nombre,
       },
-      ciclo: cicloSel,
+      ciclo,
       ciclos_disponibles: ciclos.map((c) => ({
         numero: c.numero,
         label: c.label,
@@ -100,9 +124,58 @@ router.get("/distribucion-interes", requierePermiso("reportes.generar"), async (
         actual: c.actual,
       })),
       ...resultado,
+      sobrante_registrado: sobrante
+        ? {
+            monto: Number(sobrante.monto),
+            fondo: sobrante.fondos_caja?.nombre ?? "",
+            fecha: sobrante.created_at,
+          }
+        : null,
     })
   } catch (err) {
     console.error("Error en distribución:", err.message)
+    return responderError(res, err)
+  }
+})
+
+// ─────────────────────────────────────────────
+// POST /api/cajas/:cajaId/reportes/sobrante   { ciclo, fondo_id }
+// Pasa a un fondo los centavos que sobraron del reparto de un ciclo cerrado (T23). El
+// monto lo calcula el backend con el mismo reparto que muestra Reportes; la base
+// comprueba que el ciclo cerró y que no se pasó antes.
+// ─────────────────────────────────────────────
+router.post("/sobrante", requierePermiso("fondos.gestionar"), async (req, res) => {
+  const { ciclo: numero, fondo_id } = req.body ?? {}
+  if (!numero || !fondo_id) {
+    return res.status(400).json({ error: "Indica el ciclo y el fondo" })
+  }
+  try {
+    const pedido = await cicloPedido(req, res, numero)
+    if (!pedido) return
+    const { caja, ciclo } = pedido
+    if (!ciclo.cerrado) {
+      return res.status(400).json({ error: "El sobrante se pasa cuando el ciclo ya cerró" })
+    }
+
+    const { validacion } = await distribucionDelCiclo(req.db, caja.id, ciclo)
+    if (!(validacion.sobrante > 0)) {
+      return res.status(400).json({ error: "En este ciclo no sobraron centavos" })
+    }
+
+    const { data, error } = await req.db.rpc("pasar_sobrante_a_fondo", {
+      p_caja: caja.id,
+      p_inicio: ciclo.inicio,
+      p_fin: ciclo.fin,
+      p_monto: validacion.sobrante,
+      p_fondo: fondo_id,
+    })
+    if (error) return responderError(res, error)
+
+    return res.status(201).json({
+      message: "Sobrante pasado a Fondos",
+      sobrante: { monto: Number(data.monto), fecha: data.created_at },
+    })
+  } catch (err) {
     return responderError(res, err)
   }
 })

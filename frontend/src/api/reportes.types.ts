@@ -1,11 +1,14 @@
 // src/api/reportes.types.ts
-import type { Ciclo, CicloResumen } from "./ciclos.types"
+import type { Ciclo, CicloResumen, TipoReparto } from "./ciclos.types"
 
 export interface FilaMes {
   mes: string
   capital_total: number
   interes_mes: number
   tasa_mes: number
+  /** Equitativa: cuántos socios se reparten el mes y cuánto le toca a cada uno */
+  participantes: number | null
+  parte: number | null
   saldos: Record<string, number>
   reparto: Record<string, number>
 }
@@ -26,6 +29,7 @@ export interface DistribucionResponse {
   }
   ciclo: Ciclo // ← el ciclo que se está viendo
   ciclos_disponibles: CicloResumen[] // ← todos los ciclos para el selector
+  tipo: TipoReparto
   meses: FilaMes[]
   por_socio: InteresSocio[]
   interes_total: number
@@ -33,9 +37,14 @@ export interface DistribucionResponse {
   validacion: {
     interes_generado: number
     interes_repartido: number
+    /** Centavos que sobran al redondear cada parte: van a Fondos de caja */
+    sobrante: number
+    /** Interés que nadie pudo recibir */
     diferencia: number
     cuadra: boolean
   }
+  /** Si el sobrante de este ciclo ya se pasó a un fondo */
+  sobrante_registrado: { monto: number; fondo: string; fecha: string } | null
 }
 
 export interface EstadoCajaResponse {

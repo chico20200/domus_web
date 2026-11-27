@@ -8,6 +8,7 @@ const { requierePermiso } = require("../middlewares/permisos.middleware")
 const { calcularCiclos, validarConfigCiclo } = require("../utils/ciclos")
 const { EN_CURSO, agregarMora } = require("../utils/mora")
 const { errorMonto } = require("../utils/validacion")
+const { tipoDeReparto } = require("../utils/reportes")
 const { leerFoto, subirFoto, quitarFoto, enlace, enlaces } = require("../utils/fotos")
 
 // Largos máximos de los datos de una caja (los mismos que el formulario)
@@ -436,6 +437,53 @@ router.put("/:cajaId/configuracion-ciclo", requierePermiso("caja.configurar"), a
     message: "Configuración guardada correctamente",
     ciclos,
     ciclo_actual: cicloActual,
+  })
+})
+
+// ─────────────────────────────────────────────
+// GET /api/cajas/:cajaId/reparto
+// Tipo de reparto de intereses del ciclo actual (T23). Lo ven todos los miembros.
+// ─────────────────────────────────────────────
+router.get("/:cajaId/reparto", requierePermiso("caja.ver"), async (req, res) => {
+  const { data: caja, error } = await req.db
+    .from("cajas")
+    .select("fecha_fundacion, mes_inicio_ciclo, duracion_ciclo")
+    .eq("id", req.params.cajaId)
+    .single()
+  if (error) return responderError(res, error)
+  if (!caja.fecha_fundacion)
+    return res.json({ configurado: false, tipo: "diferenciada", ciclo: null })
+
+  const { cicloActual } = calcularCiclos(
+    caja.fecha_fundacion,
+    caja.mes_inicio_ciclo,
+    caja.duracion_ciclo,
+  )
+  try {
+    const tipo = await tipoDeReparto(req.db, req.params.cajaId, cicloActual.inicio)
+    const { numero, label, inicio, fin } = cicloActual
+    return res.json({ configurado: true, tipo, ciclo: { numero, label, inicio, fin } })
+  } catch (err) {
+    return responderError(res, err)
+  }
+})
+
+// ─────────────────────────────────────────────
+// PUT /api/cajas/:cajaId/reparto   { tipo: 'equitativa' | 'diferenciada' }
+// Cambia el tipo del ciclo actual; los anteriores no cambian. Solo coordinador.
+// ─────────────────────────────────────────────
+router.put("/:cajaId/reparto", requierePermiso("caja.configurar"), async (req, res) => {
+  const { error } = await req.db.rpc("cambiar_tipo_reparto", {
+    p_caja: req.params.cajaId,
+    p_tipo: req.body?.tipo ?? null,
+  })
+  if (error) return responderError(res, error)
+  return res.json({
+    message:
+      req.body.tipo === "equitativa"
+        ? "Este ciclo se reparte en partes iguales"
+        : "Este ciclo se reparte según el ahorro de cada socio",
+    tipo: req.body.tipo,
   })
 })
 

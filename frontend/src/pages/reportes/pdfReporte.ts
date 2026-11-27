@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable"
 import type { DistribucionResponse, EstadoCajaResponse } from "../../api/reportes.types"
 import { fecha, moneda, porcentaje } from "../../lib/format"
 import { mesCorto } from "./meses"
+import { TIPO_REPARTO } from "../../lib/reparto"
 
 // Naranja de acción del modo claro (#b26000): con texto blanco da 4,6:1
 const NARANJA: [number, number, number] = [178, 96, 0]
@@ -18,7 +19,11 @@ export function descargarReporte(dist: DistribucionResponse, estado: EstadoCajaR
   doc.text("Reporte de distribución de intereses", 14, 16)
   doc.setFontSize(9)
   doc.setTextColor(85)
-  doc.text(`${dist.caja.nombre} · Ciclo ${dist.ciclo.numero}: ${dist.ciclo.label}`, 14, 22)
+  doc.text(
+    `${dist.caja.nombre} · Ciclo ${dist.ciclo.numero}: ${dist.ciclo.label} · ${TIPO_REPARTO[dist.tipo].etiqueta}`,
+    14,
+    22,
+  )
 
   doc.setTextColor(0)
   const y = 32

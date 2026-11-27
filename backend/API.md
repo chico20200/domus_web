@@ -96,6 +96,21 @@ Dinero de la organización para sus actividades, aparte del que se presta. Cada 
 
 Reglas (en la base): nombre de 3 a 60 caracteres, único en la caja sin importar mayúsculas (`409`); descripción del fondo de hasta 200; monto mayor que 0 con hasta dos decimales; descripción del movimiento obligatoria, de 3 a 200 caracteres; un retiro no supera el saldo (`400`); un fondo cerrado no recibe movimientos (`409`). Nadie escribe un saldo ni un movimiento a mano, y los movimientos no se editan ni se borran. Prueba: `backend/pruebas/fondos.sql`.
 
+### Reparto de intereses por ciclo (T23, migración 017)
+
+El coordinador elige cómo se reparte el interés del ciclo actual: **diferenciada** (según el saldo de cada socio, mes a mes; la de siempre) o **equitativa** (el interés de cada mes en partes iguales entre los socios activos que ya habían ingresado ese mes). El tipo de un ciclo es el de la fila más reciente de `repartos_ciclo` con inicio igual o anterior al suyo; sin filas, diferenciada. Cambiarlo no toca los ciclos anteriores.
+
+Cada socio recibe su total del ciclo redondeado hacia abajo al centavo. Los centavos que sobran se pasan a un fondo una sola vez por ciclo, cuando ya cerró.
+
+| Ruta                                                     | Permiso            | Cuerpo y respuesta                                                                                                                         |
+| -------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/cajas/:cajaId/reparto`                         | `caja.ver`         | `{ configurado, tipo, ciclo: { numero, label, inicio, fin } \| null }`, el tipo del ciclo actual                                           |
+| `PUT /api/cajas/:cajaId/reparto`                         | `caja.configurar`  | `{ tipo: 'equitativa' \| 'diferenciada' }` → `{ message, tipo }`. Caja bloqueada: `409`                                                     |
+| `GET /api/cajas/:cajaId/reportes/distribucion-interes?ciclo=` | `reportes.generar` | Agrega `tipo`; cada mes, `participantes` y `parte` (equitativa, si no `null`); `validacion.sobrante` (centavos que sobran) y `validacion.diferencia` (interés que nadie pudo recibir: meses sin socios o sin ahorro; `cuadra` es `diferencia = 0`); `sobrante_registrado: { monto, fondo, fecha } \| null` |
+| `POST /api/cajas/:cajaId/reportes/sobrante`              | `fondos.gestionar` | `{ ciclo, fondo_id }` → `201 { message, sobrante: { monto, fecha } }`. El monto lo calcula el backend con el mismo reparto                   |
+
+Reglas del sobrante (en la base, `pasar_sobrante_a_fondo`): el ciclo tiene que haber cerrado (`400`); el monto es mayor que 0 y no pasa de un centavo por socio (`400`); una segunda vez en el mismo ciclo, `409`; el depósito lo hace `registrar_movimiento_fondo`, así que un fondo cerrado responde `409`. El movimiento lleva la descripción «Centavos que sobraron del reparto de intereses del ciclo dd/mm/aaaa – dd/mm/aaaa». Prueba: `backend/pruebas/reparto.sql`.
+
 ### Pago adelantado por monto (T30, migración 013)
 
 `GET …/pagos/proxima-cuota` trae `adelanto`:
@@ -723,5 +738,6 @@ Las últimas 200 acciones, la más reciente primero.
 /api/cajas/:cajaId/creditos    → creditos.routes.js
 /api/cajas/:cajaId/pagos       → pagos.routes.js
 /api/cajas/:cajaId/importar    → importacion.routes.js (con su propio límite de 4 MB)
+/api/cajas/:cajaId/reportes    → reportes.routes.js
 /api/admin                     → admin.routes.js
 ```

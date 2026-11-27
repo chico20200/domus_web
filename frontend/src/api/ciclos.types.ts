@@ -1,4 +1,14 @@
 // src/api/ciclos.types.ts
+/** Cómo se reparte el interés de un ciclo (T23) */
+export type TipoReparto = "diferenciada" | "equitativa"
+
+/** GET /cajas/:id/reparto: el tipo del ciclo actual */
+export interface RepartoResponse {
+  configurado: boolean
+  tipo: TipoReparto
+  ciclo: { numero: number; label: string; inicio: string; fin: string } | null
+}
+
 export interface Ciclo {
   numero: number
   inicio: string

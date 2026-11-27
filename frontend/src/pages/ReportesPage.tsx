@@ -25,12 +25,14 @@ import { Tabs } from "../components/Tabs"
 import { useCaja } from "../context/CajaContext"
 import { reportesService } from "../api/reportes.service"
 import { ApiError } from "../api/api.client"
-import type { FilaMes, InteresSocio } from "../api/reportes.types"
-import { moneda, porcentaje } from "../lib/format"
+import type { DistribucionResponse, FilaMes, InteresSocio } from "../api/reportes.types"
+import { fecha, moneda, porcentaje } from "../lib/format"
+import { TIPO_REPARTO } from "../lib/reparto"
 import { useDatos } from "../lib/useDatos"
 import { tieneRol } from "../lib/roles"
 import { mesCorto } from "./reportes/meses"
 import { descargarReporte } from "./reportes/pdfReporte"
+import { PasarSobranteModal } from "./reportes/PasarSobranteModal"
 
 /**
  * Reportes del ciclo: si el reparto de intereses cuadra, el estado de la caja, el interés
@@ -56,6 +58,7 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
   // null: el ciclo actual (el backend lo elige)
   const [cicloPedido, setCicloPedido] = useState<number | null>(null)
   const [vista, setVista] = useState<Vista>("mensual")
+  const [pasandoSobrante, setPasandoSobrante] = useState(false)
 
   const cargar = useCallback(async () => {
     const ciclo = cicloPedido ?? undefined
@@ -135,15 +138,33 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
       celda: (m) => moneda(m.interes_mes),
       pie: moneda(dist.interes_total),
     },
-    {
-      clave: "rendimiento",
-      encabezado: "Rendimiento del mes",
-      alinear: "derecha",
-      celda: (m) => (
-        <span className={m.tasa_mes > 0 ? "" : "text-muted"}>{porcentaje(m.tasa_mes)}</span>
-      ),
-      pie: porcentaje(dist.tasa_acumulada),
-    },
+    // Equitativa: entre cuántos se divide cada mes y cuánto le toca a cada uno
+    ...(dist.tipo === "equitativa"
+      ? ([
+          {
+            clave: "socios",
+            encabezado: "Socios",
+            alinear: "derecha",
+            celda: (m) => m.participantes ?? 0,
+          },
+          {
+            clave: "parte",
+            encabezado: "Parte de cada uno",
+            alinear: "derecha",
+            celda: (m) => (m.parte ? moneda(m.parte) : <span className="text-muted">—</span>),
+          },
+        ] satisfies Columna<FilaMes>[])
+      : ([
+          {
+            clave: "rendimiento",
+            encabezado: "Rendimiento del mes",
+            alinear: "derecha",
+            celda: (m) => (
+              <span className={m.tasa_mes > 0 ? "" : "text-muted"}>{porcentaje(m.tasa_mes)}</span>
+            ),
+            pie: porcentaje(dist.tasa_acumulada),
+          },
+        ] satisfies Columna<FilaMes>[])),
   ]
 
   const columnasSocio: Columna<InteresSocio>[] = [
@@ -188,7 +209,7 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
             <InfoTip ayuda={AYUDA.distribucionIntereses} />
           </h2>
           <p className="text-sm text-secondary">
-            Ciclo {dist.ciclo.numero} · {dist.ciclo.label}
+            Ciclo {dist.ciclo.numero} · {dist.ciclo.label} · {TIPO_REPARTO[dist.tipo].etiqueta}
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -242,8 +263,16 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
             <p className="text-secondary">
               Interés generado {moneda(dist.validacion.interes_generado)} · repartido{" "}
               {moneda(dist.validacion.interes_repartido)}
-              {!dist.validacion.cuadra && ` · diferencia ${moneda(dist.validacion.diferencia)}`}
+              {dist.validacion.sobrante > 0 &&
+                ` · sobran ${moneda(dist.validacion.sobrante)} al redondear`}
+              {!dist.validacion.cuadra &&
+                ` · sin repartir ${moneda(dist.validacion.diferencia)}: hubo meses con interés y sin ${dist.tipo === "equitativa" ? "socios" : "ahorro"}`}
             </p>
+            <Sobrante
+              dist={dist}
+              onPasar={() => setPasandoSobrante(true)}
+              deshabilitado={actualizando}
+            />
           </div>
         </div>
 
@@ -286,7 +315,11 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
         >
           {vista === "mensual" ? (
             <DataTable<FilaMes>
-              descripcion="Capital, interés recaudado y rendimiento de cada mes del ciclo"
+              descripcion={
+                dist.tipo === "equitativa"
+                  ? "Interés recaudado de cada mes y la parte que le toca a cada socio activo"
+                  : "Capital, interés recaudado y rendimiento de cada mes del ciclo"
+              }
               filas={dist.meses}
               claveFila={(m) => m.mes}
               columnas={columnasMes}
@@ -308,6 +341,59 @@ function Reportes({ cajaId, esCoordinador }: { cajaId: string; esCoordinador: bo
           )}
         </Tabs>
       </div>
+      {pasandoSobrante && (
+        <PasarSobranteModal
+          cajaId={cajaId}
+          ciclo={dist.ciclo}
+          monto={dist.validacion.sobrante}
+          onCerrar={() => setPasandoSobrante(false)}
+          onPasado={recargar}
+        />
+      )}
     </PageShell>
+  )
+}
+
+/**
+ * Qué pasa con los centavos que sobran (T23): en un ciclo en curso, todavía cambian; en
+ * uno cerrado, se pasan a un fondo una sola vez; si ya se pasaron, a cuál y cuándo.
+ */
+function Sobrante({
+  dist,
+  onPasar,
+  deshabilitado,
+}: {
+  dist: DistribucionResponse
+  onPasar: () => void
+  deshabilitado: boolean
+}) {
+  const registrado = dist.sobrante_registrado
+  if (registrado) {
+    return (
+      <p className="text-secondary">
+        Los {moneda(registrado.monto)} que sobraron se pasaron a {registrado.fondo} el{" "}
+        {fecha(registrado.fecha)}.
+      </p>
+    )
+  }
+  if (!(dist.validacion.sobrante > 0)) return null
+  if (!dist.ciclo.cerrado) {
+    return (
+      <p className="text-secondary">
+        Los centavos que sobran van a Fondos de caja cuando el ciclo cierre.
+      </p>
+    )
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-3 pt-1">
+      <p className="text-secondary">Los centavos que sobran van a Fondos de caja.</p>
+      <Button
+        label={`Pasar ${moneda(dist.validacion.sobrante)} a Fondos`}
+        variant="secondary"
+        compacto
+        disabled={deshabilitado}
+        onClick={onPasar}
+      />
+    </div>
   )
 }
