@@ -93,7 +93,7 @@ export const AYUDA: Record<ConceptoAyuda, TextoAyuda> = {
   },
   rolMembresia: {
     titulo: "Rol y membresía",
-    que: "Ser miembro de una caja es tener acceso a ella. El rol dice qué puedes hacer ahí: socio consulta sus ahorros, tesorero registra la operación y coordinador además configura la caja.",
+    que: "Ser miembro de una caja es tener acceso a ella. El rol dice qué puedes hacer ahí: socio consulta sus ahorros, créditos y solicitudes sin modificarlos, tesorero registra la operación y coordinador además configura la caja.",
     pasa: "El rol es de cada caja: la misma cuenta puede ser coordinador en una caja y socio en otra. Lo asigna el coordinador con el código de invitación y puede cambiarlo después.",
     necesitas: "Un código de invitación, o crear la caja, que te deja como coordinador.",
   },

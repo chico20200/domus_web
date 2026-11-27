@@ -6,9 +6,9 @@ import type { SeccionTexto } from "../components/TextoSecciones"
  *
  * La versión es la misma que la del backend (backend/utils/politicas.js): si el texto
  * cambia, se sube la versión en los dos lados y cada miembro vuelve a aceptarlas.
- * BORRADOR: el texto debe coincidir con el documento de TIC; ver ESTADO.md.
+ * Alineado con HU022 del documento de TIC el 26 nov (T28).
  */
-export const POLITICAS_VERSION = "2026-11-13"
+export const POLITICAS_VERSION = "2026-11-26"
 
 export const POLITICAS: SeccionTexto[] = [
   {
@@ -24,22 +24,22 @@ export const POLITICAS: SeccionTexto[] = [
       "El rol es de cada caja: la misma cuenta puede ser coordinador en una caja y socio en otra. Cada rol puede todo lo del rol que le sigue.",
     ],
     puntos: [
-      "Socio: consulta sus cuentas de ahorro en esta caja.",
-      "Tesorero: registra las fichas de socio, abre cuentas, registra depósitos, retiros, créditos y pagos, aprueba créditos y genera los reportes.",
+      "Socio: consulta, sin modificarlos, sus cuentas de ahorro, sus créditos y sus solicitudes en esta caja.",
+      "Tesorero: registra las fichas de socio, abre cuentas, registra depósitos, retiros, créditos y pagos, aprueba créditos, lleva los fondos de caja y genera los reportes.",
       "Coordinador: además configura la caja y su periodo, invita a los miembros, decide su rol y puede quitarlos.",
     ],
   },
   {
     titulo: "Qué conoce la administración del sistema",
     parrafos: [
-      "Quienes administran DOMUS ven el nombre de cada caja, las cuentas de usuario que la usan y cuántos socios y créditos tiene. Lo necesitan para dar soporte y para bloquear una cuenta en caso de abuso.",
-      "No ven montos, saldos, movimientos ni los datos personales de los socios.",
+      "Del ámbito de administración se conocen la existencia de la caja, su fecha de fundación, su ciclo vigente, el número de socios y el número de créditos registrados, además de las cuentas de usuario que entran a ella con su rol.",
+      "Son conteos, no montos. Se usan para dimensionar los recursos del servidor, para restituir accesos perdidos y para bloquear una cuenta o una caja en caso de abuso.",
     ],
   },
   {
     titulo: "Lo que no sale de la caja",
     parrafos: [
-      "Las fichas de los socios (nombres, cédulas, teléfonos y correos), los saldos, los movimientos, los créditos y los pagos solo los ven los miembros de esta caja, cada uno según su rol. Ninguna otra caja tiene acceso a ellos.",
+      "Los montos (saldos, depósitos, retiros, créditos, pagos y fondos), las fichas de socio (nombres, cédulas, teléfonos y correos), los reportes y la distribución de intereses no salen de la caja: solo los ven sus miembros, cada uno según su rol. Ni la administración del sistema ni otra caja tienen acceso a ellos.",
       "Quien registra los datos de una persona se compromete a hacerlo con su consentimiento y a usarlos solo para las cuentas de la caja.",
     ],
   },

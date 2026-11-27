@@ -51,14 +51,18 @@ export interface CuentaAdmin {
 /** GET /api/admin/bitacora */
 export interface RegistroBitacora {
   id: string
-  accion: "bloquear" | "restablecer" | "bloquear_caja" | "restablecer_caja"
+  /** aceptar_acuerdo: el administrador aceptó el acuerdo de confidencialidad (HU021, T28) */
+  accion: "bloquear" | "restablecer" | "bloquear_caja" | "restablecer_caja" | "aceptar_acuerdo"
   cuenta_id: string | null
   /** null en las acciones sobre una caja */
   cuenta_correo: string | null
   caja_id: string | null
   /** El nombre al momento de la acción; null en las acciones sobre una cuenta */
   caja_nombre: string | null
-  motivo: string
+  /** null en la aceptación del acuerdo */
+  motivo: string | null
+  /** Versión del acuerdo aceptada; null en las demás acciones */
+  version: string | null
   fecha: string
   /** null si la cuenta del administrador ya no existe */
   admin_correo: string | null

@@ -5,6 +5,6 @@
  * frontend (src/lib/politicas.ts) con la misma versión: si el texto cambia, se sube la
  * versión en los dos lados y la aceptación vieja deja de valer.
  */
-const POLITICAS_VERSION = "2026-11-13"
+const POLITICAS_VERSION = "2026-11-26"
 
 module.exports = { POLITICAS_VERSION }

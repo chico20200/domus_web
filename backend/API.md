@@ -741,9 +741,10 @@ Quita el bloqueo y lo anota en la bitácora. Si la bitácora falla, el bloqueo v
 
 ### GET /api/admin/bitacora
 
-Las últimas 200 acciones, la más reciente primero.
+Las últimas 200 acciones, la más reciente primero: bloqueos y restablecimientos, y aceptaciones del acuerdo de confidencialidad (HU021, T28).
 
-- 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, caja_id, caja_nombre, motivo, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer` (sobre una cuenta: `cuenta_correo`) o `bloquear_caja` o `restablecer_caja` (sobre una caja: `caja_nombre`, el nombre al momento de la acción).
+- 200: `{ registros: [{ id, accion, cuenta_id, cuenta_correo, caja_id, caja_nombre, motivo, version, fecha, admin_correo }] }`. `accion`: `bloquear` o `restablecer` (sobre una cuenta: `cuenta_correo`) o `bloquear_caja` o `restablecer_caja` (sobre una caja: `caja_nombre`, el nombre al momento de la acción), o `aceptar_acuerdo` (`version` aceptada, `motivo` null, `admin_correo` es quien aceptó).
+- Las aceptaciones se leen de `aceptaciones_confidencialidad` al consultar, no se copian a `bitacora_administracion`: salen también las de antes de T28.
 
 ---
 

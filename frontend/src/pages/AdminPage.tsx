@@ -36,7 +36,7 @@ export default function AdminPage() {
       titulo="Administración de DOMUS"
       descripcion={
         datos?.permitido && datos.acuerdo.aceptado
-          ? `Soporte a las cajas y bloqueo de cuentas. Aceptaste el acuerdo de confidencialidad el ${fechaHora(datos.acuerdo.aceptado_en)}.`
+          ? `Soporte a las cajas y bloqueo de cuentas y cajas. Aceptaste el acuerdo de confidencialidad el ${fechaHora(datos.acuerdo.aceptado_en)}.`
           : undefined
       }
       ancho={datos?.permitido && datos.acuerdo.aceptado ? "completo" : "formulario"}

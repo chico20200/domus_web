@@ -342,9 +342,21 @@ router.post("/cajas/:id/bloqueo", cambiarEstadoCaja(true))
 router.post("/cajas/:id/restablecimiento", cambiarEstadoCaja(false))
 
 // GET /api/admin/bitacora
-// Las últimas 200 acciones, la más reciente primero, con el correo de quien las hizo
+// Las últimas 200 acciones, la más reciente primero, con el correo de quien las hizo.
+// Junta los bloqueos y restablecimientos con las aceptaciones del acuerdo de
+// confidencialidad (HU021: "consultable en la bitácora", T28). Las aceptaciones se leen de
+// su propia tabla, así no hay dos copias del mismo dato y salen también las de antes.
+const LIMITE_BITACORA = 200
+
 router.get("/bitacora", async (req, res) => {
   try {
+    const aceptaciones = await leer(
+      supabaseAdmin
+        .from("aceptaciones_confidencialidad")
+        .select("id, user_id, version, aceptada_en")
+        .order("aceptada_en", { ascending: false })
+        .limit(LIMITE_BITACORA),
+    )
     const filas = await leer(
       supabaseAdmin
         .from("bitacora_administracion")
@@ -352,14 +364,16 @@ router.get("/bitacora", async (req, res) => {
           "id, admin_id, accion, usuario_id, usuario_correo, caja_id, caja_nombre, motivo, creado_en",
         )
         .order("creado_en", { ascending: false })
-        .limit(200),
+        .limit(LIMITE_BITACORA),
     )
-    const ids = [...new Set(filas.map((f) => f.admin_id).filter(Boolean))]
+    const ids = [
+      ...new Set([...filas.map((f) => f.admin_id), ...aceptaciones.map((a) => a.user_id)]),
+    ].filter(Boolean)
     const correos = Object.fromEntries(
       await Promise.all(ids.map(async (id) => [id, (await leerCuenta(id))?.email ?? null])),
     )
-    return res.json({
-      registros: filas.map((f) => ({
+    const registros = [
+      ...filas.map((f) => ({
         id: f.id,
         accion: f.accion,
         cuenta_id: f.usuario_id,
@@ -367,10 +381,26 @@ router.get("/bitacora", async (req, res) => {
         caja_id: f.caja_id ?? null,
         caja_nombre: f.caja_nombre ?? null,
         motivo: f.motivo,
+        version: null,
         fecha: f.creado_en,
         admin_correo: f.admin_id ? correos[f.admin_id] : null,
       })),
-    })
+      ...aceptaciones.map((a) => ({
+        id: `acuerdo-${a.id}`,
+        accion: "aceptar_acuerdo",
+        cuenta_id: a.user_id,
+        cuenta_correo: null,
+        caja_id: null,
+        caja_nombre: null,
+        motivo: null,
+        version: a.version,
+        fecha: a.aceptada_en,
+        admin_correo: correos[a.user_id] ?? null,
+      })),
+    ]
+      .sort((x, y) => (x.fecha < y.fecha ? 1 : x.fecha > y.fecha ? -1 : 0))
+      .slice(0, LIMITE_BITACORA)
+    return res.json({ registros })
   } catch (err) {
     return res.status(500).json({ error: err.message })
   }
