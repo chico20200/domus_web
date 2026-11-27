@@ -48,7 +48,7 @@ Las escrituras que tocan dos tablas son funciones de Postgres, todo o nada:
 | `POST /creditos/:id/pagos/prepago`               | `registrar_pago_adelantado` (varios pagos juntos)   |
 | `POST /api/cajas`                                | `crear_caja` (límite de 3 cajas creadas por cuenta) |
 | `POST /api/cajas/unirse`                         | `unirse_con_codigo`                                 |
-| `GET /cuentas/mias`                              | `vincular_mi_ficha`                                 |
+| `GET /cuentas/mias`, `GET /creditos/mios`        | `vincular_mi_ficha`                                 |
 | `GET /miembros` (correos)                        | `correos_miembros`                                  |
 | `GET /api/cajas/mis-cajas` (cupo)                | `cajas_creadas`                                     |
 | `POST …/comprobante` (foto de un registro)        | `adjuntar_comprobante`                              |
@@ -519,13 +519,22 @@ Lista los créditos de la caja con datos del socio.
 - `estado` es el de la base: `pendiente`, `activo`, `pagado` o `vencido`. La mora no es un estado: un crédito `activo` puede estar en mora.
 - `numero`: 1, 2, 3… dentro de la caja, en el orden de solicitud (migración `007`). Lo asigna la base al registrar la solicitud; lo que se envíe se ignora y después no se cambia. La tabla de amortización (`GET /creditos/:id/amortizacion`) también lo devuelve en `credito.numero`.
 
+### GET /api/cajas/:cajaId/creditos/mios
+
+Los créditos y solicitudes del usuario en esta caja ("Mis créditos", T27). La ficha se busca como en `GET /cuentas/mias`.
+
+- Rol mínimo: `socio`
+- 200: `{ vinculado: true, creditos }` (con `mora` como en el listado, sin datos del socio) o `{ vinculado: false, creditos: [] }`
+
 ### GET /api/cajas/:cajaId/creditos/:creditoId
 
 Detalle de un crédito y sus pagos asociados.
 
-- Rol mínimo: `tesorero` (permiso `datos.ver`: el socio no ve los datos de los demás)
+- Rol mínimo: `socio`, solo para sus propios créditos (uno ajeno responde 404, igual que uno que no existe); `tesorero` y `coordinador`, cualquiera (T27). El RLS ya esconde lo ajeno; la ruta lo comprueba también
 - 200: `{ credito, pagos }`; `credito.mora` como en el listado
 - 404: `{ error: 'Crédito no encontrado' }`
+
+`GET /creditos/:creditoId/amortizacion` y `GET /creditos/:creditoId/pagos/proxima-cuota` siguen la misma regla: el socio, solo en sus propios créditos. Registrar pagos, solicitar y aprobar sigue siendo del tesorero.
 
 ### GET /api/cajas/:cajaId/creditos/socio/:socioId
 

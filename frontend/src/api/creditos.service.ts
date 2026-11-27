@@ -3,6 +3,7 @@ import { apiClient } from "./api.client"
 import type { GetAmortizacionResponse } from "./amortizacion.types"
 import type {
   GetCreditosResponse,
+  GetMisCreditosResponse,
   GetCreditoResponse,
   CreateCreditoRequest,
   CreateCreditoResponse,
@@ -29,6 +30,11 @@ export const creditosService = {
 
   async getCreditos(cajaId: string): Promise<GetCreditosResponse> {
     return apiClient.get<GetCreditosResponse>(`/cajas/${cajaId}/creditos`)
+  },
+
+  /** Los créditos y solicitudes de quien entra, por su ficha (T27) */
+  async getMisCreditos(cajaId: string): Promise<GetMisCreditosResponse> {
+    return apiClient.get<GetMisCreditosResponse>(`/cajas/${cajaId}/creditos/mios`)
   },
 
   async getCredito(cajaId: string, creditoId: string): Promise<GetCreditoResponse> {

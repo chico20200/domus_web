@@ -13,7 +13,7 @@
 -- 001 a 004 aplicadas).
 --
 -- CÓMO SE CORRE: en Supabase → SQL Editor, pegar este archivo completo y ejecutarlo. El
--- resultado sale como mensaje de error: "AISLAMIENTO: 37 de 37 casos pasan" seguido de
+-- resultado sale como mensaje de error: "AISLAMIENTO: 39 de 39 casos pasan" seguido de
 -- cada caso. Si alguno dice FALLA, el aislamiento tiene un hueco.
 
 begin;
@@ -80,7 +80,7 @@ declare
   caja_a uuid; caja_b uuid;
   ficha_socio uuid; ficha_otra uuid; ficha_b uuid;
   cuenta_socio uuid; cuenta_otra uuid; cuenta_b uuid;
-  credito uuid;
+  credito uuid; credito_propio uuid;
 begin
   -- Cinco cuentas de usuario (el trigger crea su perfil)
   insert into auth.users (id, email, aud, role) values
@@ -117,6 +117,13 @@ begin
   update public.creditos set estado = 'activo', fecha_desembolso = '2025-02-01',
     fecha_vencimiento = '2025-05-01' where id = credito;
   perform public.registrar_pago_credito(caja_a, credito, 309, 1, 100, 3, 'cuota');
+  -- Un crédito del propio socio, con un pago: lo ve en "Mis créditos" (T27)
+  insert into public.creditos (caja_id, socio_id, monto_solicitado, tasa_interes, plazo_meses,
+                               monto_total, cuota_mensual, saldo_pendiente, estado)
+  values (caja_a, ficha_socio, 200, 12, 2, 204, 102, 204, 'pendiente') returning id into credito_propio;
+  update public.creditos set estado = 'activo', fecha_desembolso = '2025-02-01',
+    fecha_vencimiento = '2025-04-01' where id = credito_propio;
+  perform public.registrar_pago_credito(caja_a, credito_propio, 204, 1, 100, 2, 'cuota');
 
   -- El socio se une después: su ficha se vincula por correo (sin distinguir mayúsculas)
   perform pg_temp.como(socio_a);
@@ -189,10 +196,14 @@ begin
   perform pg_temp.anotar('Socio de A ve solo su cuenta', n = 1, n::text);
   n := pg_temp.contar(format('select 1 from public.transacciones where cuenta_id = %L', i.cuenta_otra));
   perform pg_temp.anotar('Socio de A no ve los movimientos de otra ficha de su caja', n = 0, n::text);
-  n := pg_temp.contar('select 1 from public.creditos');
+  n := pg_temp.contar(format('select 1 from public.creditos where socio_id = %L', i.ficha_otra));
   perform pg_temp.anotar('Socio de A no ve el crédito de otra persona', n = 0, n::text);
-  n := pg_temp.contar('select 1 from public.pagos_credito');
+  n := pg_temp.contar(format('select 1 from public.pagos_credito where credito_id = %L', i.credito));
   perform pg_temp.anotar('Socio de A no ve los pagos de otra persona', n = 0, n::text);
+  n := pg_temp.contar('select 1 from public.creditos');
+  perform pg_temp.anotar('Socio de A ve su propio crédito y ningún otro (T27)', n = 1, n::text);
+  n := pg_temp.contar('select 1 from public.pagos_credito');
+  perform pg_temp.anotar('Socio de A ve los pagos de su crédito y ningún otro (T27)', n = 1, n::text);
   n := pg_temp.contar('select 1 from public.invitaciones_caja');
   perform pg_temp.anotar('Socio de A no ve los códigos de invitación', n = 0, n::text);
   n := pg_temp.contar('select 1 from public.miembros_caja');

@@ -8,6 +8,7 @@ const { analizarEstadoCredito, planAdelanto } = require("../utils/amortizacion")
 const { responderError } = require("../utils/errores")
 const { errorMonto } = require("../utils/validacion")
 const { leerImagen, subirYAdjuntar, enviarEnlace } = require("../utils/comprobantes")
+const { puedeVerDelSocio } = require("../utils/fichas")
 
 router.use(verifyToken)
 
@@ -130,19 +131,22 @@ router.post("/", requierePermiso("movimientos.registrar"), async (req, res) => {
 
 // ─────────────────────────────────────────────
 // GET /api/cajas/:cajaId/creditos/:creditoId/pagos/proxima-cuota
-// Devuelve exactamente cuánto falta pagar de la cuota actual
+// Devuelve exactamente cuánto falta pagar de la cuota actual. El socio la ve en sus
+// propios créditos (T27), sin poder pagar
 // ─────────────────────────────────────────────
-router.get("/proxima-cuota", requierePermiso("datos.ver"), async (req, res) => {
+router.get("/proxima-cuota", requierePermiso("caja.ver"), async (req, res) => {
   const { cajaId, creditoId } = req.params
 
   const { data: credito } = await req.db
     .from("creditos")
-    .select("*")
+    .select("*, socios ( user_id )")
     .eq("id", creditoId)
     .eq("caja_id", cajaId)
-    .single()
+    .maybeSingle()
 
-  if (!credito) return res.status(404).json({ error: "Crédito no encontrado" })
+  if (!credito || !puedeVerDelSocio(req, credito.socios?.user_id)) {
+    return res.status(404).json({ error: "Crédito no encontrado" })
+  }
   if (credito.estado === "pagado") {
     return res.json({ pendiente: false, mensaje: "Crédito pagado por completo" })
   }

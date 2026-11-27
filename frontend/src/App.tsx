@@ -139,7 +139,7 @@ export default function App() {
                   path="/creditos"
                   element={
                     <ProtectedRoute>
-                      <RolRoute rolMinimo="tesorero">
+                      <RolRoute>
                         <CreditosPage />
                       </RolRoute>
                     </ProtectedRoute>
